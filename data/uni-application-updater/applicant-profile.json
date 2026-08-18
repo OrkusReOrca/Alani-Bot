@@ -1,0 +1,21 @@
+{
+  "nationality": "Thai",
+  "currentEducation": {
+    "institution": "Mahidol University International College (MUIC)",
+    "major": "Computer Engineering",
+    "scholarship": "50% scholarship",
+    "gpa": 3.70,
+    "ielts": 7.5,
+    "expectedGraduation": "2027-04-15"
+  },
+  "researchBackground": "Research internship at JAIST (Japan Advanced Institute of Science and Technology) on VLM-based (vision-language model) emotion prediction.",
+  "gradSchoolInterest": {
+    "primaryField": "AI/ML, similar to JAIST research background",
+    "longTermAmbition": "Space industry / robotics; AI and hardware-adjacent programs are also a fit",
+    "targetIntake": {
+      "primary": "2027-08",
+      "fallback": "2028-01",
+      "note": "Primary goal is starting August 2027; January 2028 is the last-resort fallback if the Aug 2027 cycle doesn't work out. When researching admission cycles, the round that matters is the one leading to an Aug 2027 (or, failing that, Jan 2028) start — NOT whatever round most recently closed for an earlier intake."
+    }
+  }
+}

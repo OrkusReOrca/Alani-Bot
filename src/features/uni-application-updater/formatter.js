@@ -2,7 +2,7 @@ const STATUS_EMOJI = {
   idle: "🟡",
   open: "🟢",
   closed: "🔴",
-  unknown: "⚪",
+  error: "🟣",
 };
 
 function fmtDate(d) {
@@ -10,7 +10,7 @@ function fmtDate(d) {
 }
 
 function formatProgramLine(p, diff) {
-  const emoji = STATUS_EMOJI[p.status] ?? "⚪";
+  const emoji = STATUS_EMOJI[p.status] ?? "🟣";
   const tag = diff?.changed ? " 🆕 changed" : diff?.isNew ? " 🆕 new" : "";
   const header = `${emoji} **${p.university} — ${p.program}**${tag}`;
 
@@ -27,7 +27,8 @@ function formatProgramLine(p, diff) {
       detail = `Closed. Expected next open: ${fmtDate(p.openDate)}`;
       break;
     default:
-      detail = "Status unknown / unconfirmed.";
+      detail = "Couldn't confirm status (unreachable/unclear from official source).";
+      detail += p.link ? `\nClosest info page: ${p.link}` : "\nNo page found yet.";
   }
 
   if (p.notes) detail += `\n_${p.notes}_`;
@@ -42,7 +43,7 @@ export function formatDailyMessage(programs, diffMap) {
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const header = `**📋 Admissions Status Update — ${dateStr}**`;
-  const legend = "🟢 open   🟡 idle   🔴 closed   ⚪ unknown/unconfirmed   🆕 changed or newly added";
+  const legend = "🟢 open   🟡 idle   🔴 closed   🟣 error/unconfirmed   🆕 changed or newly added";
 
   return [header, legend, "", lines.join("\n\n")].join("\n");
 }

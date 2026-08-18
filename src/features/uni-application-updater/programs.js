@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROGRAMS_PATH = path.join(__dirname, "..", "..", "..", "data", "uni-application-updater", "programs.json");
 
-const VALID_STATUSES = new Set(["idle", "open", "closed", "unknown"]);
+const VALID_STATUSES = new Set(["idle", "open", "closed", "error"]);
 
 export function loadPrograms() {
   const raw = fs.readFileSync(PROGRAMS_PATH, "utf-8");

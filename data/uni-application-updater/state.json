@@ -1,66 +1,66 @@
 {
   "tsinghua-sigs-dst": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "tsinghua-sigs-aix": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "tsinghua-main-adv-computing": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "tsinghua-main-automation": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "ntu-msai": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "ntu-msds": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "ntu-mcaai": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "ntu-cca": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "ntu-spml": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "nus-mcomp-ai": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "nus-msaii": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "nus-robotics": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   },
   "nus-dsml": {
-    "status": "unknown",
+    "status": "error",
     "openDate": null,
     "closeDate": null
   }

@@ -1,17 +1,34 @@
 # Uni Application Updater
 
-Sends a daily formatted status update (🟢 open / 🟡 idle / 🔴 closed / ⚪ unknown)
+Sends a daily formatted status update (🟢 open / 🟡 idle / 🔴 closed / 🟣 error)
 for a tracked list of master's programs, via the Alani Discord bot.
 
 Part of the [Alani-Bot](../../../README.md) repo — see the root README for
 overall repo structure if you're adding another feature alongside this one.
 
+## Who this is for
+
+`data/uni-application-updater/applicant-profile.json` holds the applicant's
+background and target intake — Thai, Computer Engineering at MUIC (50%
+scholarship, 3.70 GPA, IELTS 7.5), a JAIST research internship on VLM-based
+emotion prediction, AI/ML grad school interest with a longer-term space
+industry/robotics ambition, expected graduation ~April 2027, and a **target
+intake of August 2027 (primary) / January 2028 (fallback)**.
+
+That target intake matters for research accuracy: the relevant application
+round for each program is the one leading to an Aug 2027 or Jan 2028 start —
+not whichever round most recently closed. The scheduled research routine
+(see below) is briefed with this file's contents so it looks for the right
+cycle instead of reporting on a stale/irrelevant one.
+
 ## How it works
 
 - `data/uni-application-updater/programs.json` is the source of truth — one
   entry per program, with `status`, `openDate`, `closeDate`, `link`, `notes`.
-  You (or Claude, in a follow-up session) edit this file whenever a
-  program's status is confirmed from the official site.
+  A scheduled cloud routine (`uni-admissions-status-refresh`, runs daily at
+  8:30 AM Bangkok time, 30 min before the Discord post) researches each
+  program against official sources and updates this file. You can also edit
+  it by hand any time.
 - `npm run start:uni-application-updater` reads `programs.json`, compares it
   against `data/uni-application-updater/state.json` (what was sent last
   time) to detect changes, then:
@@ -23,10 +40,11 @@ overall repo structure if you're adding another feature alongside this one.
   - **Manual runs** (triggered by hand from the Actions tab, or `FORCE_DM=true`
     locally) always send a DM too, even with no changes — so you can confirm
     DM delivery on demand.
-- Automated scraping of the 11 tracked pages isn't wired up yet — the sites
-  are a mix of static pages, JS-rendered portals, and PDFs, so scraping needs
-  to be built per-site. v1 is manual/config-driven so you never get a false
-  🟢/🔴 signal on a real deadline.
+- The research routine never guesses — many of the tracked pages are
+  JS-rendered portals or sit behind an egress-restricted sandbox, so status
+  frequently comes back `error` rather than a confident open/closed. That's
+  intentional: a false 🟢/🔴 on a real deadline is worse than an honest
+  "couldn't confirm, here's the closest link."
 
 ## 1. Install dependencies
 
@@ -118,16 +136,25 @@ Edit `data/uni-application-updater/programs.json`. Each entry:
 }
 ```
 
-`status` must be one of: `"idle"`, `"open"`, `"closed"`, `"unknown"`.
+`status` must be one of:
+- `"idle"` 🟡 — not yet open; `openDate` is the expected open date.
+- `"open"` 🟢 — accepting applications now; `closeDate` + `link` should be set.
+- `"closed"` 🔴 — past the deadline; `openDate` is the expected next open date.
+- `"error"` 🟣 — status couldn't be confirmed (page unreachable, unclear, or
+  conflicting signals). `link` should still point to the closest official
+  page you found, so a human can check by hand — this is required, not
+  optional, when status is `"error"`.
+
 Leave dates as `null` (or omit) if unconfirmed — the message will print
-"unconfirmed" rather than a guess.
+"unconfirmed" rather than a guess. Never guess a status — an honest `"error"`
+with a link beats a wrong `"open"`/`"closed"` on a real deadline.
 
-## Next steps / open items
+## The research routine
 
-- **Per-university scraping**: once we check which of the 11 program pages
-  are static HTML vs. JS-rendered vs. PDF-only, we can add automated
-  fetchers per site instead of hand-editing `programs.json`. Good next
-  session for Claude Code.
-- **Outbound network access**: confirmed via direct `fetch()` calls to
-  `discord.com` — no gateway connection needed, so this works fine from
-  GitHub Actions or any sandboxed runner with outbound HTTPS.
+`uni-admissions-status-refresh` is a scheduled cloud routine (not part of
+this repo's code — managed at https://claude.ai/code/routines) that runs
+daily before the Discord post. It reads `applicant-profile.json` and
+`programs.json`, researches each program against official sources, and
+pushes an updated `programs.json`. It frequently lands on `"error"` for
+programs whose official domain is unreachable from its sandboxed network or
+whose current-cycle dates aren't published — that's expected, not a bug.
