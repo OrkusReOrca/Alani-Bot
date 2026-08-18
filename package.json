@@ -10,9 +10,7 @@
     "check:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/checkRun.js",
     "post:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postRun.js",
     "post-grid:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postGridRun.js",
-    "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js",
-    "post:fortnite-jam-tracks-tracker-in-play": "node src/features/fortnite-jam-tracks-tracker/in-play/postRun.js",
-    "test-send:fortnite-jam-tracks-tracker-in-play": "node src/features/fortnite-jam-tracks-tracker/in-play/testSend.js"
+    "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js"
   },
   "engines": {
     "node": ">=18"

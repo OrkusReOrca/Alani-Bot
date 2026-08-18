@@ -3,9 +3,8 @@
 Tracks the Jam Tracks section of the Fortnite item shop and posts to a
 Discord channel when tracks are added or leave.
 
-Sub-feature of [fortnite-jam-tracks-tracker](../README.md) — see the
-parent README for how this relates to the [in-play](../in-play/README.md)
-sub-feature. Part of the [Alani-Bot](../../../../README.md) repo.
+Sub-feature of [fortnite-jam-tracks-tracker](../README.md). Part of the
+[Alani-Bot](../../../../README.md) repo.
 
 ## How it works
 
@@ -49,8 +48,7 @@ layout name — so the code filters on the presence of `tracks` instead).
 
 ## Setup
 
-Same `.env` file as other features (repo root). One variable, shared with
-the `in-play` sub-feature:
+Same `.env` file as other features (repo root):
 
 | Variable | Where to get it |
 |---|---|

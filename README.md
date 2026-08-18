@@ -32,9 +32,9 @@ if it runs on a schedule. Code that's genuinely shared across features
 
 Closely related capabilities that post to the same place can be grouped
 under one parent feature folder with sub-feature subfolders (e.g.
-`fortnite-jam-tracks-tracker/{shop,in-play}/`) instead of being separate
-top-level features — same rules apply one level deeper: each sub-feature
-still gets its own `data/` subfolder, npm scripts, and workflow file.
+`fortnite-jam-tracks-tracker/shop/`) instead of being separate top-level
+features — same rules apply one level deeper: each sub-feature still gets
+its own `data/` subfolder, npm scripts, and workflow file.
 
 ## Features
 
@@ -42,14 +42,10 @@ still gets its own `data/` subfolder, npm scripts, and workflow file.
   — daily channel post + change-alert DMs tracking master's program
   admission status across Tsinghua/NTU/NUS.
 - **[fortnite-jam-tracks-tracker](src/features/fortnite-jam-tracks-tracker/README.md)**
-  — daily channel posts (friend server) tracking Fortnite's Jam Tracks,
-  two sub-features:
+  — daily channel posts (friend server) tracking Fortnite's Jam Tracks:
   - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
     grid image of every Jam Track currently in the purchasable item shop
     (new ones outlined in green), plus a message for tracks that left.
-  - **[in-play](src/features/fortnite-jam-tracks-tracker/in-play/README.md)**
-    — grid image of every Jam Track currently free to play, posted right
-    after `shop`.
 
 ## Setup
 
