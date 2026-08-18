@@ -63,3 +63,13 @@ export async function sendViaBotChannel(botToken, channelId, message) {
     });
   }
 }
+
+// Sends a single rich embed (e.g. a title + large image + fields) rather
+// than plain text — Discord renders embed.image inline and large, which
+// a plain-content image URL only does as a small unfurled preview.
+export async function sendEmbedViaBotChannel(botToken, channelId, embed) {
+  await discordApi(botToken, `/channels/${channelId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ embeds: [embed] }),
+  });
+}

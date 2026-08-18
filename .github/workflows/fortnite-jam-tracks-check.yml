@@ -1,0 +1,32 @@
+name: Fortnite Jam Tracks — Check
+
+on:
+  schedule:
+    # 7:30 AM Indochina Time (UTC+7) = 00:30 UTC
+    - cron: "30 0 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check-shop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm install
+
+      - run: npm run check:fortnite-jam-tracks-updater
+
+      - name: Commit updated state and pending diff
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fortnite-jam-tracks-updater/state.json data/fortnite-jam-tracks-updater/pending-diff.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-updater): update shop check [skip ci]"
+          git push

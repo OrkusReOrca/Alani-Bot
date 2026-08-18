@@ -38,6 +38,9 @@ if it runs on a schedule. Code that's genuinely shared across features
 - **[uni-application-updater](src/features/uni-application-updater/README.md)**
   — daily channel post + change-alert DMs tracking master's program
   admission status across Tsinghua/NTU/NUS.
+- **[fortnite-jam-tracks-updater](src/features/fortnite-jam-tracks-updater/README.md)**
+  — daily channel post (friend server) announcing new/rerun Jam Tracks in
+  the Fortnite item shop, and which tracks left.
 
 ## Setup
 

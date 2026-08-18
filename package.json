@@ -1,12 +1,15 @@
 {
-  "name": "uni-admissions-bot",
+  "name": "alani-bot",
   "version": "1.0.0",
-  "description": "Daily Discord update on master's program admission status",
+  "description": "Alani — multi-feature Discord bot",
   "type": "module",
   "main": "src/features/uni-application-updater/run.js",
   "scripts": {
     "start:uni-application-updater": "node src/features/uni-application-updater/run.js",
-    "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js"
+    "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js",
+    "check:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/checkRun.js",
+    "post:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postRun.js",
+    "test-send:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/testSend.js"
   },
   "engines": {
     "node": ">=18"
