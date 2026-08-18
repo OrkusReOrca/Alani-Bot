@@ -7,8 +7,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": "Fill in status/dates once confirmed from official source."
+    "link": "https://www.sigs.tsinghua.edu.cn/en/data_science_information_technology/",
+    "notes": "Official sigs.tsinghua.edu.cn unreachable from research environment; status unconfirmed from an official source."
   },
   {
     "id": "tsinghua-sigs-aix",
@@ -19,7 +19,7 @@
     "openDate": null,
     "closeDate": null,
     "link": null,
-    "notes": ""
+    "notes": "Official sigs.tsinghua.edu.cn unreachable from research environment; status unconfirmed from an official source."
   },
   {
     "id": "tsinghua-main-adv-computing",
@@ -29,8 +29,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://ac.cs.tsinghua.edu.cn/application.html",
+    "notes": "Official ac.cs.tsinghua.edu.cn unreachable; only stale Fall-2026-cycle dates found, no confirmed Fall 2027 info."
   },
   {
     "id": "tsinghua-main-automation",
@@ -40,8 +40,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://yz.tsinghua.edu.cn/en/info/1014/1107.htm",
+    "notes": "Official yz.tsinghua.edu.cn unreachable; only an outdated 2024-cycle notice found, no current-cycle info confirmed."
   },
   {
     "id": "ntu-msai",
@@ -51,8 +51,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-artificial-intelligence",
+    "notes": "CCDS Aug intake; search signals inconsistent/stale, no confirmed current-round dates."
   },
   {
     "id": "ntu-msds",
@@ -62,8 +62,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-data-science-(msds)",
+    "notes": "CCDS Aug intake; search signals inconsistent/stale, no confirmed current-round dates."
   },
   {
     "id": "ntu-mcaai",
@@ -73,52 +73,52 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-computing-in-applied-ai-(mcaai)",
+    "notes": "CCDS programme; no explicit current-round dates found on official pages."
   },
   {
     "id": "ntu-cca",
     "university": "NTU",
     "program": "MSc in Computer Control & Automation (CCA)",
     "priority": 2,
-    "status": "unknown",
-    "openDate": null,
-    "closeDate": null,
-    "link": null,
-    "notes": ""
+    "status": "open",
+    "openDate": "2026-07-01",
+    "closeDate": "2026-08-31",
+    "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
+    "notes": "EEE MSc: Jan 2027 intake round open now (1 Jul-31 Aug 2026); next round for Aug 2027 intake runs 1 Oct 2026-31 Mar 2027."
   },
   {
     "id": "ntu-spml",
     "university": "NTU",
     "program": "MSc in Signal Processing and Machine Learning (SPML)",
     "priority": 2,
-    "status": "unknown",
-    "openDate": null,
-    "closeDate": null,
-    "link": null,
-    "notes": ""
+    "status": "open",
+    "openDate": "2026-07-01",
+    "closeDate": "2026-08-31",
+    "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
+    "notes": "EEE MSc: Jan 2027 intake round open now (1 Jul-31 Aug 2026); next round for Aug 2027 intake runs 1 Oct 2026-31 Mar 2027."
   },
   {
     "id": "nus-mcomp-ai",
     "university": "NUS",
     "program": "Master of Computing (MComp) in Artificial Intelligence",
     "priority": 2,
-    "status": "unknown",
+    "status": "closed",
     "openDate": null,
-    "closeDate": null,
-    "link": null,
-    "notes": ""
+    "closeDate": "2026-01-31",
+    "link": "https://www.comp.nus.edu.sg/programmes/pg/mcomp-ai/application/",
+    "notes": "Aug 2026 intake round closed 31 Jan 2026 (single intake/yr since AY2025); next round dates not yet published."
   },
   {
     "id": "nus-msaii",
     "university": "NUS",
     "program": "MSc in Artificial Intelligence and Innovation (MSAII)",
     "priority": 2,
-    "status": "unknown",
+    "status": "closed",
     "openDate": null,
-    "closeDate": null,
-    "link": null,
-    "notes": ""
+    "closeDate": "2026-01-31",
+    "link": "https://scale.nus.edu.sg/programmes/graduate/msc-(artificial-intelligence-innovation)",
+    "notes": "Confirmed application round ran 1 Nov 2025-31 Jan 2026, now closed; next round dates not yet published."
   },
   {
     "id": "nus-robotics",
@@ -128,8 +128,8 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://cde.nus.edu.sg/me/graduate/msc-robotics/",
+    "notes": "Conflicting/unconfirmed deadline signals (possible international vs local applicant windows); could not verify from official source."
   },
   {
     "id": "nus-dsml",
@@ -139,7 +139,7 @@
     "status": "unknown",
     "openDate": null,
     "closeDate": null,
-    "link": null,
-    "notes": ""
+    "link": "https://www.math.nus.edu.sg/cdsml/ms-dsml/dsml-prospective-students/",
+    "notes": "No confirmed current-cycle open/close dates found from official source."
   }
 ]
