@@ -7,7 +7,8 @@
     "status": "error",
     "openDate": null,
     "closeDate": null,
-    "link": "https://www.sigs.tsinghua.edu.cn/en/data_science_information_technology/",
+    "link": "https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99293/page.htm",
+    "bestGuess": null,
     "notes": "Official sigs.tsinghua.edu.cn unreachable from research environment; status unconfirmed from an official source."
   },
   {
@@ -18,7 +19,8 @@
     "status": "error",
     "openDate": null,
     "closeDate": null,
-    "link": "https://www.sigs.tsinghua.edu.cn/en/international_students/",
+    "link": "https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99311/page.htm",
+    "bestGuess": null,
     "notes": "Official sigs.tsinghua.edu.cn unreachable from research environment; status unconfirmed from an official source."
   },
   {
@@ -30,6 +32,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://ac.cs.tsinghua.edu.cn/application.html",
+    "bestGuess": null,
     "notes": "Official ac.cs.tsinghua.edu.cn unreachable; only stale Fall-2026-cycle dates found, no confirmed Fall 2027 info."
   },
   {
@@ -41,6 +44,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://yz.tsinghua.edu.cn/en/info/1014/1107.htm",
+    "bestGuess": null,
     "notes": "Official yz.tsinghua.edu.cn unreachable; only an outdated 2024-cycle notice found, no current-cycle info confirmed."
   },
   {
@@ -52,6 +56,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-artificial-intelligence",
+    "bestGuess": null,
     "notes": "CCDS Aug intake; search signals inconsistent/stale, no confirmed current-round dates."
   },
   {
@@ -63,6 +68,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-data-science-(msds)",
+    "bestGuess": null,
     "notes": "CCDS Aug intake; search signals inconsistent/stale, no confirmed current-round dates."
   },
   {
@@ -74,6 +80,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-computing-in-applied-ai-(mcaai)",
+    "bestGuess": null,
     "notes": "CCDS programme; no explicit current-round dates found on official pages."
   },
   {
@@ -85,6 +92,7 @@
     "openDate": "2026-07-01",
     "closeDate": "2026-08-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
+    "bestGuess": null,
     "notes": "EEE MSc: Jan 2027 intake round open now (1 Jul-31 Aug 2026); next round for Aug 2027 intake runs 1 Oct 2026-31 Mar 2027 — that later round is the one relevant to a target Aug 2027 start."
   },
   {
@@ -96,6 +104,7 @@
     "openDate": "2026-07-01",
     "closeDate": "2026-08-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
+    "bestGuess": null,
     "notes": "EEE MSc: Jan 2027 intake round open now (1 Jul-31 Aug 2026); next round for Aug 2027 intake runs 1 Oct 2026-31 Mar 2027 — that later round is the one relevant to a target Aug 2027 start."
   },
   {
@@ -107,6 +116,7 @@
     "openDate": null,
     "closeDate": "2026-01-31",
     "link": "https://www.comp.nus.edu.sg/programmes/pg/mcomp-ai/application/",
+    "bestGuess": null,
     "notes": "Aug 2026 intake round closed 31 Jan 2026 (single intake/yr since AY2025); the Aug 2027 intake round (relevant to target start) not yet published."
   },
   {
@@ -118,6 +128,7 @@
     "openDate": null,
     "closeDate": "2026-01-31",
     "link": "https://scale.nus.edu.sg/programmes/graduate/msc-(artificial-intelligence-innovation)",
+    "bestGuess": null,
     "notes": "Confirmed application round ran 1 Nov 2025-31 Jan 2026, now closed; the round relevant to target Aug 2027 start not yet published."
   },
   {
@@ -129,6 +140,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://cde.nus.edu.sg/me/graduate/msc-robotics/",
+    "bestGuess": null,
     "notes": "Conflicting/unconfirmed deadline signals (possible international vs local applicant windows); could not verify from official source."
   },
   {
@@ -140,6 +152,7 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://www.math.nus.edu.sg/cdsml/ms-dsml/dsml-prospective-students/",
+    "bestGuess": null,
     "notes": "No confirmed current-cycle open/close dates found from official source."
   }
 ]

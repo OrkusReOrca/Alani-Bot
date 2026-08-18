@@ -132,6 +132,7 @@ Edit `data/uni-application-updater/programs.json`. Each entry:
   "openDate": "2026-09-01",
   "closeDate": "2026-11-15",
   "link": "https://sigs.tsinghua.edu.cn/...",
+  "bestGuess": null,
   "notes": ""
 }
 ```
@@ -140,14 +141,30 @@ Edit `data/uni-application-updater/programs.json`. Each entry:
 - `"idle"` 🟡 — not yet open; `openDate` is the expected open date.
 - `"open"` 🟢 — accepting applications now; `closeDate` + `link` should be set.
 - `"closed"` 🔴 — past the deadline; `openDate` is the expected next open date.
-- `"error"` 🟣 — status couldn't be confirmed (page unreachable, unclear, or
-  conflicting signals). `link` should still point to the closest official
-  page you found, so a human can check by hand — this is required, not
-  optional, when status is `"error"`.
+- `"error"` 🟣 — status couldn't be officially confirmed (page unreachable,
+  unclear, or conflicting signals). `link` is required (not optional) —
+  point it at the closest official page found, so a human can check by hand.
+  `bestGuess` is optional: a short plain-English "most likely" read on the
+  situation from secondary sources (news, social media, cached copies),
+  clearly speculative — it does NOT upgrade the status to open/closed, it's
+  shown alongside the `error` status as a hint, never as a confirmed fact.
 
 Leave dates as `null` (or omit) if unconfirmed — the message will print
-"unconfirmed" rather than a guess. Never guess a status — an honest `"error"`
-with a link beats a wrong `"open"`/`"closed"` on a real deadline.
+"unconfirmed" rather than a guess. Never guess a *status* — an honest
+`"error"` with a link (and optionally a caveated `bestGuess`) beats a wrong
+`"open"`/`"closed"` on a real deadline.
+
+### Sourcing priority
+
+1. **Official university/department page — most trustworthy, always checked first.**
+   For Tsinghua SIGS specifically, these are the canonical pages:
+   - Data Science and Technology: https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99293/page.htm
+   - Internet+ Innovation Design (AI+X): https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99311/page.htm
+2. When the official page can't be confirmed (unreachable, no current-cycle
+   info, or ambiguous), the routine also checks **news sources and social
+   media** (official program/department social accounts, university news
+   posts) for secondary signal — this can populate `bestGuess` but never
+   upgrades `status` away from `"error"`.
 
 ## The research routine
 

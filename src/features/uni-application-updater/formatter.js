@@ -27,7 +27,8 @@ function formatProgramLine(p, diff) {
       detail = `Closed. Expected next open: ${fmtDate(p.openDate)}`;
       break;
     default:
-      detail = "Couldn't confirm status (unreachable/unclear from official source).";
+      detail = "Couldn't officially confirm status.";
+      detail += p.bestGuess ? `\nMost likely (unconfirmed): ${p.bestGuess}` : "";
       detail += p.link ? `\nClosest info page: ${p.link}` : "\nNo page found yet.";
   }
 
