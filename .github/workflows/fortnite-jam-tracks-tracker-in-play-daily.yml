@@ -1,4 +1,4 @@
-name: Fortnite Jam Tracks In Play — Daily
+name: Fortnite Jam Tracks Tracker (In Play) — Daily
 
 on:
   schedule:
@@ -25,7 +25,7 @@ jobs:
 
       - run: npm install
 
-      - run: npm run post:fortnite-jam-tracks-in-play
+      - run: npm run post:fortnite-jam-tracks-tracker-in-play
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
@@ -34,6 +34,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/fortnite-jam-tracks-in-play/state.json
-          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-in-play): update state [skip ci]"
+          git add data/fortnite-jam-tracks-tracker/in-play/state.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-tracker): update in-play state [skip ci]"
           git push

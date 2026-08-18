@@ -1,9 +1,11 @@
-# Fortnite Jam Tracks Updater
+# Shop (Fortnite Jam Tracks Tracker)
 
 Tracks the Jam Tracks section of the Fortnite item shop and posts to a
 Discord channel when tracks are added or leave.
 
-Part of the [Alani-Bot](../../../README.md) repo.
+Sub-feature of [fortnite-jam-tracks-tracker](../README.md) — see the
+parent README for how this relates to the [in-play](../in-play/README.md)
+sub-feature. Part of the [Alani-Bot](../../../../README.md) repo.
 
 ## How it works
 
@@ -29,9 +31,9 @@ Runs as two separate steps, 30 minutes apart:
      sends when there's something to report.
 
 The two steps are split (rather than one script doing both at 8:00) to
-mirror the pattern used for other scheduled features in this repo and give
-a buffer window — see `.github/workflows/fortnite-jam-tracks-check.yml`
-and `fortnite-jam-tracks-post.yml`.
+give a buffer window — see
+`.github/workflows/fortnite-jam-tracks-tracker-shop-check.yml` and
+`fortnite-jam-tracks-tracker-shop-post.yml`.
 
 ### Why fortnite-api.com instead of fortnite.gg directly
 
@@ -47,17 +49,17 @@ layout name — so the code filters on the presence of `tracks` instead).
 
 ## Setup
 
-Same `.env` file as other features (repo root). Add one new variable:
+Same `.env` file as other features (repo root). One variable, shared with
+the `in-play` sub-feature:
 
 | Variable | Where to get it |
 |---|---|
 | `DISCORD_FORTNITE_CHANNEL_ID` | Right-click the target channel in the friend server → Copy Channel ID. The bot must already be a member with permission to post there. |
 
-`DISCORD_BOT_TOKEN` is shared with the other feature — same bot (Alani),
-same token, different channel.
+`DISCORD_BOT_TOKEN` is shared with every feature in this repo.
 
 The grid image uses the `canvas` npm package, which is a native module —
-`fortnite-jam-tracks-post.yml` installs its system libraries
+`fortnite-jam-tracks-tracker-shop-post.yml` installs its system libraries
 (`libcairo2-dev` etc.) via `apt-get` before `npm install`. Running `post`
 locally on a non-Debian machine may need the equivalent packages for your
 OS (see [node-canvas's install docs](https://github.com/Automattic/node-canvas#compiling)).
@@ -65,14 +67,14 @@ OS (see [node-canvas's install docs](https://github.com/Automattic/node-canvas#c
 ## Test delivery
 
 ```bash
-npm run test-send:fortnite-jam-tracks-updater
+npm run test-send:fortnite-jam-tracks-tracker-shop
 ```
 
 ## Run manually
 
 ```bash
-npm run check:fortnite-jam-tracks-updater
-npm run post:fortnite-jam-tracks-updater
+npm run check:fortnite-jam-tracks-tracker-shop
+npm run post:fortnite-jam-tracks-tracker-shop
 ```
 
 Running `check` twice in a row without `post` in between is safe — each
@@ -83,7 +85,7 @@ part of the daily flow is unchanged. To send **just the grid image** on its
 own, without touching the new/left diff at all:
 
 ```bash
-npm run post-grid:fortnite-jam-tracks-updater
+npm run post-grid:fortnite-jam-tracks-tracker-shop
 ```
 
 This re-renders the grid from whatever's currently in `state.json` (today's
@@ -99,11 +101,11 @@ correct, since today's new/left status was already reported once.
 Three workflows, all triggerable manually from the Actions tab
 (`workflow_dispatch`) in addition to their schedule:
 
-- `fortnite-jam-tracks-check.yml` — 7:30 AM Bangkok, cron.
-- `fortnite-jam-tracks-post.yml` — 8:00 AM Bangkok, cron. Runs the full
-  daily flow (grid image + left-tracks message).
-- `fortnite-jam-tracks-grid.yml` — **manual only**, no cron. Runs just
-  `post-grid` above, for triggering the grid image by itself.
+- `fortnite-jam-tracks-tracker-shop-check.yml` — 7:30 AM Bangkok, cron.
+- `fortnite-jam-tracks-tracker-shop-post.yml` — 8:00 AM Bangkok, cron.
+  Runs the full daily flow (grid image + left-tracks message).
+- `fortnite-jam-tracks-tracker-shop-grid.yml` — **manual only**, no cron.
+  Runs just `post-grid` above, for triggering the grid image by itself.
 
 Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret alongside the existing
 `DISCORD_BOT_TOKEN` to activate all three.

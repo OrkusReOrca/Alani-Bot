@@ -30,18 +30,26 @@ subfolder if it needs persisted state, its own npm scripts
 if it runs on a schedule. Code that's genuinely shared across features
 (Discord send/receive helpers, auth, logging) lives in `src/common/`.
 
+Closely related capabilities that post to the same place can be grouped
+under one parent feature folder with sub-feature subfolders (e.g.
+`fortnite-jam-tracks-tracker/{shop,in-play}/`) instead of being separate
+top-level features — same rules apply one level deeper: each sub-feature
+still gets its own `data/` subfolder, npm scripts, and workflow file.
+
 ## Features
 
 - **[uni-application-updater](src/features/uni-application-updater/README.md)**
   — daily channel post + change-alert DMs tracking master's program
   admission status across Tsinghua/NTU/NUS.
-- **[fortnite-jam-tracks-updater](src/features/fortnite-jam-tracks-updater/README.md)**
-  — daily channel post (friend server) with a grid image of every Jam
-  Track currently in the purchasable item shop (new ones outlined in
-  green), plus a message for tracks that left.
-- **[fortnite-jam-tracks-in-play](src/features/fortnite-jam-tracks-in-play/README.md)**
-  — daily channel post (same channel, right after the above) with a grid
-  image of every Jam Track currently free to play.
+- **[fortnite-jam-tracks-tracker](src/features/fortnite-jam-tracks-tracker/README.md)**
+  — daily channel posts (friend server) tracking Fortnite's Jam Tracks,
+  two sub-features:
+  - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
+    grid image of every Jam Track currently in the purchasable item shop
+    (new ones outlined in green), plus a message for tracks that left.
+  - **[in-play](src/features/fortnite-jam-tracks-tracker/in-play/README.md)**
+    — grid image of every Jam Track currently free to play, posted right
+    after `shop`.
 
 ## Setup
 

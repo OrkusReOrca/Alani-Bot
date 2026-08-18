@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, "..", "..", "..", "data", "fortnite-jam-tracks-updater");
+const DATA_DIR = path.join(__dirname, "..", "..", "..", "..", "data", "fortnite-jam-tracks-tracker", "shop");
 const STATE_PATH = path.join(DATA_DIR, "state.json");
 const PENDING_DIFF_PATH = path.join(DATA_DIR, "pending-diff.json");
 

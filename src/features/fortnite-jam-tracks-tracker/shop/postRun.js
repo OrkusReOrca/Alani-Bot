@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import { loadPendingDiff, clearPendingDiff } from "./state.js";
 import { formatLeftTracksMessage } from "./formatter.js";
 import { postShopGridImage } from "./postGridImage.js";
-import { sendViaBotChannel } from "../../common/discordApi.js";
+import { sendViaBotChannel } from "../../../common/discordApi.js";
 
 async function main() {
   if (!config.botToken || !config.channelId) {

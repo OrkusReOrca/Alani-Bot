@@ -1,7 +1,7 @@
 import { config } from "./config.js";
 import { loadState, loadPendingDiff } from "./state.js";
 import { generateShopGridImage } from "./generateGridImage.js";
-import { sendFileViaBotChannel } from "../../common/discordApi.js";
+import { sendFileViaBotChannel } from "../../../common/discordApi.js";
 
 // Builds the grid from today's full shop (state.json, refreshed by the
 // most recent check run) and sends it. Green-border "new today" tracks

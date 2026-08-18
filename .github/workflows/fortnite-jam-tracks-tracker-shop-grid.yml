@@ -1,4 +1,4 @@
-name: Fortnite Jam Tracks — Send Grid Only
+name: Fortnite Jam Tracks Tracker (Shop) — Send Grid Only
 
 on:
   workflow_dispatch: {}
@@ -18,7 +18,7 @@ jobs:
 
       - run: npm install
 
-      - run: npm run post-grid:fortnite-jam-tracks-updater
+      - run: npm run post-grid:fortnite-jam-tracks-tracker-shop
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}

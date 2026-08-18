@@ -1,4 +1,4 @@
-name: Fortnite Jam Tracks — Check
+name: Fortnite Jam Tracks Tracker (Shop) — Check
 
 on:
   schedule:
@@ -24,12 +24,12 @@ jobs:
 
       - run: npm install
 
-      - run: npm run check:fortnite-jam-tracks-updater
+      - run: npm run check:fortnite-jam-tracks-tracker-shop
 
       - name: Commit updated state and pending diff
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/fortnite-jam-tracks-updater/state.json data/fortnite-jam-tracks-updater/pending-diff.json
-          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-updater): update shop check [skip ci]"
+          git add data/fortnite-jam-tracks-tracker/shop/state.json data/fortnite-jam-tracks-tracker/shop/pending-diff.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-tracker): update shop check [skip ci]"
           git push

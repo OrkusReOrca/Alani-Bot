@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import { sendViaBotChannel } from "../../common/discordApi.js";
+import { sendViaBotChannel } from "../../../common/discordApi.js";
 
 async function main() {
   if (!config.botToken || !config.channelId) {
@@ -12,7 +12,7 @@ async function main() {
   await sendViaBotChannel(
     config.botToken,
     config.channelId,
-    `✅ Test message from fortnite-jam-tracks-in-play — ${new Date().toISOString()}\nIf you see this, delivery is working.`
+    `✅ Test message from fortnite-jam-tracks-tracker (in-play) — ${new Date().toISOString()}\nIf you see this, delivery is working.`
   );
   console.log("Test send complete.");
 }

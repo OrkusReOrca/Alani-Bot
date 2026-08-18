@@ -7,12 +7,12 @@
   "scripts": {
     "start:uni-application-updater": "node src/features/uni-application-updater/run.js",
     "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js",
-    "check:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/checkRun.js",
-    "post:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postRun.js",
-    "post-grid:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postGridRun.js",
-    "test-send:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/testSend.js",
-    "post:fortnite-jam-tracks-in-play": "node src/features/fortnite-jam-tracks-in-play/postRun.js",
-    "test-send:fortnite-jam-tracks-in-play": "node src/features/fortnite-jam-tracks-in-play/testSend.js"
+    "check:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/checkRun.js",
+    "post:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postRun.js",
+    "post-grid:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postGridRun.js",
+    "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js",
+    "post:fortnite-jam-tracks-tracker-in-play": "node src/features/fortnite-jam-tracks-tracker/in-play/postRun.js",
+    "test-send:fortnite-jam-tracks-tracker-in-play": "node src/features/fortnite-jam-tracks-tracker/in-play/testSend.js"
   },
   "engines": {
     "node": ">=18"

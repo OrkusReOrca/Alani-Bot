@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import { fetchDailyJamTracks } from "./fetchDailyList.js";
 import { updateStateAndMarkNew } from "./state.js";
 import { generateInPlayGridImage } from "./generateGridImage.js";
-import { sendFileViaBotChannel } from "../../common/discordApi.js";
+import { sendFileViaBotChannel } from "../../../common/discordApi.js";
 
 async function main() {
   if (!config.botToken || !config.channelId) {

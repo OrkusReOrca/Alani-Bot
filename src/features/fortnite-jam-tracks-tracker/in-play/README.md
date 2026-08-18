@@ -1,12 +1,12 @@
-# Fortnite Jam Tracks In Play
+# In Play (Fortnite Jam Tracks Tracker)
 
 Daily grid image of every track currently free to play in Fortnite's Jam
-Tracks rotation (as opposed to
-[fortnite-jam-tracks-updater](../fortnite-jam-tracks-updater/README.md),
-which tracks the *purchasable* shop). Posts right after that feature's
-daily update, same channel.
+Tracks rotation (as opposed to [shop](../shop/README.md), which tracks the
+*purchasable* item shop). Posts right after that sub-feature's daily
+update, same channel.
 
-Part of the [Alani-Bot](../../../README.md) repo.
+Sub-feature of [fortnite-jam-tracks-tracker](../README.md). Part of the
+[Alani-Bot](../../../../README.md) repo.
 
 ## How it works
 
@@ -42,24 +42,24 @@ actually knowable, matching this bot's whole approach to uncertain data.
 
 ## Setup
 
-Same `.env` as `fortnite-jam-tracks-updater` — no new variables. Reuses
+Same `.env` as [shop](../shop/README.md) — no new variables. Reuses
 `DISCORD_BOT_TOKEN` and `DISCORD_FORTNITE_CHANNEL_ID`.
 
 ## Test delivery
 
 ```bash
-npm run test-send:fortnite-jam-tracks-in-play
+npm run test-send:fortnite-jam-tracks-tracker-in-play
 ```
 
 ## Run manually
 
 ```bash
-npm run post:fortnite-jam-tracks-in-play
+npm run post:fortnite-jam-tracks-tracker-in-play
 ```
 
 ## Schedule
 
-`.github/workflows/fortnite-jam-tracks-in-play-daily.yml` — 8:05 AM
-Bangkok time (5 minutes after the shop post, so it reliably lands after
+`.github/workflows/fortnite-jam-tracks-tracker-in-play-daily.yml` — 8:05
+AM Bangkok time (5 minutes after the shop post, so it reliably lands after
 it without hard-coupling the two workflows together). Also triggerable
 manually via `workflow_dispatch`.

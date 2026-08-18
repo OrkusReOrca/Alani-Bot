@@ -1,4 +1,4 @@
-name: Fortnite Jam Tracks — Post
+name: Fortnite Jam Tracks Tracker (Shop) — Post
 
 on:
   schedule:
@@ -24,7 +24,7 @@ jobs:
 
       - run: npm install
 
-      - run: npm run post:fortnite-jam-tracks-updater
+      - run: npm run post:fortnite-jam-tracks-tracker-shop
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
@@ -33,6 +33,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/fortnite-jam-tracks-updater/pending-diff.json
-          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-updater): clear pending diff after posting [skip ci]"
+          git add data/fortnite-jam-tracks-tracker/shop/pending-diff.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-tracker): clear shop pending diff after posting [skip ci]"
           git push
