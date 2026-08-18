@@ -10,7 +10,9 @@
     "check:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/checkRun.js",
     "post:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postRun.js",
     "post-grid:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postGridRun.js",
-    "test-send:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/testSend.js"
+    "test-send:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/testSend.js",
+    "post:fortnite-jam-tracks-in-play": "node src/features/fortnite-jam-tracks-in-play/postRun.js",
+    "test-send:fortnite-jam-tracks-in-play": "node src/features/fortnite-jam-tracks-in-play/testSend.js"
   },
   "engines": {
     "node": ">=18"

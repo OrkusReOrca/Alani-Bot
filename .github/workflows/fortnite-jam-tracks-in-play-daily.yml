@@ -1,0 +1,39 @@
+name: Fortnite Jam Tracks In Play — Daily
+
+on:
+  schedule:
+    # 8:05 AM Indochina Time (UTC+7) = 01:05 UTC — 5 min after the shop
+    # post, so this reliably lands right after it.
+    - cron: "5 1 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  post-in-play:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install canvas system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - run: npm install
+
+      - run: npm run post:fortnite-jam-tracks-in-play
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fortnite-jam-tracks-in-play/state.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-in-play): update state [skip ci]"
+          git push

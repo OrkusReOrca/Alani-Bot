@@ -8,23 +8,20 @@ existing ones.
 
 ```
 src/
-  common/                     shared plumbing used by every feature
-    discordApi.js             thin REST wrapper: DM + channel posting via bot token
+  common/                       shared plumbing used by every feature
+    discordApi.js               thin REST wrapper: DM, channel posts, embeds, file
+                                 attachments via bot token, with 429 retry handling
   features/
-    uni-application-updater/  daily grad-school admissions status tracker
-      config.js
-      programs.js
-      state.js
-      formatter.js
-      run.js
-      testSend.js
-      README.md               feature-specific setup & usage docs
+    <feature-name>/             one folder per independent capability
+      config.js                 env vars this feature needs
+      README.md                 feature-specific setup & usage docs
+      ...                       the rest of its code
 
 data/
-  uni-application-updater/    this feature's data (source-of-truth + run state)
+  <feature-name>/                this feature's persisted state / source data
 
 .github/workflows/
-  uni-application-updater-daily.yml   this feature's scheduled trigger
+  <feature-name>-*.yml           this feature's scheduled trigger(s)
 ```
 
 Each feature gets its own subfolder under `src/features/`, its own `data/`
@@ -39,8 +36,12 @@ if it runs on a schedule. Code that's genuinely shared across features
   — daily channel post + change-alert DMs tracking master's program
   admission status across Tsinghua/NTU/NUS.
 - **[fortnite-jam-tracks-updater](src/features/fortnite-jam-tracks-updater/README.md)**
-  — daily channel post (friend server) announcing new/rerun Jam Tracks in
-  the Fortnite item shop, and which tracks left.
+  — daily channel post (friend server) with a grid image of every Jam
+  Track currently in the purchasable item shop (new ones outlined in
+  green), plus a message for tracks that left.
+- **[fortnite-jam-tracks-in-play](src/features/fortnite-jam-tracks-in-play/README.md)**
+  — daily channel post (same channel, right after the above) with a grid
+  image of every Jam Track currently free to play.
 
 ## Setup
 
