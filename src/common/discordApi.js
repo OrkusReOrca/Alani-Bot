@@ -79,3 +79,23 @@ export async function sendEmbedsViaBotChannel(botToken, channelId, embeds) {
 export async function sendEmbedViaBotChannel(botToken, channelId, embed) {
   await sendEmbedsViaBotChannel(botToken, channelId, [embed]);
 }
+
+// Sends a binary file (e.g. a generated PNG) as a message attachment.
+// Uses multipart/form-data, NOT the JSON path above — fetch sets its own
+// Content-Type with the multipart boundary when given a FormData body, so
+// this deliberately doesn't go through discordApi()'s JSON header default.
+export async function sendFileViaBotChannel(botToken, channelId, buffer, filename, content = "") {
+  const form = new FormData();
+  form.append("payload_json", JSON.stringify({ content }));
+  form.append("files[0]", new Blob([buffer]), filename);
+
+  const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${botToken}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Discord file send failed: ${res.status} ${res.statusText} - ${body}`);
+  }
+}

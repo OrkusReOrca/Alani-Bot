@@ -22,6 +22,7 @@ export async function fetchJamTracks() {
         title: track.title,
         image: track.albumArt,
         price: entry.finalPrice,
+        inDate: entry.inDate,
         outDate: entry.outDate,
       });
     }

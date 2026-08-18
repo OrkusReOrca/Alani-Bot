@@ -23,7 +23,13 @@ Runs as two separate steps, 30 minutes apart:
      messages.
    - **One combined message** listing the names of every track that left
      since yesterday (name only).
-   - If nothing changed, nothing is posted.
+   - **A grid image, sent last** — every track currently in the shop as a
+     poster-thumbnail-and-name grid, sorted newest-to-oldest by shop add
+     date, black background, tracks added today outlined in green. Drawn
+     server-side with the `canvas` library (`generateGridImage.js`) — no
+     LLM call involved, same as every other part of this feature.
+   - If nothing changed since yesterday, no text/embed messages are sent,
+     but the grid image still is (it reflects today's full shop either way).
 
 The two steps are split (rather than one script doing both at 8:00) to
 mirror the pattern used for other scheduled features in this repo and give
@@ -52,6 +58,12 @@ Same `.env` file as other features (repo root). Add one new variable:
 
 `DISCORD_BOT_TOKEN` is shared with the other feature — same bot (Alani),
 same token, different channel.
+
+The grid image uses the `canvas` npm package, which is a native module —
+`fortnite-jam-tracks-post.yml` installs its system libraries
+(`libcairo2-dev` etc.) via `apt-get` before `npm install`. Running `post`
+locally on a non-Debian machine may need the equivalent packages for your
+OS (see [node-canvas's install docs](https://github.com/Automattic/node-canvas#compiling)).
 
 ## Test delivery
 
