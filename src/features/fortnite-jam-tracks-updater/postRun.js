@@ -1,7 +1,7 @@
 import { config } from "./config.js";
 import { loadPendingDiff, clearPendingDiff } from "./state.js";
-import { formatNewTrackEmbed, formatLeftTracksMessage } from "./formatter.js";
-import { sendEmbedViaBotChannel, sendViaBotChannel } from "../../common/discordApi.js";
+import { groupNewTrackEmbeds, formatLeftTracksMessage } from "./formatter.js";
+import { sendEmbedsViaBotChannel, sendViaBotChannel } from "../../common/discordApi.js";
 
 async function main() {
   if (!config.botToken || !config.channelId) {
@@ -13,8 +13,8 @@ async function main() {
   const { newTracks, leftTracks } = loadPendingDiff();
   console.log(`Posting: ${newTracks.length} new, ${leftTracks.length} left`);
 
-  for (const track of newTracks) {
-    await sendEmbedViaBotChannel(config.botToken, config.channelId, formatNewTrackEmbed(track));
+  for (const embedGroup of groupNewTrackEmbeds(newTracks)) {
+    await sendEmbedsViaBotChannel(config.botToken, config.channelId, embedGroup);
   }
 
   const leftMessage = formatLeftTracksMessage(leftTracks);

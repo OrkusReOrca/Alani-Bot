@@ -14,9 +14,13 @@ Runs as two separate steps, 30 minutes apart:
    that mirrors the real in-game shop), diffs it against yesterday's saved
    snapshot, and saves the diff + new snapshot.
 2. **Post** (8:00 AM Bangkok time) — reads that diff and posts to Discord:
-   - **One embed per new/rerun track**: title, poster image, price, days
-     left. "New" means present today but absent from yesterday's snapshot
-     — a track that reran after being gone counts as new again.
+   - **New/rerun tracks** (title, poster image, price, days left as an
+     embed card each): "new" means present today but absent from
+     yesterday's snapshot — a track that reran after being gone counts as
+     new again. **6 or fewer** new tracks → one message per track. **More
+     than 6** → batched into messages of up to 4 embeds each, so a big
+     shop refresh doesn't flood the channel with dozens of separate
+     messages.
    - **One combined message** listing the names of every track that left
      since yesterday (name only).
    - If nothing changed, nothing is posted.
@@ -75,7 +79,9 @@ alongside the existing `DISCORD_BOT_TOKEN` to activate them.
 
 ## First run
 
-The very first `check` run has no prior snapshot to diff against, so it
-silently establishes a baseline (saves today's shop as "yesterday") instead
-of reporting every current track as new — otherwise the first `post` would
-spam one embed per track currently in the shop (~100+).
+The very first `check` run has no prior snapshot, so every track currently
+in the shop counts as "new" and gets posted — that's intentional, so the
+channel starts with a full listing of what's available right now. Since
+the shop typically has 100+ jam tracks, this lands as ~25 batched messages
+(4 embeds each) rather than one per track, thanks to the >6 grouping rule
+above.
