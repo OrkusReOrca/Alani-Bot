@@ -9,6 +9,7 @@
     "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js",
     "check:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/checkRun.js",
     "post:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postRun.js",
+    "post-grid:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/postGridRun.js",
     "test-send:fortnite-jam-tracks-updater": "node src/features/fortnite-jam-tracks-updater/testSend.js"
   },
   "engines": {

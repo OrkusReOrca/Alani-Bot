@@ -1,0 +1,24 @@
+name: Fortnite Jam Tracks — Send Grid Only
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  send-grid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install canvas system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - run: npm install
+
+      - run: npm run post-grid:fortnite-jam-tracks-updater
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}

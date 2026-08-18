@@ -81,13 +81,35 @@ npm run post:fortnite-jam-tracks-updater
 Running `check` twice in a row without `post` in between is safe — each
 `check` overwrites the pending diff with a fresh one.
 
+`post` always does both the text/embed updates *and* the grid image — that
+part of the daily flow is unchanged. To send **just the grid image** on its
+own, without touching the new/left diff at all:
+
+```bash
+npm run post-grid:fortnite-jam-tracks-updater
+```
+
+This re-renders the grid from whatever's currently in `state.json` (today's
+shop) and sends it standalone — useful for re-sending after a bad
+render, or just wanting an on-demand snapshot. It reuses whichever
+`newTracks` are currently sitting in the pending diff for the green
+border, so if the daily `post` already ran (and cleared the diff), a
+manual re-trigger afterward just won't highlight anything — that's
+correct, since today's new/left status was already reported once.
+
 ## Schedule
 
-`.github/workflows/fortnite-jam-tracks-check.yml` (7:30 AM Bangkok) and
-`fortnite-jam-tracks-post.yml` (8:00 AM Bangkok) are both enabled via repo
-cron and can be triggered manually from the Actions tab
-(`workflow_dispatch`). Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret
-alongside the existing `DISCORD_BOT_TOKEN` to activate them.
+Three workflows, all triggerable manually from the Actions tab
+(`workflow_dispatch`) in addition to their schedule:
+
+- `fortnite-jam-tracks-check.yml` — 7:30 AM Bangkok, cron.
+- `fortnite-jam-tracks-post.yml` — 8:00 AM Bangkok, cron. Runs the full
+  daily flow (new/left updates + grid image).
+- `fortnite-jam-tracks-grid.yml` — **manual only**, no cron. Runs just
+  `post-grid` above, for triggering the grid image by itself.
+
+Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret alongside the existing
+`DISCORD_BOT_TOKEN` to activate all three.
 
 ## First run
 
