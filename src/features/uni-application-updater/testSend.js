@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import { sendViaDM, sendViaBotChannel } from "./discordSender.js";
+import { sendViaDM, sendViaBotChannel } from "../../common/discordApi.js";
 
 async function main() {
   const message = `✅ Test message from uni-admissions-bot — ${new Date().toISOString()}\nIf you see this, delivery is working.`;

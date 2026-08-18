@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STATE_PATH = path.join(__dirname, "..", "data", "state.json");
+const STATE_PATH = path.join(__dirname, "..", "..", "..", "data", "uni-application-updater", "state.json");
 
 export function loadState() {
   if (!fs.existsSync(STATE_PATH)) return {};

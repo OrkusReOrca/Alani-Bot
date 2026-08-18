@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Daily Discord update on master's program admission status",
   "type": "module",
-  "main": "src/run.js",
+  "main": "src/features/uni-application-updater/run.js",
   "scripts": {
-    "start": "node src/run.js",
-    "test-send": "node src/testSend.js"
+    "start:uni-application-updater": "node src/features/uni-application-updater/run.js",
+    "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js"
   },
   "engines": {
     "node": ">=18"

@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import { loadPrograms } from "./programs.js";
 import { loadState, saveState, diffPrograms, stateFromPrograms } from "./state.js";
 import { formatDailyMessage, formatChangeAlert } from "./formatter.js";
-import { sendViaDM, sendViaBotChannel } from "./discordSender.js";
+import { sendViaDM, sendViaBotChannel } from "../../common/discordApi.js";
 
 const isManualRun = process.env.FORCE_DM === "true";
 
