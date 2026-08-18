@@ -1,0 +1,145 @@
+[
+  {
+    "id": "tsinghua-sigs-dst",
+    "university": "Tsinghua SIGS",
+    "program": "Data Science and Technology (English-taught Program)",
+    "priority": 1,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": "Fill in status/dates once confirmed from official source."
+  },
+  {
+    "id": "tsinghua-sigs-aix",
+    "university": "Tsinghua SIGS",
+    "program": "Internet+ Innovation Design (AI+X)",
+    "priority": 1,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "tsinghua-main-adv-computing",
+    "university": "Tsinghua (main campus)",
+    "program": "Master's in Advanced Computing",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "tsinghua-main-automation",
+    "university": "Tsinghua (main campus)",
+    "program": "Department of Automation (DA)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "ntu-msai",
+    "university": "NTU",
+    "program": "Master of Science in Artificial Intelligence (MSAI)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "ntu-msds",
+    "university": "NTU",
+    "program": "Master of Science in Data Science (MSDS)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "ntu-mcaai",
+    "university": "NTU",
+    "program": "Master of Computing in Applied Artificial Intelligence (MCAAI)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "ntu-cca",
+    "university": "NTU",
+    "program": "MSc in Computer Control & Automation (CCA)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "ntu-spml",
+    "university": "NTU",
+    "program": "MSc in Signal Processing and Machine Learning (SPML)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "nus-mcomp-ai",
+    "university": "NUS",
+    "program": "Master of Computing (MComp) in Artificial Intelligence",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "nus-msaii",
+    "university": "NUS",
+    "program": "MSc in Artificial Intelligence and Innovation (MSAII)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "nus-robotics",
+    "university": "NUS",
+    "program": "MSc in Robotics",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  },
+  {
+    "id": "nus-dsml",
+    "university": "NUS",
+    "program": "MSc in Data Science and Machine Learning (DSML)",
+    "priority": 2,
+    "status": "unknown",
+    "openDate": null,
+    "closeDate": null,
+    "link": null,
+    "notes": ""
+  }
+]

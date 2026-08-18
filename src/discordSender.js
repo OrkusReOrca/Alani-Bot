@@ -1,0 +1,80 @@
+const DISCORD_MAX_LEN = 2000;
+
+// Splits a long message into <=2000-char chunks, breaking on blank lines
+// where possible so a program block never gets cut in half.
+function chunkMessage(message) {
+  if (message.length <= DISCORD_MAX_LEN) return [message];
+
+  const blocks = message.split("\n\n");
+  const chunks = [];
+  let current = "";
+
+  for (const block of blocks) {
+    const candidate = current ? `${current}\n\n${block}` : block;
+    if (candidate.length > DISCORD_MAX_LEN) {
+      if (current) chunks.push(current);
+      current = block;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+
+  return chunks;
+}
+
+export async function sendViaWebhook(webhookUrl, message) {
+  const chunks = chunkMessage(message);
+  for (const content of chunks) {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Webhook send failed: ${res.status} ${res.statusText} - ${body}`);
+    }
+  }
+}
+
+async function discordApi(botToken, path, options = {}) {
+  const res = await fetch(`https://discord.com/api/v10${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Discord API ${path} failed: ${res.status} ${res.statusText} - ${body}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+export async function sendViaDM(botToken, userId, message) {
+  const dmChannel = await discordApi(botToken, "/users/@me/channels", {
+    method: "POST",
+    body: JSON.stringify({ recipient_id: userId }),
+  });
+
+  const chunks = chunkMessage(message);
+  for (const content of chunks) {
+    await discordApi(botToken, `/channels/${dmChannel.id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+  }
+}
+
+export async function sendViaBotChannel(botToken, channelId, message) {
+  const chunks = chunkMessage(message);
+  for (const content of chunks) {
+    await discordApi(botToken, `/channels/${channelId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+  }
+}

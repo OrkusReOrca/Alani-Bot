@@ -1,0 +1,17 @@
+{
+  "name": "uni-admissions-bot",
+  "version": "1.0.0",
+  "description": "Daily Discord update on master's program admission status",
+  "type": "module",
+  "main": "src/run.js",
+  "scripts": {
+    "start": "node src/run.js",
+    "test-send": "node src/testSend.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
