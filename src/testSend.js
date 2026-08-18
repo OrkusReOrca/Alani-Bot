@@ -1,18 +1,18 @@
 import { config } from "./config.js";
-import { sendViaWebhook, sendViaDM, sendViaBotChannel } from "./discordSender.js";
+import { sendViaDM, sendViaBotChannel } from "./discordSender.js";
 
 async function main() {
   const message = `✅ Test message from uni-admissions-bot — ${new Date().toISOString()}\nIf you see this, delivery is working.`;
 
   let sentSomewhere = false;
 
-  if (config.webhookUrl) {
-    console.log("Testing webhook delivery...");
-    await sendViaWebhook(config.webhookUrl, message);
-    console.log("Webhook OK.");
+  if (config.botToken && config.channelId) {
+    console.log("Testing bot channel delivery...");
+    await sendViaBotChannel(config.botToken, config.channelId, message);
+    console.log("Bot channel OK.");
     sentSomewhere = true;
   } else {
-    console.log("Skipping webhook test (DISCORD_WEBHOOK_URL not set).");
+    console.log("Skipping channel test (DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID not set).");
   }
 
   if (config.botToken && config.userId) {
@@ -22,13 +22,6 @@ async function main() {
     sentSomewhere = true;
   } else {
     console.log("Skipping bot DM test (DISCORD_BOT_TOKEN / DISCORD_USER_ID not set).");
-  }
-
-  if (config.botToken && config.channelId) {
-    console.log("Testing bot channel delivery...");
-    await sendViaBotChannel(config.botToken, config.channelId, message);
-    console.log("Bot channel OK.");
-    sentSomewhere = true;
   }
 
   if (!sentSomewhere) {

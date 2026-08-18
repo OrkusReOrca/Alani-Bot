@@ -6,7 +6,6 @@ function required(name) {
 }
 
 export const config = {
-  webhookUrl: required("DISCORD_WEBHOOK_URL"),
   botToken: required("DISCORD_BOT_TOKEN"),
   userId: required("DISCORD_USER_ID"),
   channelId: required("DISCORD_CHANNEL_ID"),

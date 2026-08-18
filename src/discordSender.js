@@ -23,21 +23,6 @@ function chunkMessage(message) {
   return chunks;
 }
 
-export async function sendViaWebhook(webhookUrl, message) {
-  const chunks = chunkMessage(message);
-  for (const content of chunks) {
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Webhook send failed: ${res.status} ${res.statusText} - ${body}`);
-    }
-  }
-}
-
 async function discordApi(botToken, path, options = {}) {
   const res = await fetch(`https://discord.com/api/v10${path}`, {
     ...options,

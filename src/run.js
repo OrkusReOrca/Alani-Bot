@@ -2,42 +2,41 @@ import { config } from "./config.js";
 import { loadPrograms } from "./programs.js";
 import { loadState, saveState, diffPrograms, stateFromPrograms } from "./state.js";
 import { formatDailyMessage, formatChangeAlert } from "./formatter.js";
-import { sendViaWebhook, sendViaDM, sendViaBotChannel } from "./discordSender.js";
+import { sendViaDM, sendViaBotChannel } from "./discordSender.js";
+
+const isManualRun = process.env.FORCE_DM === "true";
 
 async function main() {
   const programs = loadPrograms();
   const prevState = loadState();
   const diffMap = diffPrograms(programs, prevState);
 
-  // 1. Daily channel update — always sent, every run.
-  const dailyMessage = formatDailyMessage(programs, diffMap);
-  let channelSent = false;
-
-  if (config.webhookUrl) {
-    console.log("Sending daily update via webhook...");
-    await sendViaWebhook(config.webhookUrl, dailyMessage);
-    channelSent = true;
-  }
-  if (config.botToken && config.channelId) {
-    console.log("Sending daily update via bot to channel...");
-    await sendViaBotChannel(config.botToken, config.channelId, dailyMessage);
-    channelSent = true;
-  }
-  if (!channelSent) {
+  // 1. Daily channel update — always sent, every run, via the bot.
+  if (!config.botToken || !config.channelId) {
     throw new Error(
-      "No channel delivery configured. Set DISCORD_WEBHOOK_URL and/or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID in .env"
+      "Channel delivery not configured. Set DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID in .env"
     );
   }
+  console.log("Sending daily update via bot to channel...");
+  const dailyMessage = formatDailyMessage(programs, diffMap);
+  await sendViaBotChannel(config.botToken, config.channelId, dailyMessage);
 
-  // 2. DM alert — only sent when at least one program's status actually changed.
+  // 2. DM alert — sent when a program's status actually changed, or when
+  //    manually triggered (workflow_dispatch) so delivery can be verified
+  //    on demand even if nothing changed.
   const changeAlert = formatChangeAlert(programs, diffMap);
-  if (changeAlert) {
+  const shouldDM = changeAlert || isManualRun;
+
+  if (shouldDM) {
     if (config.botToken && config.userId) {
-      console.log("Status change detected — sending DM alert...");
-      await sendViaDM(config.botToken, config.userId, changeAlert);
+      console.log(changeAlert ? "Status change detected — sending DM alert..." : "Manual run — sending DM to verify delivery...");
+      const dmMessage =
+        changeAlert ??
+        "✅ Manual run check — no status changes right now, but DM delivery is working.";
+      await sendViaDM(config.botToken, config.userId, dmMessage);
     } else {
       console.warn(
-        "Status change detected but DISCORD_BOT_TOKEN / DISCORD_USER_ID not set — skipping DM alert."
+        "DM alert needed but DISCORD_BOT_TOKEN / DISCORD_USER_ID not set — skipping."
       );
     }
   } else {

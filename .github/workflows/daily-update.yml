@@ -6,6 +6,9 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   send-update:
     runs-on: ubuntu-latest
@@ -20,10 +23,10 @@ jobs:
 
       - run: npm start
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+          FORCE_DM: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
 
       - name: Commit updated state
         run: |
