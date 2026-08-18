@@ -13,23 +13,20 @@ Runs as two separate steps, 30 minutes apart:
    [fortnite-api.com](https://fortnite-api.com) (a public, key-free API
    that mirrors the real in-game shop), diffs it against yesterday's saved
    snapshot, and saves the diff + new snapshot.
-2. **Post** (8:00 AM Bangkok time) — reads that diff and posts to Discord:
-   - **New/rerun tracks** (title, poster image, price, days left as an
-     embed card each): "new" means present today but absent from
-     yesterday's snapshot — a track that reran after being gone counts as
-     new again. **6 or fewer** new tracks → one message per track. **More
-     than 6** → batched into messages of up to 4 embeds each, so a big
-     shop refresh doesn't flood the channel with dozens of separate
-     messages.
-   - **One combined message** listing the names of every track that left
-     since yesterday (name only).
-   - **A grid image, sent last** — every track currently in the shop as a
+2. **Post** (8:00 AM Bangkok time) — reads that diff and posts to Discord,
+   in this order:
+   - **The grid image** — every track currently in the shop as a
      poster-thumbnail-and-name grid, sorted newest-to-oldest by shop add
-     date, black background, tracks added today outlined in green. Drawn
-     server-side with the `canvas` library (`generateGridImage.js`) — no
-     LLM call involved, same as every other part of this feature.
-   - If nothing changed since yesterday, no text/embed messages are sent,
-     but the grid image still is (it reflects today's full shop either way).
+     date, black background, each cell showing the track name plus days
+     left in the shop, and tracks added today outlined in green. This is
+     the "what's new" announcement — there's no separate per-track message.
+     Drawn server-side with the `canvas` library (`generateGridImage.js`)
+     — no LLM call involved, same as every other part of this feature.
+   - **One combined message** listing the names of every track that left
+     since yesterday (name only) — skipped entirely if nothing left.
+   - The grid always sends regardless of whether anything changed (it
+     reflects today's full shop either way); the left-tracks message only
+     sends when there's something to report.
 
 The two steps are split (rather than one script doing both at 8:00) to
 mirror the pattern used for other scheduled features in this repo and give
@@ -81,7 +78,7 @@ npm run post:fortnite-jam-tracks-updater
 Running `check` twice in a row without `post` in between is safe — each
 `check` overwrites the pending diff with a fresh one.
 
-`post` always does both the text/embed updates *and* the grid image — that
+`post` always does both the grid image and the left-tracks message — that
 part of the daily flow is unchanged. To send **just the grid image** on its
 own, without touching the new/left diff at all:
 
@@ -104,7 +101,7 @@ Three workflows, all triggerable manually from the Actions tab
 
 - `fortnite-jam-tracks-check.yml` — 7:30 AM Bangkok, cron.
 - `fortnite-jam-tracks-post.yml` — 8:00 AM Bangkok, cron. Runs the full
-  daily flow (new/left updates + grid image).
+  daily flow (grid image + left-tracks message).
 - `fortnite-jam-tracks-grid.yml` — **manual only**, no cron. Runs just
   `post-grid` above, for triggering the grid image by itself.
 
@@ -114,8 +111,6 @@ Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret alongside the existing
 ## First run
 
 The very first `check` run has no prior snapshot, so every track currently
-in the shop counts as "new" and gets posted — that's intentional, so the
-channel starts with a full listing of what's available right now. Since
-the shop typically has 100+ jam tracks, this lands as ~25 batched messages
-(4 embeds each) rather than one per track, thanks to the >6 grouping rule
-above.
+in the shop counts as "new" and shows outlined in green on the grid —
+that's intentional, so the first grid doubles as a full listing of what's
+available right now, with everything highlighted.

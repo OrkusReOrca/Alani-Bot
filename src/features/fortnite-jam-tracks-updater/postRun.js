@@ -1,8 +1,8 @@
 import { config } from "./config.js";
 import { loadPendingDiff, clearPendingDiff } from "./state.js";
-import { groupNewTrackEmbeds, formatLeftTracksMessage } from "./formatter.js";
+import { formatLeftTracksMessage } from "./formatter.js";
 import { postShopGridImage } from "./postGridImage.js";
-import { sendEmbedsViaBotChannel, sendViaBotChannel } from "../../common/discordApi.js";
+import { sendViaBotChannel } from "../../common/discordApi.js";
 
 async function main() {
   if (!config.botToken || !config.channelId) {
@@ -14,21 +14,17 @@ async function main() {
   const { newTracks, leftTracks } = loadPendingDiff();
   console.log(`Posting: ${newTracks.length} new, ${leftTracks.length} left`);
 
-  for (const embedGroup of groupNewTrackEmbeds(newTracks)) {
-    await sendEmbedsViaBotChannel(config.botToken, config.channelId, embedGroup);
-  }
+  // 1. Grid summary — shows every track currently in the shop, with new
+  //    tracks outlined in green and each cell's days-left, so it doubles
+  //    as the "what's new" announcement without a separate flood of
+  //    per-track messages.
+  await postShopGridImage();
 
+  // 2. Left tracks — one combined message, names only.
   const leftMessage = formatLeftTracksMessage(leftTracks);
   if (leftMessage) {
     await sendViaBotChannel(config.botToken, config.channelId, leftMessage);
   }
-
-  if (newTracks.length === 0 && leftTracks.length === 0) {
-    console.log("No changes since yesterday's check — nothing posted.");
-  }
-
-  // Grid image goes last, after every text/embed update.
-  await postShopGridImage();
 
   clearPendingDiff();
   console.log("Done.");

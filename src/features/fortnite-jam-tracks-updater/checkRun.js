@@ -7,8 +7,8 @@ async function main() {
   const prevState = loadState();
 
   // First-ever run: there's no "yesterday" state, so every track currently
-  // in the shop counts as "new" and gets posted (batched via
-  // groupNewTrackEmbeds in postRun.js since there'll likely be 100+).
+  // in the shop counts as "new" — it'll show outlined in green on the grid
+  // image rather than as individual posts.
   const { newTracks, leftTracks } = diffTracks(todayTracks, prevState);
   console.log(`New: ${newTracks.length}, Left: ${leftTracks.length}`);
 

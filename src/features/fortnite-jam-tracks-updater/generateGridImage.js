@@ -1,18 +1,33 @@
 import { createCanvas, loadImage } from "canvas";
+import { formatDaysLeft } from "./fetchShop.js";
 
 const COLUMNS = 8;
 const CELL_IMAGE_SIZE = 120;
 const CELL_PADDING = 12;
-const LABEL_HEIGHT = 40;
+const LABEL_HEIGHT = 56; // 2 title lines + 1 days-left line, fixed slots
 const CELL_WIDTH = CELL_IMAGE_SIZE + CELL_PADDING * 2;
 const CELL_HEIGHT = CELL_IMAGE_SIZE + LABEL_HEIGHT + CELL_PADDING * 2;
 const HEADER_HEIGHT = 70;
 const NEW_TRACK_BORDER_COLOR = "#22c55e";
 const BACKGROUND_COLOR = "#000000";
+const TITLE_LINE_Y = [16, 30];
+const DAYS_LEFT_Y = 48;
+
+// Fits text to maxWidth, truncating with an ellipsis if needed. Used for
+// both title lines and the days-left line so overly long strings don't
+// spill outside their cell.
+function fitText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let truncated = text;
+  while (ctx.measureText(truncated + "…").width > maxWidth && truncated.length > 1) {
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + "…";
+}
 
 function wrapTitle(ctx, title, maxWidth) {
-  // At most 2 lines; second line gets an ellipsis if the title is still
-  // too long to fit, rather than silently truncating single-word titles.
+  // At most 2 lines; second line is truncated with an ellipsis if the
+  // title is still too long to fit, rather than silently cutting words.
   const words = title.split(" ");
   const lines = [];
   let current = "";
@@ -28,13 +43,7 @@ function wrapTitle(ctx, title, maxWidth) {
     }
   }
   if (lines.length < 2 && current) lines.push(current);
-
-  if (lines.length === 2 && ctx.measureText(lines[1]).width > maxWidth) {
-    while (ctx.measureText(lines[1] + "…").width > maxWidth && lines[1].length > 1) {
-      lines[1] = lines[1].slice(0, -1);
-    }
-    lines[1] += "…";
-  }
+  if (lines.length === 2) lines[1] = fitText(ctx, lines[1], maxWidth);
 
   return lines;
 }
@@ -65,6 +74,7 @@ export async function generateShopGridImage(tracks, newTrackIds, dateLabel) {
     const cellY = HEADER_HEIGHT + row * CELL_HEIGHT;
     const imageX = cellX + CELL_PADDING;
     const imageY = cellY + CELL_PADDING;
+    const centerX = imageX + CELL_IMAGE_SIZE / 2;
 
     try {
       const res = await fetch(track.image);
@@ -82,14 +92,20 @@ export async function generateShopGridImage(tracks, newTrackIds, dateLabel) {
       ctx.strokeRect(imageX - 2, imageY - 2, CELL_IMAGE_SIZE + 4, CELL_IMAGE_SIZE + 4);
     }
 
+    const labelBaseY = imageY + CELL_IMAGE_SIZE;
+
     ctx.fillStyle = "#ffffff";
     ctx.font = "12px sans-serif";
     ctx.textAlign = "center";
-    const lines = wrapTitle(ctx, track.title.toUpperCase(), CELL_IMAGE_SIZE);
-    const textStartY = imageY + CELL_IMAGE_SIZE + 16;
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, imageX + CELL_IMAGE_SIZE / 2, textStartY + idx * 14);
+    const titleLines = wrapTitle(ctx, track.title.toUpperCase(), CELL_IMAGE_SIZE);
+    titleLines.forEach((line, idx) => {
+      ctx.fillText(line, centerX, labelBaseY + TITLE_LINE_Y[idx]);
     });
+
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "11px sans-serif";
+    const daysLeftText = fitText(ctx, formatDaysLeft(track.outDate), CELL_IMAGE_SIZE);
+    ctx.fillText(daysLeftText, centerX, labelBaseY + DAYS_LEFT_Y);
   }
 
   return canvas.toBuffer("image/png");
