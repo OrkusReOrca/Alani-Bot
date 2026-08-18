@@ -35,24 +35,24 @@
     "closeDate": null
   },
   "ntu-cca": {
-    "status": "error",
-    "openDate": null,
-    "closeDate": null
+    "status": "open",
+    "openDate": "2026-07-01",
+    "closeDate": "2026-08-31"
   },
   "ntu-spml": {
-    "status": "error",
-    "openDate": null,
-    "closeDate": null
+    "status": "open",
+    "openDate": "2026-07-01",
+    "closeDate": "2026-08-31"
   },
   "nus-mcomp-ai": {
-    "status": "error",
+    "status": "closed",
     "openDate": null,
-    "closeDate": null
+    "closeDate": "2026-01-31"
   },
   "nus-msaii": {
-    "status": "error",
+    "status": "closed",
     "openDate": null,
-    "closeDate": null
+    "closeDate": "2026-01-31"
   },
   "nus-robotics": {
     "status": "error",
