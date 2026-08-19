@@ -303,14 +303,6 @@
     "inDate": "2026-08-01T00:00:00Z",
     "outDate": "2026-09-03T23:59:59.999Z"
   },
-  "sid_placeholder_44": {
-    "id": "sid_placeholder_44",
-    "title": "Thunder",
-    "image": "https://cdn.fortnite-api.com/tracks/1d3a895f10eb9273.jpg",
-    "price": 500,
-    "inDate": "2026-08-16T00:00:00Z",
-    "outDate": "2026-08-18T23:59:59.999Z"
-  },
   "sid_placeholder_615": {
     "id": "sid_placeholder_615",
     "title": "SLAY!",
@@ -591,18 +583,18 @@
     "inDate": "2026-08-01T00:00:00Z",
     "outDate": "2026-09-03T23:59:59.999Z"
   },
-  "sid_placeholder_77": {
-    "id": "sid_placeholder_77",
-    "title": "Wolves",
-    "image": "https://cdn.fortnite-api.com/tracks/3b2d1f0ba5b25a97.jpg",
-    "price": 500,
-    "inDate": "2026-08-01T00:00:00Z",
-    "outDate": "2026-09-03T23:59:59.999Z"
-  },
   "sid_placeholder_211": {
     "id": "sid_placeholder_211",
     "title": "Bulls On Parade",
     "image": "https://cdn.fortnite-api.com/tracks/f2b7b374b8336422.jpg",
+    "price": 500,
+    "inDate": "2026-08-01T00:00:00Z",
+    "outDate": "2026-09-03T23:59:59.999Z"
+  },
+  "sid_placeholder_77": {
+    "id": "sid_placeholder_77",
+    "title": "Wolves",
+    "image": "https://cdn.fortnite-api.com/tracks/3b2d1f0ba5b25a97.jpg",
     "price": 500,
     "inDate": "2026-08-01T00:00:00Z",
     "outDate": "2026-09-03T23:59:59.999Z"
