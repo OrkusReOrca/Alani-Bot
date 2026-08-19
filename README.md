@@ -65,3 +65,16 @@ See each feature's own README for what env vars it needs and how to run it.
 4. Add `start:<name>` / `test-send:<name>` scripts to the root `package.json`.
 5. Add a `.github/workflows/<name>-*.yml` if it needs to run on a schedule.
 6. Write a `src/features/<name>/README.md` covering that feature's setup.
+
+## A note on scheduled workflow timing
+
+GitHub's `schedule` trigger is documented as best-effort, not exact — it
+can be delayed under high platform load, and GitHub specifically calls out
+round minutes (`:00`, `:05`, `:30`, the top of every hour) as the worst
+case, since every other repo on the platform tends to schedule there too.
+This was observed directly in this repo: crons set at `:00`/`:30` ran
+45-90 minutes late. There's no paid tier that fixes this — it's a
+platform-wide scheduling-service behavior, not a runner-capacity limit —
+so every cron in this repo is deliberately set to an off-round minute
+(e.g. `:19`, `:37`, `:12`) instead. If you add a new scheduled workflow,
+follow the same pattern rather than round numbers.

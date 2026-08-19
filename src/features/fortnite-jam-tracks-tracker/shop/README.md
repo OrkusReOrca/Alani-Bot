@@ -8,31 +8,41 @@ Sub-feature of [fortnite-jam-tracks-tracker](../README.md). Part of the
 
 ## How it works
 
-Runs as two separate steps, 30 minutes apart:
+Runs as two separate steps, ~30 minutes apart:
 
-1. **Check** (7:30 AM Bangkok time) — fetches the current shop from
+1. **Check** (~7:37 AM Bangkok time) — fetches the current shop from
    [fortnite-api.com](https://fortnite-api.com) (a public, key-free API
    that mirrors the real in-game shop), diffs it against yesterday's saved
    snapshot, and saves the diff + new snapshot.
-2. **Post** (8:00 AM Bangkok time) — reads that diff and posts to Discord,
+2. **Post** (~8:12 AM Bangkok time) — reads that diff and posts to Discord,
    in this order:
    - **The grid image** — every track currently in the shop as a
      poster-thumbnail-and-name grid, sorted newest-to-oldest by shop add
      date, black background, each cell showing the track name plus days
-     left in the shop, and tracks added today outlined in green. This is
-     the "what's new" announcement — there's no separate per-track message.
-     Drawn server-side with the `canvas` library (`generateGridImage.js`)
-     — no LLM call involved, same as every other part of this feature.
-   - **One combined message** listing the names of every track that left
-     since yesterday (name only) — skipped entirely if nothing left.
+     left in the shop, and tracks added today outlined in green. Drawn
+     server-side with the `canvas` library (`generateGridImage.js`) — no
+     LLM call involved, same as every other part of this feature.
+   - **One combined text message** — a compact list, one line per change:
+     ```
+     🟢+ *Track Name* *2d 14h*
+     🟢+ *Another Track* *5d 3h*
+     🔴+ *Track That Left*
+     ```
+     🟢 lines are new/rerun tracks (with days left before they leave
+     again); 🔴 lines are tracks that left since yesterday (name only, no
+     time info — there's nothing left to count down). Skipped entirely if
+     nothing changed. Split into multiple messages only if it exceeds
+     Discord's 2000-char limit (handled automatically by the shared
+     sender — see `src/common/discordApi.js`'s `chunkMessage`).
    - The grid always sends regardless of whether anything changed (it
-     reflects today's full shop either way); the left-tracks message only
-     sends when there's something to report.
+     reflects today's full shop either way); the text message only sends
+     when there's something to report.
 
-The two steps are split (rather than one script doing both at 8:00) to
-give a buffer window — see
+The two steps are split (rather than one script doing both) to give a
+buffer window — see
 `.github/workflows/fortnite-jam-tracks-tracker-shop-check.yml` and
-`fortnite-jam-tracks-tracker-shop-post.yml`.
+`fortnite-jam-tracks-tracker-shop-post.yml`. Both times are approximate
+and deliberately off round minutes — see the root README for why.
 
 ### Why fortnite-api.com instead of fortnite.gg directly
 
@@ -78,7 +88,7 @@ npm run post:fortnite-jam-tracks-tracker-shop
 Running `check` twice in a row without `post` in between is safe — each
 `check` overwrites the pending diff with a fresh one.
 
-`post` always does both the grid image and the left-tracks message — that
+`post` always does both the grid image and the update text message — that
 part of the daily flow is unchanged. To send **just the grid image** on its
 own, without touching the new/left diff at all:
 
@@ -99,9 +109,9 @@ correct, since today's new/left status was already reported once.
 Three workflows, all triggerable manually from the Actions tab
 (`workflow_dispatch`) in addition to their schedule:
 
-- `fortnite-jam-tracks-tracker-shop-check.yml` — 7:30 AM Bangkok, cron.
-- `fortnite-jam-tracks-tracker-shop-post.yml` — 8:00 AM Bangkok, cron.
-  Runs the full daily flow (grid image + left-tracks message).
+- `fortnite-jam-tracks-tracker-shop-check.yml` — ~7:37 AM Bangkok, cron.
+- `fortnite-jam-tracks-tracker-shop-post.yml` — ~8:12 AM Bangkok, cron.
+  Runs the full daily flow (grid image + update text message).
 - `fortnite-jam-tracks-tracker-shop-grid.yml` — **manual only**, no cron.
   Runs just `post-grid` above, for triggering the grid image by itself.
 

@@ -2,8 +2,10 @@ name: Uni Application Updater — Daily
 
 on:
   schedule:
-    # 9:00 AM Indochina Time (UTC+7) = 2:00 AM UTC
-    - cron: "0 2 * * *"
+    # ~9:19 AM Indochina Time (UTC+7) = 02:19 UTC — off a round minute
+    # (GitHub's schedule trigger queues :00/:05/:30 hardest under load;
+    # this was seen running 48+ min late at :00).
+    - cron: "19 2 * * *"
   workflow_dispatch: {}
 
 permissions:

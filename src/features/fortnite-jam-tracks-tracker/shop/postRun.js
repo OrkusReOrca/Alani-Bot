@@ -1,6 +1,6 @@
 import { config } from "./config.js";
 import { loadPendingDiff, clearPendingDiff } from "./state.js";
-import { formatLeftTracksMessage } from "./formatter.js";
+import { formatUpdateMessage } from "./formatter.js";
 import { postShopGridImage } from "./postGridImage.js";
 import { sendViaBotChannel } from "../../../common/discordApi.js";
 
@@ -15,15 +15,15 @@ async function main() {
   console.log(`Posting: ${newTracks.length} new, ${leftTracks.length} left`);
 
   // 1. Grid summary — shows every track currently in the shop, with new
-  //    tracks outlined in green and each cell's days-left, so it doubles
-  //    as the "what's new" announcement without a separate flood of
-  //    per-track messages.
+  //    tracks outlined in green and each cell's days-left.
   await postShopGridImage();
 
-  // 2. Left tracks — one combined message, names only.
-  const leftMessage = formatLeftTracksMessage(leftTracks);
-  if (leftMessage) {
-    await sendViaBotChannel(config.botToken, config.channelId, leftMessage);
+  // 2. One combined update message: 🟢+ new tracks (with days left), then
+  //    🔴+ tracks that left (name only). Skipped entirely if nothing
+  //    changed since yesterday.
+  const updateMessage = formatUpdateMessage(newTracks, leftTracks);
+  if (updateMessage) {
+    await sendViaBotChannel(config.botToken, config.channelId, updateMessage);
   }
 
   clearPendingDiff();

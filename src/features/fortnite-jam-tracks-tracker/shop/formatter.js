@@ -1,7 +1,16 @@
-// One message listing every track that left today, or null if none did.
-export function formatLeftTracksMessage(leftTracks) {
-  if (leftTracks.length === 0) return null;
+import { formatDaysLeft } from "./fetchShop.js";
 
-  const lines = leftTracks.map((t) => `- ${t.title}`);
-  return [`👋 **Left the Jam Tracks shop today:**`, ...lines].join("\n");
+// One combined message: 🟢+ line per new/rerun track (with days left),
+// then 🔴+ line per track that left (name only). Returns null if there's
+// nothing to report. Discord's 2000-char cap is handled by the sender
+// (chunkMessage splits on line boundaries when needed).
+export function formatUpdateMessage(newTracks, leftTracks) {
+  if (newTracks.length === 0 && leftTracks.length === 0) return null;
+
+  const newLines = newTracks.map(
+    (t) => `🟢+ *${t.title}* *${formatDaysLeft(t.outDate)}*`
+  );
+  const leftLines = leftTracks.map((t) => `🔴+ *${t.title}*`);
+
+  return [...newLines, ...leftLines].join("\n");
 }

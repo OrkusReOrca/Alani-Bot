@@ -2,8 +2,9 @@ name: Fortnite Jam Tracks Tracker (Shop) — Post
 
 on:
   schedule:
-    # 8:00 AM Indochina Time (UTC+7) = 01:00 UTC
-    - cron: "0 1 * * *"
+    # ~8:12 AM Indochina Time (UTC+7) = 01:12 UTC — off a round minute;
+    # see shop-check.yml for why.
+    - cron: "12 1 * * *"
   workflow_dispatch: {}
 
 permissions:
