@@ -20,6 +20,7 @@ export async function fetchJamTracks() {
       jamTracks.push({
         id: track.id,
         title: track.title,
+        artist: track.artist,
         image: track.albumArt,
         price: entry.finalPrice,
         inDate: entry.inDate,

@@ -24,16 +24,17 @@ Runs as two separate steps, ~30 minutes apart:
      LLM call involved, same as every other part of this feature.
    - **One combined text message** — a compact list, one line per change:
      ```
-     🟢+ *Track Name* *2d 14h*
-     🟢+ *Another Track* *5d 3h*
+     🟢+ *Track Name* -- *Artist Name* -- out date: *2d 14h*
+     🟢+ *Another Track* -- *Another Artist* -- out date: *5d 3h*
      🔴+ *Track That Left*
      ```
-     🟢 lines are new/rerun tracks (with days left before they leave
-     again); 🔴 lines are tracks that left since yesterday (name only, no
-     time info — there's nothing left to count down). Skipped entirely if
-     nothing changed. Split into multiple messages only if it exceeds
-     Discord's 2000-char limit (handled automatically by the shared
-     sender — see `src/common/discordApi.js`'s `chunkMessage`).
+     🟢 lines are new/rerun tracks (with artist and days left before they
+     leave again); 🔴 lines are tracks that left since yesterday (name
+     only — no artist/time info, there's nothing left to count down).
+     Skipped entirely if nothing changed. Split into multiple messages
+     only if it exceeds Discord's 2000-char limit (handled automatically
+     by the shared sender — see `src/common/discordApi.js`'s
+     `chunkMessage`).
    - The grid always sends regardless of whether anything changed (it
      reflects today's full shop either way); the text message only sends
      when there's something to report.
