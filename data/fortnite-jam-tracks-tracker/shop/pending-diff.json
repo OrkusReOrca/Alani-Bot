@@ -1,13 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_44",
-      "title": "Thunder",
-      "image": "https://cdn.fortnite-api.com/tracks/1d3a895f10eb9273.jpg",
-      "price": 500,
-      "inDate": "2026-08-16T00:00:00Z",
-      "outDate": "2026-08-18T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
