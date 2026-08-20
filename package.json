@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "Alani — multi-feature Discord bot",
   "type": "module",
-  "main": "src/features/uni-application-updater/run.js",
+  "main": "src/bot.js",
   "scripts": {
+    "start": "node src/bot.js",
+    "deploy-commands": "node src/deployCommands.js",
     "start:uni-application-updater": "node src/features/uni-application-updater/run.js",
     "test-send:uni-application-updater": "node src/features/uni-application-updater/testSend.js",
     "check:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/checkRun.js",
@@ -17,6 +19,7 @@
   },
   "dependencies": {
     "canvas": "^2.11.2",
+    "discord.js": "^14.16.3",
     "dotenv": "^16.4.5"
   }
 }

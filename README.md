@@ -8,13 +8,24 @@ existing ones.
 
 ```
 src/
+  bot.js                         the persistent 24/7 bot process — only needed for
+                                  slash commands (interactions require a live gateway
+                                  connection); everything else here runs as one-off
+                                  scheduled scripts and doesn't need this running
+  deployCommands.js              registers slash commands with Discord — run once,
+                                  and again whenever a command's shape changes
   common/                       shared plumbing used by every feature
     discordApi.js               thin REST wrapper: DM, channel posts, embeds, file
                                  attachments via bot token, with 429 retry handling
+    config.js                   bot-level env vars (token, client ID) — for
+                                 bot.js/deployCommands.js, as opposed to each
+                                 feature's own config.js
   features/
     <feature-name>/             one folder per independent capability
       config.js                 env vars this feature needs
       README.md                 feature-specific setup & usage docs
+      command.js                (slash-command features only) `data` + `execute`,
+                                 registered in bot.js's command map
       ...                       the rest of its code
 
 data/
@@ -36,6 +47,11 @@ under one parent feature folder with sub-feature subfolders (e.g.
 features — same rules apply one level deeper: each sub-feature still gets
 its own `data/` subfolder, npm scripts, and workflow file.
 
+A feature is either **scheduled** (a script, triggered by a GitHub Actions
+workflow, doesn't need the bot running) or a **slash command** (needs
+`src/bot.js` connected 24/7, since Discord delivers interactions over a
+live gateway connection, not a webhook you can trigger on a schedule).
+
 ## Features
 
 - **[uni-application-updater](src/features/uni-application-updater/README.md)**
@@ -46,6 +62,8 @@ its own `data/` subfolder, npm scripts, and workflow file.
   - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
     grid image of every Jam Track currently in the purchasable item shop
     (new ones outlined in green), plus a message for tracks that left.
+- **[info](src/features/info/README.md)** — `/info` slash command, a brief
+  self-introduction plus the current list of commands and features.
 
 ## Setup
 
@@ -55,6 +73,23 @@ cp .env.example .env   # fill in your bot token + IDs
 ```
 
 See each feature's own README for what env vars it needs and how to run it.
+
+## Persistent bot (slash commands)
+
+Only needed for slash-command features (currently just `/info`) — the
+scheduled features above don't need this running at all.
+
+```bash
+npm run deploy-commands   # once, and again whenever a command's shape changes
+npm start                 # runs src/bot.js — needs to stay running 24/7
+```
+
+Needs `DISCORD_BOT_TOKEN` (both) and `DISCORD_CLIENT_ID` (deploy-commands
+only) in `.env`. For 24/7 hosting: point the host at this repo, set those
+two as environment variables in its dashboard, and set the start command to
+`npm start` (or `node src/bot.js`) — `npm install` runs automatically on
+most hosts, but `deploy-commands` does not, since it only needs to run once
+per command change, not on every boot/deploy.
 
 ## Adding a new feature
 
