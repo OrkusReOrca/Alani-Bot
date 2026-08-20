@@ -2,11 +2,15 @@
 // Registered into src/features/db/registry.js by src/features/db/command.js.
 // Each function here takes the raw args array following the record type
 // (e.g. for ".a db add reminder 2026-08-25T15:00 buy milk", add() receives
-// ["reminder", "2026-08-25T15:00", "buy", "milk"]) and returns a reply
+// ["reminder", "2026-08-25T15:00", "buy", "milk"]) plus the calling ctx
+// (for ctx.userId — who's making the request), and returns a reply
 // string — never throws for user-facing input errors, just returns a
 // usage message instead.
 
+import { PermissionsBitField } from "discord.js";
 import db from "./db.js";
+import { getClient } from "../../common/discordClient.js";
+import { parseIct, fmtIct } from "./format.js";
 
 // Same-ish record within an hour of each other counts as a likely
 // duplicate — narrow enough that two genuinely different reminders/events
@@ -18,33 +22,65 @@ function normalize(text) {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function parseDate(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
+// Pulls trailing modifier tokens (any order) off the end of an args list:
+// "force" (skip the duplicate check) and/or a bare Discord snowflake
+// (channel to post the reminder in, instead of DMing the creator).
+// Stops at the first token that's neither, so reminder text itself never
+// gets mistaken for a modifier.
+function stripTrailingModifiers(args) {
+  const rest = [...args];
+  let force = false;
+  let channelId = null;
+
+  while (rest.length > 0) {
+    const last = rest[rest.length - 1];
+    if (last.toLowerCase() === "force") {
+      force = true;
+      rest.pop();
+    } else if (/^\d{15,20}$/.test(last)) {
+      channelId = last;
+      rest.pop();
+    } else {
+      break;
+    }
+  }
+  return { rest, force, channelId };
 }
 
-function fmt(isoString) {
-  return new Date(isoString).toISOString().replace("T", " ").slice(0, 16) + " UTC";
-}
-
-function isForce(args) {
-  return args.length > 0 && args[args.length - 1]?.toLowerCase() === "force";
-}
-
-function stripForce(args) {
-  return isForce(args) ? args.slice(0, -1) : args;
+// Checked before ever adding a reminder targeting a channel — per the
+// spec, a bad channel should reject the whole add ("ask to try again"),
+// not add it and hope for the best when it fires later.
+async function canSendInChannel(client, channel) {
+  if (!channel || typeof channel.isTextBased !== "function" || !channel.isTextBased()) return false;
+  if (channel.guild) {
+    const perms = channel.permissionsFor(client.user);
+    return Boolean(perms?.has(PermissionsBitField.Flags.SendMessages));
+  }
+  return true; // DM/group channels: fetch succeeding is good enough
 }
 
 // ---------- reminders ----------
 
-function addReminder(args) {
-  const force = isForce(args);
-  const [when, ...textParts] = stripForce(args);
+async function addReminder(args, ctx) {
+  const { rest, force, channelId } = stripTrailingModifiers(args);
+  const [when, ...textParts] = rest;
   const text = textParts.join(" ").trim();
-  const remindAt = parseDate(when);
+  const remindAt = parseIct(when);
   if (!remindAt || !text) {
-    return "Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> <text>` (add `force` at the end to skip the duplicate check)";
+    return "Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
+  }
+
+  if (channelId) {
+    const client = getClient();
+    let channel;
+    try {
+      channel = await client.channels.fetch(channelId);
+    } catch {
+      channel = null;
+    }
+    if (!(await canSendInChannel(client, channel))) {
+      return `Can't send in channel \`${channelId}\` — check the ID and that Alani has permission to post there, then try again.`;
+    }
   }
 
   const normalized = normalize(text);
@@ -55,20 +91,25 @@ function addReminder(args) {
     .get(normalized, windowStart, windowEnd);
 
   if (dupe && !force) {
-    return `Already have a similar reminder — #${dupe.id} "${dupe.text}" at ${fmt(dupe.remind_at)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
+    return `Already have a similar reminder — #${dupe.id} "${dupe.text}" at ${fmtIct(dupe.remind_at)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
   }
 
   const info = db
-    .prepare(`INSERT INTO reminders (text, text_normalized, remind_at, created_at) VALUES (?, ?, ?, ?)`)
-    .run(text, normalized, remindAt.toISOString(), new Date().toISOString());
+    .prepare(
+      `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id) VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(text, normalized, remindAt.toISOString(), new Date().toISOString(), ctx.userId, channelId);
 
-  return `Added reminder #${info.lastInsertRowid}: "${text}" at ${fmt(remindAt.toISOString())}`;
+  const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
+  return `Added reminder #${info.lastInsertRowid}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
 }
 
 function listReminders() {
-  const rows = db.prepare(`SELECT id, text, remind_at FROM reminders ORDER BY remind_at ASC`).all();
+  const rows = db.prepare(`SELECT id, text, remind_at, channel_id FROM reminders ORDER BY remind_at ASC`).all();
   if (rows.length === 0) return "No reminders.";
-  return rows.map((r) => `#${r.id} — ${fmt(r.remind_at)} — ${r.text}`).join("\n");
+  return rows
+    .map((r) => `#${r.id} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"})`)
+    .join("\n");
 }
 
 function deleteReminder(id) {
@@ -80,28 +121,28 @@ function deleteReminder(id) {
 function editReminder(args) {
   const [id, when, ...textParts] = args;
   const text = textParts.join(" ").trim();
-  const remindAt = parseDate(when);
+  const remindAt = parseIct(when);
   if (!id || !remindAt || !text) {
-    return "Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>` (replaces both fields)";
+    return "Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>` (replaces both fields; destination/channel unchanged — delete and re-add to change that)";
   }
   const result = db
     .prepare(`UPDATE reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE id = ?`)
     .run(text, normalize(text), remindAt.toISOString(), Number(id));
   return result.changes > 0
-    ? `Updated reminder #${id}: "${text}" at ${fmt(remindAt.toISOString())}`
+    ? `Updated reminder #${id}: "${text}" at ${fmtIct(remindAt.toISOString())}`
     : `No reminder #${id}.`;
 }
 
 // ---------- events ----------
 
 function addEvent(args) {
-  const force = isForce(args);
-  const [start, end, ...titleParts] = stripForce(args);
+  const { rest, force } = stripTrailingModifiers(args);
+  const [start, end, ...titleParts] = rest;
   const title = titleParts.join(" ").trim();
-  const startTime = parseDate(start);
-  const endTime = parseDate(end);
+  const startTime = parseIct(start);
+  const endTime = parseIct(end);
   if (!startTime || !endTime || !title || endTime <= startTime) {
-    return "Usage: `.a db add event <start> <end> <title>` (ISO datetimes, e.g. 2026-08-25T15:00; end must be after start; add `force` at the end to skip the duplicate check)";
+    return "Usage: `.a db add event <start> <end> <title>` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00; end must be after start; add `force` at the end to skip the duplicate check)";
   }
 
   const normalized = normalize(title);
@@ -112,7 +153,7 @@ function addEvent(args) {
     .get(normalized, windowStart, windowEnd);
 
   if (dupe && !force) {
-    return `Already have a similar event — #${dupe.id} "${dupe.title}" at ${fmt(dupe.start_time)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
+    return `Already have a similar event — #${dupe.id} "${dupe.title}" at ${fmtIct(dupe.start_time)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
   }
 
   // Classic interval-overlap query: an existing event conflicts if it
@@ -126,9 +167,9 @@ function addEvent(args) {
     .prepare(`INSERT INTO events (title, title_normalized, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?)`)
     .run(title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString());
 
-  let reply = `Added event #${info.lastInsertRowid}: "${title}" from ${fmt(startTime.toISOString())} to ${fmt(endTime.toISOString())}`;
+  let reply = `Added event #${info.lastInsertRowid}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
   if (overlaps.length > 0) {
-    const list = overlaps.map((e) => `"${e.title}" (${fmt(e.start_time)} - ${fmt(e.end_time)})`).join(", ");
+    const list = overlaps.map((e) => `"${e.title}" (${fmtIct(e.start_time)} - ${fmtIct(e.end_time)})`).join(", ");
     reply += `\n⚠️ Overlaps with: ${list}`;
   }
   return reply;
@@ -137,7 +178,7 @@ function addEvent(args) {
 function listEvents() {
   const rows = db.prepare(`SELECT id, title, start_time, end_time FROM events ORDER BY start_time ASC`).all();
   if (rows.length === 0) return "No events.";
-  return rows.map((e) => `#${e.id} — ${fmt(e.start_time)} to ${fmt(e.end_time)} — ${e.title}`).join("\n");
+  return rows.map((e) => `#${e.id} — ${fmtIct(e.start_time)} to ${fmtIct(e.end_time)} — ${e.title}`).join("\n");
 }
 
 function deleteEvent(id) {
@@ -149,25 +190,25 @@ function deleteEvent(id) {
 function editEvent(args) {
   const [id, start, end, ...titleParts] = args;
   const title = titleParts.join(" ").trim();
-  const startTime = parseDate(start);
-  const endTime = parseDate(end);
+  const startTime = parseIct(start);
+  const endTime = parseIct(end);
   if (!id || !startTime || !endTime || !title || endTime <= startTime) {
-    return "Usage: `.a db edit event <id> <start> <end> <title>` (replaces all fields, ISO datetimes)";
+    return "Usage: `.a db edit event <id> <start> <end> <title>` (replaces all fields, 24hr time, Indochina/Bangkok timezone)";
   }
   const result = db
     .prepare(`UPDATE events SET title = ?, title_normalized = ?, start_time = ?, end_time = ? WHERE id = ?`)
     .run(title, normalize(title), startTime.toISOString(), endTime.toISOString(), Number(id));
   return result.changes > 0
-    ? `Updated event #${id}: "${title}" from ${fmt(startTime.toISOString())} to ${fmt(endTime.toISOString())}`
+    ? `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`
     : `No event #${id}.`;
 }
 
 // ---------- registry interface — each dispatches on the record type
 // (reminder/event) as its first argument ----------
 
-async function add(args) {
+async function add(args, ctx) {
   const [type, ...rest] = args;
-  if (type?.toLowerCase() === "reminder") return addReminder(rest);
+  if (type?.toLowerCase() === "reminder") return addReminder(rest, ctx);
   if (type?.toLowerCase() === "event") return addEvent(rest);
   return "Usage: `.a db add <reminder|event> ...`";
 }

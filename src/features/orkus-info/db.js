@@ -47,4 +47,22 @@ db.exec(`
   );
 `);
 
+// Migration for columns added after the initial release — guarded by a
+// column-existence check (unlike a bare ALTER TABLE ADD COLUMN, which
+// errors if run a second time) so this stays safe to run on every
+// startup, including against a database that already has rows from
+// before these columns existed (they just come back NULL for those).
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+// created_by: who to DM by default when the reminder fires (and whose
+// username to show if it posts to a channel instead). channel_id: if
+// set, post there instead of DMing created_by. See scheduler.js.
+ensureColumn("reminders", "created_by", "TEXT");
+ensureColumn("reminders", "channel_id", "TEXT");
+
 export default db;

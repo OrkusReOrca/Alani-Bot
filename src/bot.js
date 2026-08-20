@@ -27,9 +27,11 @@
 
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { config } from "./common/config.js";
+import { setClient } from "./common/discordClient.js";
 import * as infoCommand from "./features/info/command.js";
 import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
 import * as dbCommand from "./features/db/command.js";
+import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
@@ -59,8 +61,13 @@ const client = new Client({
   ],
 });
 
+setClient(client);
+
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Alani is online as ${readyClient.user.tag}`);
+  // Needs a fully logged-in client (DM channel creation, channel
+  // fetches) — starting it here rather than at module load.
+  startReminderScheduler();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

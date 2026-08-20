@@ -11,7 +11,7 @@ All go through `.a db` (defaults to this database, so `orkus-info` can be
 omitted — see `src/features/db/README.md`):
 
 ```
-.a db add reminder <YYYY-MM-DDTHH:MM> <text>
+.a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]
 .a db add event <start> <end> <title>          (both ISO datetimes)
 .a db list reminders
 .a db list events
@@ -20,6 +20,29 @@ omitted — see `src/features/db/README.md`):
 .a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>
 .a db edit event <id> <start> <end> <title>
 ```
+
+**All times are 24-hour, Indochina/Bangkok time (ICT, UTC+7)** —
+`format.js`'s `parseIct`/`fmtIct`, explicitly, regardless of what
+timezone the host server itself happens to be running in (see `format.js`
+for why that distinction matters — it's a real bug that shipped once).
+
+## Reminders: delivery
+
+When a reminder's time arrives (checked every 30s — `scheduler.js`), it
+sends and is removed from the database (one-shot, not recurring):
+
+- **No channel given**: DMs the person who set it —
+  `🚨 REMINDER: *text* at HH:MM YYYY/MM/DD`
+- **Channel given** (trailing arg on `add reminder`, a plain channel ID):
+  posts there instead —
+  `🚨 REMINDER: *text* at HH:MM YYYY/MM/DD by *username*`
+
+Giving a channel is checked **at add time**, not fire time — if Alani
+can't post there (wrong ID, no permission), the add is rejected outright
+with a "try again" message rather than silently failing hours later when
+the reminder was actually due. Delivery itself is best-effort: a fire
+that fails anyway (DM closed, channel deleted since) is logged
+server-side and the reminder is still removed rather than retried forever.
 
 ## Duplicate detection
 
@@ -49,4 +72,6 @@ which the host's persistent storage already handles.
 ## Setup
 
 Nothing specific to this database — just needs the persistent bot running
-with the access-gate env vars from `src/features/db/README.md`.
+with the access-gate env vars from `src/features/db/README.md`. Reminder
+delivery additionally needs the bot to actually be online for the DM/
+channel send to go through, same as any other message it sends.

@@ -94,6 +94,6 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  const reply = await handler(actionArgs);
+  const reply = await handler(actionArgs, ctx);
   await ctx.reply(reply);
 }
