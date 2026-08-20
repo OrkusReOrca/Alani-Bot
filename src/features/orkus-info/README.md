@@ -44,6 +44,11 @@ the reminder was actually due. Delivery itself is best-effort: a fire
 that fails anyway (DM closed, channel deleted since) is logged
 server-side and the reminder is still removed rather than retried forever.
 
+Reminders can also come in from voice-Alani (see the root README's
+"Voice bridge" section) — those always DM `DISCORD_OWNER_0` (no channel
+option there) and get an extra "... by voice" announcement posted in the
+command-box channel when added, on top of the normal delivery above.
+
 ## Duplicate detection
 
 Before adding a reminder or event, checks for an existing one with the

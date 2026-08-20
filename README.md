@@ -128,6 +128,49 @@ dashboard, and set the start command to `npm start` (or `node src/bot.js`)
 does not, since it only needs to run once per command change, not on
 every boot/deploy.
 
+## Voice bridge
+
+Lets voice-Alani (a separate app, running locally on the user's PC — not
+this repo) trigger things here by voice — reminders for now, via
+`src/features/db/voiceApi.js`, a small authenticated HTTP endpoint the
+persistent bot also starts. Not routed through Discord itself: this bot's
+own `messageCreate` handler ignores messages from any bot account, so
+voice-Alani posting as a bot or webhook would never reach `.a db`'s
+command parser (or pass its owner check, which needs a real user ID) —
+an HTTP endpoint is the actually-correct way to bridge two independent
+services, not a workaround.
+
+**Setup:**
+1. Generate any long random string for `VOICE_API_SECRET` — set it as an
+   environment variable here (same dashboard as the other secrets), and
+   put the identical value in voice-Alani's own `.env` as
+   `ALANI_BOT_API_SECRET`.
+2. On the host, find the port + IP this deployment is reachable on
+   (bot-hosting.net: the deployment's **Network** tab — it assigns a
+   static IP with no NAT/proxy in front, and the port matches
+   `SERVER_PORT`, which `voiceApi.js` listens on automatically — no
+   separate port to open). Put `http://<that-ip>:<that-port>` in
+   voice-Alani's `.env` as `ALANI_BOT_API_URL`.
+3. Restart both. `VOICE_API_SECRET` unset on this side disables the
+   bridge entirely (rest of the bot runs fine either way) — check the
+   console for `[voiceApi] listening on port ...` to confirm it's up.
+
+**Endpoint:** `POST /voice/reminder`, header `Authorization: Bearer
+<VOICE_API_SECRET>`, body `{"text": "...", "remindAt": "YYYY-MM-DDTHH:MM"}`
+(24hr, Indochina/Bangkok time, same convention `.a db` uses). Always DMs
+`DISCORD_OWNER_0` (never a channel — voice reminders don't take one) and
+announces the add in the command-box channel, e.g. `Added reminder
+"take out trash" at 15:00 2026/08/20 by voice.` — see
+[src/features/orkus-info/README.md](src/features/orkus-info/README.md)
+for the underlying reminder behavior (dedup, delivery, etc.), which this
+shares completely with the chat command.
+
+**Security note:** bot-hosting.net's exposed port has no TLS termination
+(no reverse proxy in front, per their own docs), so this secret travels
+in cleartext over the public internet on every call. Acceptable for a
+personal hobby bridge; if that's ever a real concern, put a domain + TLS
+in front (their "Domains" feature) rather than trusting this bare.
+
 ## Adding a new feature
 
 1. `src/features/<name>/` for its code.

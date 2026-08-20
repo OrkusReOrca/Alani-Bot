@@ -61,15 +61,12 @@ async function canSendInChannel(client, channel) {
 
 // ---------- reminders ----------
 
-async function addReminder(args, ctx) {
-  const { rest, force, channelId } = stripTrailingModifiers(args);
-  const [when, ...textParts] = rest;
-  const text = textParts.join(" ").trim();
-  const remindAt = parseIct(when);
-  if (!remindAt || !text) {
-    return "Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
-  }
-
+// The actual insert logic (channel check, dedup, INSERT), decoupled from
+// chat-command arg parsing so anything else that already HAS structured
+// values — e.g. the voice API (src/features/db/voiceApi.js), which
+// receives JSON, not a token array — can call this directly instead of
+// faking a fresh set of chat tokens just to go through addReminder().
+export async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false }) {
   if (channelId) {
     const client = getClient();
     let channel;
@@ -98,10 +95,21 @@ async function addReminder(args, ctx) {
     .prepare(
       `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id) VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(text, normalized, remindAt.toISOString(), new Date().toISOString(), ctx.userId, channelId);
+    .run(text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId);
 
   const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
   return `Added reminder #${info.lastInsertRowid}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
+}
+
+async function addReminder(args, ctx) {
+  const { rest, force, channelId } = stripTrailingModifiers(args);
+  const [when, ...textParts] = rest;
+  const text = textParts.join(" ").trim();
+  const remindAt = parseIct(when);
+  if (!remindAt || !text) {
+    return "Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
+  }
+  return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force });
 }
 
 function listReminders() {

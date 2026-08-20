@@ -14,4 +14,12 @@ export const config = {
   // The "Orkus Info" channel — admin db commands only respond here. See
   // src/features/db/command.js.
   commandBoxChannelId: required("DISCORD_COMMAND_BOX"),
+  // Voice bridge (voice-Alani, running on the user's PC) — see
+  // src/features/db/voiceApi.js. Listens on the host's already-exposed
+  // network port (SERVER_PORT is set automatically by bot-hosting.net)
+  // rather than needing a second port opened.
+  voiceApiSecret: required("VOICE_API_SECRET"),
+  voiceApiPort: Number(required("VOICE_API_PORT") || process.env.SERVER_PORT) || 3000,
+  // Default DM target for voice-added reminders — see voiceApi.js.
+  ownerZeroId: required("DISCORD_OWNER_0"),
 };

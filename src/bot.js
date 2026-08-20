@@ -32,6 +32,7 @@ import * as infoCommand from "./features/info/command.js";
 import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
 import * as dbCommand from "./features/db/command.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
+import { startVoiceApi } from "./features/db/voiceApi.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
@@ -68,6 +69,7 @@ client.once(Events.ClientReady, (readyClient) => {
   // Needs a fully logged-in client (DM channel creation, channel
   // fetches) — starting it here rather than at module load.
   startReminderScheduler();
+  startVoiceApi();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
