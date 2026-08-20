@@ -4,9 +4,13 @@
 // checked in this order:
 //
 //   1. Channel: only responds inside the DISCORD_COMMAND_BOX channel
-//      ("Orkus Info") — silently ignored everywhere else, same as any
-//      unrecognized prefix command, so it doesn't advertise its existence
-//      or reply from channels it's not meant to be used in.
+//      ("Orkus Info") — silently ignored for non-owners everywhere else,
+//      same as any unrecognized prefix command, so it doesn't advertise
+//      its existence to anyone it's not for. For an OWNER in the wrong
+//      channel, though, silence is just undebuggable — they get told
+//      exactly what's configured vs. where they are instead (this is
+//      what motivated the check order below: owner status has to be known
+//      before deciding whether "wrong channel" should reply or stay quiet).
 //   2. Owner: only DISCORD_OWNER_0 / DISCORD_OWNER_1 (see
 //      src/common/auth.js) — anyone else gets an explicit "Unauthorized
 //      user, no permission" reply, since at this point they ARE in the
@@ -43,9 +47,24 @@ function usage() {
 }
 
 export async function execute(ctx, args = []) {
-  if (ctx.channelId !== config.commandBoxChannelId) return;
+  const owner = isOwner(ctx.userId);
 
-  if (!isOwner(ctx.userId)) {
+  if (ctx.channelId !== config.commandBoxChannelId) {
+    // Stay silent to non-owners regardless of channel — don't reveal this
+    // command exists to anyone it's not for. But silence to an OWNER here
+    // is just an undebuggable dead end (wrong channel? DISCORD_COMMAND_BOX
+    // not actually set? bot not restarted since it was set?) — tell them
+    // exactly what's configured vs. where they are.
+    if (owner) {
+      await ctx.reply(
+        `\`.a db\` only works in the Orkus Info channel. DISCORD_COMMAND_BOX is currently ` +
+          `${config.commandBoxChannelId ? `\`${config.commandBoxChannelId}\`` : "**not set**"}, this channel is \`${ctx.channelId}\`.`
+      );
+    }
+    return;
+  }
+
+  if (!owner) {
     await ctx.reply("Unauthorized user, no permission");
     return;
   }

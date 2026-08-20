@@ -16,7 +16,8 @@
 //      for the shape: export `data` — needs at least `name`, plus
 //      `description` if it should also be a slash command — and
 //      `execute(ctx, args)`, where ctx exposes `reply(text)`,
-//      `replyWithFile(buffer, filename)`, `userId`, and `channelId`).
+//      `replyWithFile(buffer, filename)`, `userId`, `channelId`, and
+//      `guildId`).
 //   2. Register it in the `commands` map below.
 //   3. If it has a `description` (i.e. it's also a slash command), run
 //      `npm run deploy-commands` (only needed again when a command's
@@ -73,6 +74,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     replyWithFile: (buffer, filename) => interaction.reply({ files: [{ attachment: buffer, name: filename }] }),
     userId: interaction.user.id,
     channelId: interaction.channelId,
+    guildId: interaction.guildId, // null in DMs
   };
 
   try {
@@ -103,6 +105,7 @@ client.on(Events.MessageCreate, async (message) => {
     replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
     userId: message.author.id,
     channelId: message.channelId,
+    guildId: message.guildId, // null in DMs
   };
 
   try {
