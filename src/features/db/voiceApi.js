@@ -5,9 +5,11 @@
 //   POST /voice/reminder         { text, remindAt } -> add
 //   GET  /voice/reminders        -> list
 //   POST /voice/reminder/delete  { id } -> delete
-//   POST /voice/event            { title, start, end } -> add (also
-//                                  syncs to Google Calendar, same as
-//                                  the chat command — see actions.js)
+//   POST /voice/event            { title, start, end?, allDay? } -> add
+//                                  (end omitted = 1hr duration, allDay
+//                                  true = all-day event; also syncs to
+//                                  Google Calendar, same as the chat
+//                                  command — see actions.js)
 //   GET  /voice/events           -> list
 //   POST /voice/event/delete     { id } -> delete
 //
@@ -113,7 +115,12 @@ async function handleDeleteReminder(req, res) {
 
 // Events: no owner/DM defaulting to work out like reminders needed —
 // they don't have a "who gets notified" concept, so this just forwards
-// straight to the same dispatcher the chat command uses.
+// straight to the same dispatcher the chat command uses. end/allDay are
+// both optional — omitted end defaults to 1hr duration, allDay:true
+// makes it an all-day event instead — same as the chat command's
+// "<start> [end|allday] <title>" shorthand (see actions.js's addEvent),
+// just via explicit fields here instead of positional-token guessing,
+// since this is JSON not chat tokens.
 async function handleAddEvent(req, res) {
   let payload;
   try {
@@ -122,14 +129,13 @@ async function handleAddEvent(req, res) {
     return sendJson(res, 400, { error: "Invalid JSON body" });
   }
 
-  const { title, start, end } = payload;
-  if (!title || !parseIct(start) || !parseIct(end)) {
-    return sendJson(res, 400, {
-      error: "title, start, and end (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required",
-    });
+  const { title, start, end, allDay } = payload;
+  if (!title || !parseIct(start)) {
+    return sendJson(res, 400, { error: "title and start (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required" });
   }
 
-  const message = await orkusInfoActions.add(["event", start, end, title]);
+  const args = allDay ? ["event", start, "allday", title] : end ? ["event", start, end, title] : ["event", start, title];
+  const message = await orkusInfoActions.add(args);
   sendJson(res, 200, { message });
 }
 

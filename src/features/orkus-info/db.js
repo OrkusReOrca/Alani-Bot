@@ -106,6 +106,15 @@ ensureColumn("reminders", "display_number", "INTEGER");
 // not just add new ones there.
 ensureColumn("events", "google_event_id", "TEXT");
 
+// all_day: whether this event spans a whole calendar day (start/end are
+// still stored as the usual midnight-to-midnight-next-day timestamps —
+// see format.js's startOfIctDay — this column just controls display
+// formatting and which Google Calendar API shape gets used, date vs
+// dateTime, since Google renders those differently even though the
+// underlying time range would look the same). Existing rows default to
+// 0 (not all-day), correct for anything added before this existed.
+ensureColumn("events", "all_day", "INTEGER DEFAULT 0");
+
 // Smallest positive integer not currently used by any existing reminder.
 export function getNextDisplayNumber() {
   const used = new Set(

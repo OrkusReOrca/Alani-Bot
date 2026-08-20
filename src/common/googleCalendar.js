@@ -101,26 +101,36 @@ async function calendarRequest(method, path, body) {
   return res.status === 204 ? null : res.json();
 }
 
+// start/end: Date objects for a timed event, or "YYYY-MM-DD" strings for
+// an all-day one (allDay: true) — Google represents these two cases with
+// genuinely different field shapes (dateTime vs date), not just a time of
+// 00:00, so the caller (orkus-info/actions.js) decides which to build
+// rather than this file guessing from the value's shape.
+function eventTimeFields(start, end, allDay) {
+  return allDay
+    ? { start: { date: start }, end: { date: end } }
+    : { start: { dateTime: start.toISOString() }, end: { dateTime: end.toISOString() } };
+}
+
 // Returns the created event's Google-side ID (needed later for
 // update/delete), or null if the calendar sync isn't configured at all
 // (missing key or calendarId — not an error, just means this database
 // hasn't set up a calendar yet).
-export async function createEvent(calendarId, { summary, start, end }) {
+export async function createEvent(calendarId, { summary, start, end, allDay = false }) {
   if (!calendarId) return null;
   const data = await calendarRequest("POST", `/calendars/${encodeURIComponent(calendarId)}/events`, {
     summary,
-    start: { dateTime: start.toISOString() },
-    end: { dateTime: end.toISOString() },
+    ...eventTimeFields(start, end, allDay),
   });
   return data?.id ?? null;
 }
 
-export async function updateEvent(calendarId, googleEventId, { summary, start, end }) {
+export async function updateEvent(calendarId, googleEventId, { summary, start, end, allDay = false }) {
   if (!calendarId || !googleEventId) return;
   await calendarRequest(
     "PUT",
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
-    { summary, start: { dateTime: start.toISOString() }, end: { dateTime: end.toISOString() } }
+    { summary, ...eventTimeFields(start, end, allDay) }
   );
 }
 

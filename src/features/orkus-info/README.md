@@ -12,7 +12,7 @@ omitted — see `src/features/db/README.md`):
 
 ```
 .a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]
-.a db add event <start> <end> <title>          (both ISO datetimes)
+.a db add event <start> [end|allday] <title>
 .a db list reminders
 .a db list events
 .a db delete reminder <id|all>
@@ -25,6 +25,21 @@ omitted — see `src/features/db/README.md`):
 `format.js`'s `parseIct`/`fmtIct`, explicitly, regardless of what
 timezone the host server itself happens to be running in (see `format.js`
 for why that distinction matters — it's a real bug that shipped once).
+
+**Partial dates**: the year and/or month can be left off any date given
+to `add`/`edit` for either reminders or events — `parseIct` assumes the
+current ICT year if omitted, and the current ICT month if the month's
+also omitted (e.g. `25T14:00` on 2026-08-20 means 2026-08-25 14:00).
+Applies identically to chat commands and voice.
+
+**Events' end is optional**: `.a db add event <start> <title>` (no end)
+defaults to a 1-hour event. Use `allday` in place of an end time/date for
+an all-day event instead (`.a db add event 2026-08-25 allday <title>`) —
+the second token is tried as a date first, then as the `allday` keyword,
+and only falls through to being folded into the title if neither
+matches. Voice has the same defaults via an explicit `all_day` flag
+instead of guessing from a keyword (see the root README's "Voice bridge"
+section).
 
 ## Reminder numbering
 

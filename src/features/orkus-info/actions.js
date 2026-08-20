@@ -17,7 +17,7 @@
 import { PermissionsBitField } from "discord.js";
 import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
-import { parseIct, fmtIct } from "./format.js";
+import { parseIct, fmtIct, fmtIctDate, ictDateString, startOfIctDay } from "./format.js";
 import { config } from "./config.js";
 import * as googleCalendar from "../../common/googleCalendar.js";
 
@@ -173,15 +173,43 @@ function editReminder(args) {
 // no-op (return null/undefined) if the sync isn't configured at all, so
 // none of this needs its own "is this set up" branching here.
 
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000; // 1 hour, when no end is given
+
+const ADD_EVENT_USAGE =
+  "Usage: `.a db add event <start> [end|allday] <title>` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check)";
+
 async function addEvent(args) {
   const { rest, force } = stripTrailingModifiers(args);
-  const [start, end, ...titleParts] = rest;
-  const title = titleParts.join(" ").trim();
-  const startTime = parseIct(start);
-  const endTime = parseIct(end);
-  if (!startTime || !endTime || !title || endTime <= startTime) {
-    return "Usage: `.a db add event <start> <end> <title>` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00; end must be after start; add `force` at the end to skip the duplicate check)";
+  const [startRaw, second, ...others] = rest;
+  const parsedStart = parseIct(startRaw);
+  if (!parsedStart) return ADD_EVENT_USAGE;
+
+  // `second` is ambiguous on its own — it's the end time/date if it
+  // parses as one, "allday" for an all-day event, or (if neither) it's
+  // actually the first word of the title and no end was given at all.
+  let startTime = parsedStart;
+  let endTime;
+  let allDay = false;
+  let titleParts;
+
+  if (second?.toLowerCase() === "allday") {
+    allDay = true;
+    startTime = startOfIctDay(parsedStart);
+    endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+    titleParts = others;
+  } else {
+    const parsedEnd = second ? parseIct(second) : null;
+    if (parsedEnd) {
+      endTime = parsedEnd;
+      titleParts = others;
+    } else {
+      endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
+      titleParts = second !== undefined ? [second, ...others] : others;
+    }
   }
+
+  const title = titleParts.join(" ").trim();
+  if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
 
   const normalized = normalize(title);
   const windowStart = new Date(startTime.getTime() - DEDUP_WINDOW_MS).toISOString();
@@ -202,14 +230,17 @@ async function addEvent(args) {
     .all(endTime.toISOString(), startTime.toISOString());
 
   const info = db
-    .prepare(`INSERT INTO events (title, title_normalized, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?)`)
-    .run(title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString());
+    .prepare(
+      `INSERT INTO events (title, title_normalized, start_time, end_time, created_at, all_day) VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString(), allDay ? 1 : 0);
 
   try {
     const googleEventId = await googleCalendar.createEvent(config.googleCalendarId, {
       summary: title,
-      start: startTime,
-      end: endTime,
+      start: allDay ? ictDateString(startTime) : startTime,
+      end: allDay ? ictDateString(endTime) : endTime,
+      allDay,
     });
     if (googleEventId) {
       db.prepare(`UPDATE events SET google_event_id = ? WHERE id = ?`).run(googleEventId, info.lastInsertRowid);
@@ -218,7 +249,10 @@ async function addEvent(args) {
     console.error("[orkus-info] failed to sync new event to Google Calendar:", err);
   }
 
-  let reply = `Added event #${info.lastInsertRowid}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
+  const whenText = allDay
+    ? `all day ${fmtIctDate(startTime.toISOString())}`
+    : `from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
+  let reply = `Added event #${info.lastInsertRowid}: "${title}" ${whenText}`;
   if (overlaps.length > 0) {
     const list = overlaps.map((e) => `"${e.title}" (${fmtIct(e.start_time)} - ${fmtIct(e.end_time)})`).join(", ");
     reply += `\n⚠️ Overlaps with: ${list}`;
@@ -227,9 +261,15 @@ async function addEvent(args) {
 }
 
 function listEvents() {
-  const rows = db.prepare(`SELECT id, title, start_time, end_time FROM events ORDER BY start_time ASC`).all();
+  const rows = db.prepare(`SELECT id, title, start_time, end_time, all_day FROM events ORDER BY start_time ASC`).all();
   if (rows.length === 0) return "No events.";
-  return rows.map((e) => `#${e.id} — ${fmtIct(e.start_time)} to ${fmtIct(e.end_time)} — ${e.title}`).join("\n");
+  return rows
+    .map((e) =>
+      e.all_day
+        ? `#${e.id} — ${fmtIctDate(e.start_time)} (all day) — ${e.title}`
+        : `#${e.id} — ${fmtIct(e.start_time)} to ${fmtIct(e.end_time)} — ${e.title}`
+    )
+    .join("\n");
 }
 
 async function deleteEvent(id) {
@@ -258,8 +298,12 @@ async function editEvent(args) {
   }
 
   const existing = db.prepare(`SELECT google_event_id FROM events WHERE id = ?`).get(Number(id));
+  // edit doesn't support the allday shorthand (yet — add does) — an
+  // explicit start+end here always means "this is a timed event now",
+  // so all_day is reset even if it was previously an all-day event,
+  // rather than leaving a stale all_day=1 next to real timed values.
   const result = db
-    .prepare(`UPDATE events SET title = ?, title_normalized = ?, start_time = ?, end_time = ? WHERE id = ?`)
+    .prepare(`UPDATE events SET title = ?, title_normalized = ?, start_time = ?, end_time = ?, all_day = 0 WHERE id = ?`)
     .run(title, normalize(title), startTime.toISOString(), endTime.toISOString(), Number(id));
 
   if (result.changes > 0 && existing?.google_event_id) {

@@ -164,8 +164,11 @@ services, not a workaround.
   reminder "take out trash" at 15:00 2026/08/20 by voice.`
 - `GET /voice/reminders` -> list.
 - `POST /voice/reminder/delete` `{"id"}` -> delete.
-- `POST /voice/event` `{"title", "start", "end"}` -> add (also syncs to
-  Google Calendar, same as the chat command).
+- `POST /voice/event` `{"title", "start", "end"?, "allDay"?}` -> add
+  (also syncs to Google Calendar, same as the chat command). `end`
+  omitted defaults to a 1-hour event; `allDay: true` makes it an all-day
+  event instead (`end` ignored). `start`/`end` also accept partial dates
+  (year and/or month omitted, assumed current), same as the chat command.
 - `GET /voice/events` -> list.
 - `POST /voice/event/delete` `{"id"}` -> delete.
 
