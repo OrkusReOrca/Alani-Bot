@@ -62,7 +62,7 @@ live gateway connection, not a webhook you can trigger on a schedule).
   - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
     grid image of every Jam Track currently in the purchasable item shop
     (new ones outlined in green), plus a message for tracks that left.
-- **[info](src/features/info/README.md)** — `/info` slash command, a brief
+- **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
 
 ## Setup
@@ -74,10 +74,19 @@ cp .env.example .env   # fill in your bot token + IDs
 
 See each feature's own README for what env vars it needs and how to run it.
 
-## Persistent bot (slash commands)
+## Persistent bot (slash + prefix commands)
 
-Only needed for slash-command features (currently just `/info`) — the
+Only needed for interactive features (currently just `info`) — the
 scheduled features above don't need this running at all.
+
+Every command works two ways, both handled by the same running process:
+- **Slash command** — `/info`, needs registering once (see below).
+- **Prefix command** — `.a info`, typed as a plain message in any channel
+  Alani can see. No registration needed, but Discord requires explicitly
+  turning on the **Message Content** privileged intent for this bot
+  (Discord Developer Portal -> your application -> Bot tab -> "Message
+  Content Intent") — without it, `.a info` is silently ignored (the bot
+  isn't allowed to read message text at all otherwise).
 
 ```bash
 npm run deploy-commands   # once, and again whenever a command's shape changes
