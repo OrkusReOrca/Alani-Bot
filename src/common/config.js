@@ -22,4 +22,10 @@ export const config = {
   voiceApiPort: Number(required("VOICE_API_PORT") || process.env.SERVER_PORT) || 3000,
   // Default DM target for voice-added reminders — see voiceApi.js.
   ownerZeroId: required("DISCORD_OWNER_0"),
+  // Google service account credentials (the whole downloaded JSON key,
+  // as one env var value) — shared across every database's calendar
+  // sync (see src/common/googleCalendar.js); which CALENDAR a given
+  // database syncs to is that database's own config (e.g. orkus-info's
+  // own config.js), not this one.
+  googleServiceAccountKey: required("GOOGLE_SERVICE_ACCOUNT_KEY"),
 };

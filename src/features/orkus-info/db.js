@@ -99,6 +99,13 @@ ensureColumn("reminders", "display_number", "INTEGER");
   }
 }
 
+// google_event_id: the matching Google Calendar event's own ID, once
+// synced there — null until/unless the Google sync is configured (see
+// config.js's googleCalendarId and common/googleCalendar.js). Needed so
+// edits/deletes can find and update/remove the right Google-side event,
+// not just add new ones there.
+ensureColumn("events", "google_event_id", "TEXT");
+
 // Smallest positive integer not currently used by any existing reminder.
 export function getNextDisplayNumber() {
   const used = new Set(

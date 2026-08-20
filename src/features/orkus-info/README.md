@@ -86,6 +86,48 @@ the reply tells you what it overlaps with (`start_time < new.end AND
 end_time > new.start`, the standard interval-overlap query), since
 overlaps are sometimes intentional and shouldn't be silently blocked.
 
+## Google Calendar sync
+
+Every event add/edit/delete also mirrors to a real Google Calendar —
+one-way (this database stays the source of truth; changes made directly
+in Google Calendar don't sync back), best-effort (a Google API failure
+is logged server-side and never blocks the local write, which already
+succeeded by the time the sync is attempted).
+
+**How it's wired**: a single shared Google service account
+(`GOOGLE_SERVICE_ACCOUNT_KEY`, bot-wide — see `src/common/googleCalendar.js`)
+authenticates to whichever calendar this database is configured with
+(`ORKUS_INFO_GOOGLE_CALENDAR_ID`, this database's own `config.js` — kept
+separate on purpose, so a future database can get its own calendar via
+its own `<NAME>_GOOGLE_CALENDAR_ID` env var, reusing the same service
+account). The matching Google-side event ID is stored on the local row
+(`events.google_event_id`) so later edits/deletes touch the right
+Google Calendar event too, not just create new ones.
+
+**Setup** (one-time, needs your Google account — can't be done from this
+repo alone):
+1. [console.cloud.google.com](https://console.cloud.google.com) -> new
+   project -> **APIs & Services -> Library** -> enable "Google Calendar API".
+2. **APIs & Services -> Credentials -> Create Credentials -> Service
+   Account** -> then that account's **Keys -> Add Key -> JSON** ->
+   downloads a key file. Its `client_email` field is the service
+   account's own address (looks like
+   `name@project-id.iam.gserviceaccount.com`).
+3. In your own Google Calendar -> Settings -> "Create new calendar" ->
+   name it whatever you like (e.g. "Alani").
+4. That calendar's settings -> "Share with specific people" -> add the
+   service account's email from step 2 -> permission **"Make changes to
+   events."**
+5. Same settings page -> "Integrate calendar" -> copy the **Calendar ID**.
+6. Set `GOOGLE_SERVICE_ACCOUNT_KEY` (the whole JSON file's contents) and
+   `ORKUS_INFO_GOOGLE_CALENDAR_ID` (from step 5) as env vars here.
+
+Deliberately **not** the other direction (a calendar the service account
+owns, shared out to you) — this way the calendar lives in your own
+Google Calendar from the start, so renaming/deleting/revoking access
+later is normal Google Calendar UI, not something requiring Cloud
+Console again.
+
 ## Storage
 
 `data/orkus-info/orkus-info.db` — lives on the bot's own persistent host

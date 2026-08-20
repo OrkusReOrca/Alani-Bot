@@ -155,15 +155,24 @@ services, not a workaround.
    bridge entirely (rest of the bot runs fine either way) — check the
    console for `[voiceApi] listening on port ...` to confirm it's up.
 
-**Endpoint:** `POST /voice/reminder`, header `Authorization: Bearer
-<VOICE_API_SECRET>`, body `{"text": "...", "remindAt": "YYYY-MM-DDTHH:MM"}`
-(24hr, Indochina/Bangkok time, same convention `.a db` uses). Always DMs
-`DISCORD_OWNER_0` (never a channel — voice reminders don't take one) and
-announces the add in the command-box channel, e.g. `Added reminder
-"take out trash" at 15:00 2026/08/20 by voice.` — see
+**Endpoints** (all header `Authorization: Bearer <VOICE_API_SECRET>`,
+24hr Indochina/Bangkok time throughout, same convention `.a db` uses):
+
+- `POST /voice/reminder` `{"text", "remindAt"}` -> add. Always DMs
+  `DISCORD_OWNER_0` (never a channel — voice reminders don't take one)
+  and announces the add in the command-box channel, e.g. `Added
+  reminder "take out trash" at 15:00 2026/08/20 by voice.`
+- `GET /voice/reminders` -> list.
+- `POST /voice/reminder/delete` `{"id"}` -> delete.
+- `POST /voice/event` `{"title", "start", "end"}` -> add (also syncs to
+  Google Calendar, same as the chat command).
+- `GET /voice/events` -> list.
+- `POST /voice/event/delete` `{"id"}` -> delete.
+
+All of these reuse the exact same underlying logic the `.a db` chat
+command goes through — see
 [src/features/orkus-info/README.md](src/features/orkus-info/README.md)
-for the underlying reminder behavior (dedup, delivery, etc.), which this
-shares completely with the chat command.
+for the shared behavior (dedup, delivery, Google Calendar sync, etc.).
 
 **Security note:** bot-hosting.net's exposed port has no TLS termination
 (no reverse proxy in front, per their own docs), so this secret travels

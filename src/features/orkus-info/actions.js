@@ -18,6 +18,8 @@ import { PermissionsBitField } from "discord.js";
 import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
 import { parseIct, fmtIct } from "./format.js";
+import { config } from "./config.js";
+import * as googleCalendar from "../../common/googleCalendar.js";
 
 // Same-ish record within an hour of each other counts as a likely
 // duplicate — narrow enough that two genuinely different reminders/events
@@ -162,8 +164,16 @@ function editReminder(args) {
 }
 
 // ---------- events ----------
+//
+// Every write (add/edit/delete) also mirrors to Google Calendar
+// (config.googleCalendarId — orkus-info's own, per-database setting) —
+// one-way, this database stays the source of truth. Best-effort: a
+// Google API failure is logged, never blocks or rolls back the local
+// write that already succeeded. googleCalendar.js's functions already
+// no-op (return null/undefined) if the sync isn't configured at all, so
+// none of this needs its own "is this set up" branching here.
 
-function addEvent(args) {
+async function addEvent(args) {
   const { rest, force } = stripTrailingModifiers(args);
   const [start, end, ...titleParts] = rest;
   const title = titleParts.join(" ").trim();
@@ -195,6 +205,19 @@ function addEvent(args) {
     .prepare(`INSERT INTO events (title, title_normalized, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?)`)
     .run(title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString());
 
+  try {
+    const googleEventId = await googleCalendar.createEvent(config.googleCalendarId, {
+      summary: title,
+      start: startTime,
+      end: endTime,
+    });
+    if (googleEventId) {
+      db.prepare(`UPDATE events SET google_event_id = ? WHERE id = ?`).run(googleEventId, info.lastInsertRowid);
+    }
+  } catch (err) {
+    console.error("[orkus-info] failed to sync new event to Google Calendar:", err);
+  }
+
   let reply = `Added event #${info.lastInsertRowid}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
   if (overlaps.length > 0) {
     const list = overlaps.map((e) => `"${e.title}" (${fmtIct(e.start_time)} - ${fmtIct(e.end_time)})`).join(", ");
@@ -209,13 +232,23 @@ function listEvents() {
   return rows.map((e) => `#${e.id} — ${fmtIct(e.start_time)} to ${fmtIct(e.end_time)} — ${e.title}`).join("\n");
 }
 
-function deleteEvent(id) {
+async function deleteEvent(id) {
   if (!id) return "Usage: `.a db delete event <id>`";
+  const row = db.prepare(`SELECT google_event_id FROM events WHERE id = ?`).get(Number(id));
   const result = db.prepare(`DELETE FROM events WHERE id = ?`).run(Number(id));
+
+  if (result.changes > 0 && row?.google_event_id) {
+    try {
+      await googleCalendar.deleteEvent(config.googleCalendarId, row.google_event_id);
+    } catch (err) {
+      console.error("[orkus-info] failed to delete event from Google Calendar:", err);
+    }
+  }
+
   return result.changes > 0 ? `Deleted event #${id}.` : `No event #${id}.`;
 }
 
-function editEvent(args) {
+async function editEvent(args) {
   const [id, start, end, ...titleParts] = args;
   const title = titleParts.join(" ").trim();
   const startTime = parseIct(start);
@@ -223,9 +256,24 @@ function editEvent(args) {
   if (!id || !startTime || !endTime || !title || endTime <= startTime) {
     return "Usage: `.a db edit event <id> <start> <end> <title>` (replaces all fields, 24hr time, Indochina/Bangkok timezone)";
   }
+
+  const existing = db.prepare(`SELECT google_event_id FROM events WHERE id = ?`).get(Number(id));
   const result = db
     .prepare(`UPDATE events SET title = ?, title_normalized = ?, start_time = ?, end_time = ? WHERE id = ?`)
     .run(title, normalize(title), startTime.toISOString(), endTime.toISOString(), Number(id));
+
+  if (result.changes > 0 && existing?.google_event_id) {
+    try {
+      await googleCalendar.updateEvent(config.googleCalendarId, existing.google_event_id, {
+        summary: title,
+        start: startTime,
+        end: endTime,
+      });
+    } catch (err) {
+      console.error("[orkus-info] failed to update event on Google Calendar:", err);
+    }
+  }
+
   return result.changes > 0
     ? `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`
     : `No event #${id}.`;

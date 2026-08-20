@@ -1,10 +1,15 @@
 // Lightweight HTTP API for voice-Alani (running locally on the user's PC,
 // not always online, and with no way to reach orkus-info.db directly —
 // it lives only on THIS host's disk) to trigger things here that need a
-// live Discord connection or the database. Reminders only for now:
+// live Discord connection or the database.
 //   POST /voice/reminder         { text, remindAt } -> add
 //   GET  /voice/reminders        -> list
 //   POST /voice/reminder/delete  { id } -> delete
+//   POST /voice/event            { title, start, end } -> add (also
+//                                  syncs to Google Calendar, same as
+//                                  the chat command — see actions.js)
+//   GET  /voice/events           -> list
+//   POST /voice/event/delete     { id } -> delete
 //
 // Not routed through Discord itself, deliberately: this bot's own
 // messageCreate handler ignores messages from any bot account
@@ -106,6 +111,48 @@ async function handleDeleteReminder(req, res) {
   sendJson(res, 200, { message });
 }
 
+// Events: no owner/DM defaulting to work out like reminders needed —
+// they don't have a "who gets notified" concept, so this just forwards
+// straight to the same dispatcher the chat command uses.
+async function handleAddEvent(req, res) {
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(req));
+  } catch {
+    return sendJson(res, 400, { error: "Invalid JSON body" });
+  }
+
+  const { title, start, end } = payload;
+  if (!title || !parseIct(start) || !parseIct(end)) {
+    return sendJson(res, 400, {
+      error: "title, start, and end (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required",
+    });
+  }
+
+  const message = await orkusInfoActions.add(["event", start, end, title]);
+  sendJson(res, 200, { message });
+}
+
+async function handleListEvents(req, res) {
+  const message = await orkusInfoActions.list(["events"]);
+  sendJson(res, 200, { message });
+}
+
+async function handleDeleteEvent(req, res) {
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(req));
+  } catch {
+    return sendJson(res, 400, { error: "Invalid JSON body" });
+  }
+
+  const { id } = payload;
+  if (!id) return sendJson(res, 400, { error: "id is required" });
+
+  const message = await orkusInfoActions.delete(["event", String(id)]);
+  sendJson(res, 200, { message });
+}
+
 export function startVoiceApi() {
   if (!config.voiceApiSecret) {
     console.log("[voiceApi] VOICE_API_SECRET not set — voice bridge disabled");
@@ -126,6 +173,15 @@ export function startVoiceApi() {
       }
       if (req.method === "POST" && req.url === "/voice/reminder/delete") {
         return await handleDeleteReminder(req, res);
+      }
+      if (req.method === "POST" && req.url === "/voice/event") {
+        return await handleAddEvent(req, res);
+      }
+      if (req.method === "GET" && req.url === "/voice/events") {
+        return await handleListEvents(req, res);
+      }
+      if (req.method === "POST" && req.url === "/voice/event/delete") {
+        return await handleDeleteEvent(req, res);
       }
     } catch (err) {
       console.error(`[voiceApi] error handling ${req.method} ${req.url}:`, err);
