@@ -11,4 +11,7 @@ function required(name) {
 export const config = {
   botToken: required("DISCORD_BOT_TOKEN"),
   clientId: required("DISCORD_CLIENT_ID"),
+  // The "Orkus Info" channel — admin db commands only respond here. See
+  // src/features/db/command.js.
+  commandBoxChannelId: required("DISCORD_COMMAND_BOX"),
 };

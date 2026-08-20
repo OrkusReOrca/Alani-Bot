@@ -15,8 +15,8 @@
 //   1. Add its command.js under src/features/<name>/ (see features/info/
 //      for the shape: export `data` — needs at least `name`, plus
 //      `description` if it should also be a slash command — and
-//      `execute(ctx, args)`, where ctx exposes `reply(text)` and
-//      `replyWithFile(buffer, filename)`).
+//      `execute(ctx, args)`, where ctx exposes `reply(text)`,
+//      `replyWithFile(buffer, filename)`, `userId`, and `channelId`).
 //   2. Register it in the `commands` map below.
 //   3. If it has a `description` (i.e. it's also a slash command), run
 //      `npm run deploy-commands` (only needed again when a command's
@@ -28,10 +28,12 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 import { config } from "./common/config.js";
 import * as infoCommand from "./features/info/command.js";
 import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
+import * as dbCommand from "./features/db/command.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
   [fjamtrackCommand.data.name, fjamtrackCommand],
+  [dbCommand.data.name, dbCommand],
 ]);
 
 // ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,
@@ -69,6 +71,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const ctx = {
     reply: (text) => interaction.reply(text),
     replyWithFile: (buffer, filename) => interaction.reply({ files: [{ attachment: buffer, name: filename }] }),
+    userId: interaction.user.id,
+    channelId: interaction.channelId,
   };
 
   try {
@@ -97,6 +101,8 @@ client.on(Events.MessageCreate, async (message) => {
   const ctx = {
     reply: (text) => message.reply(text),
     replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
+    userId: message.author.id,
+    channelId: message.channelId,
   };
 
   try {

@@ -15,7 +15,7 @@
     "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.5.0"
   },
   "dependencies": {
     "canvas": "^3.2.3",

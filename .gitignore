@@ -1,3 +1,11 @@
 node_modules/
 .env
 *.log
+
+# Live databases (SQLite) — unlike the JSON state files elsewhere in data/,
+# these change constantly and don't need git history; they live on the
+# bot's own persistent host storage instead. See src/features/*/db.js.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

@@ -21,6 +21,9 @@ src/
     config.js                   bot-level env vars (token, client ID) — for
                                  bot.js/deployCommands.js, as opposed to each
                                  feature's own config.js
+    auth.js                     owner allowlist for admin features (currently just
+                                 db) — who's allowed, as opposed to config.js's
+                                 where-to-connect concerns
   features/
     <feature-name>/             one folder per independent capability
       config.js                 env vars this feature needs
@@ -33,7 +36,11 @@ src/
       ...                       the rest of its code
 
 data/
-  <feature-name>/                this feature's persisted state / source data
+  <feature-name>/                this feature's persisted state / source data —
+                                  JSON state files are committed back to git by
+                                  their workflow (see below); *.db SQLite files
+                                  (e.g. orkus-info/) are NOT — they live only on
+                                  the bot's own host storage, see .gitignore
 
 .github/workflows/
   <feature-name>-*.yml           this feature's scheduled trigger(s)
@@ -70,6 +77,11 @@ something you can trigger on a schedule).
     available on demand via `.a fjamtrack shop`.
 - **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
+- **[db](src/features/db/README.md)** — `.a db ...`, admin-level (owner-only,
+  one dedicated channel) access to structured data — reminders and
+  calendar events for now, via **[orkus-info](src/features/orkus-info/README.md)**,
+  extensible to more databases later. SQLite-backed, with duplicate and
+  overlap detection.
 
 ## Setup
 
@@ -82,17 +94,19 @@ See each feature's own README for what env vars it needs and how to run it.
 
 ## Persistent bot (slash + prefix commands)
 
-Only needed for interactive commands (currently `info` and
-`fjamtrack shop`) — the scheduled features above don't need this running
-at all.
+Only needed for interactive commands (currently `info`, `fjamtrack shop`,
+and `db`) — the scheduled features above don't need this running at all.
 
 Every command is reachable as a **prefix command** — `.a <name> [args]`
-(e.g. `.a info`, `.a fjamtrack shop`), typed as a plain message in any
-channel Alani can see. No registration needed, but Discord requires
-explicitly turning on the **Message Content** privileged intent for this
-bot (Discord Developer Portal -> your application -> Bot tab -> "Message
-Content Intent") — without it, prefix commands are silently ignored (the
-bot isn't allowed to read message text at all otherwise).
+(e.g. `.a info`, `.a fjamtrack shop`, `.a db list events`), typed as a
+plain message in any channel Alani can see (`db` is the one exception —
+restricted to a single channel and two users; see
+[src/features/db/README.md](src/features/db/README.md)). No registration
+needed, but Discord requires explicitly turning on the **Message Content**
+privileged intent for this bot (Discord Developer Portal -> your
+application -> Bot tab -> "Message Content Intent") — without it, prefix
+commands are silently ignored (the bot isn't allowed to read message text
+at all otherwise).
 
 Some commands (currently just `info`) are also **slash commands** —
 `/info` — which need registering once (see below). Slash commands need a
@@ -105,11 +119,14 @@ npm start                 # runs src/bot.js — needs to stay running 24/7
 ```
 
 Needs `DISCORD_BOT_TOKEN` (both) and `DISCORD_CLIENT_ID` (deploy-commands
-only) in `.env`. For 24/7 hosting: point the host at this repo, set those
-two as environment variables in its dashboard, and set the start command to
-`npm start` (or `node src/bot.js`) — `npm install` runs automatically on
-most hosts, but `deploy-commands` does not, since it only needs to run once
-per command change, not on every boot/deploy.
+only) in `.env`. `db` additionally needs `DISCORD_COMMAND_BOX`,
+`DISCORD_OWNER_0`, and `DISCORD_OWNER_1` — see
+[src/features/db/README.md](src/features/db/README.md). For 24/7 hosting:
+point the host at this repo, set those as environment variables in its
+dashboard, and set the start command to `npm start` (or `node src/bot.js`)
+— `npm install` runs automatically on most hosts, but `deploy-commands`
+does not, since it only needs to run once per command change, not on
+every boot/deploy.
 
 ## Adding a new feature
 
