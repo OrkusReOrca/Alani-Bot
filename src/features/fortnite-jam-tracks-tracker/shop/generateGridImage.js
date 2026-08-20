@@ -1,4 +1,3 @@
-import { createCanvas, loadImage } from "canvas";
 import { formatDaysLeft } from "./fetchShop.js";
 
 const COLUMNS = 8;
@@ -50,7 +49,20 @@ function wrapTitle(ctx, title, maxWidth) {
 
 // tracks: sorted newest-to-oldest by shop add date. newTrackIds: Set of
 // track ids to highlight with a green border. Returns a PNG Buffer.
+//
+// `canvas` is a native module — imported dynamically, INSIDE this
+// function, rather than as a normal top-level import. This file is
+// reachable from src/bot.js (the persistent 24/7 process, via the
+// ".a fjamtrack shop" command), and a static top-level `import "canvas"`
+// runs immediately at process startup, before this function is ever
+// called. On a host that blocks canvas's native build step (e.g. an
+// allowScripts policy that denies node-gyp), that would crash the whole
+// bot on boot — even for people who never use this command — instead of
+// only failing this one command when it's actually invoked. See
+// methodology notes in this repo's commit history for the exact crash.
 export async function generateShopGridImage(tracks, newTrackIds, dateLabel) {
+  const { createCanvas, loadImage } = await import("canvas");
+
   const rows = Math.ceil(tracks.length / COLUMNS);
   const width = COLUMNS * CELL_WIDTH;
   const height = HEADER_HEIGHT + rows * CELL_HEIGHT;
