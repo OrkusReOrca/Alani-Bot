@@ -4,18 +4,13 @@ import { generateShopGridImage } from "./generateGridImage.js";
 import { sendFileViaBotChannel } from "../../../common/discordApi.js";
 
 // Builds the grid from today's full shop (state.json, refreshed by the
-// most recent check run) and sends it. Green-border "new today" tracks
-// come from whatever the pending diff currently holds — if the daily post
-// already ran and cleared it, a manual re-trigger just won't highlight
-// anything, which is correct: today's new/left status was already reported.
-export async function postShopGridImage() {
-  if (!config.botToken || !config.channelId) {
-    throw new Error(
-      "Not configured. Set DISCORD_BOT_TOKEN + DISCORD_FORTNITE_CHANNEL_ID in .env"
-    );
-  }
-
-  console.log("Generating shop grid image...");
+// most recent check run). Green-border "new today" tracks come from
+// whatever the pending diff currently holds — if the daily post already
+// ran and cleared it, this just won't highlight anything, which is
+// correct: today's new/left status was already reported. Used both by
+// postShopGridImage() (below, posts to the fixed tracking channel) and by
+// the ".a fjamtrack shop" command (replies wherever it was asked).
+export async function buildShopGridImageBuffer() {
   const todayTracks = Object.values(loadState()).sort(
     (a, b) => new Date(b.inDate) - new Date(a.inDate)
   );
@@ -24,6 +19,20 @@ export async function postShopGridImage() {
   const dateLabel = new Date().toISOString().slice(0, 10);
 
   const imageBuffer = await generateShopGridImage(todayTracks, newTrackIds, dateLabel);
+  return { imageBuffer, dateLabel };
+}
+
+// Posts the grid to the configured Fortnite tracking channel — used by the
+// scheduled workflow (postGridRun.js).
+export async function postShopGridImage() {
+  if (!config.botToken || !config.channelId) {
+    throw new Error(
+      "Not configured. Set DISCORD_BOT_TOKEN + DISCORD_FORTNITE_CHANNEL_ID in .env"
+    );
+  }
+
+  console.log("Generating shop grid image...");
+  const { imageBuffer, dateLabel } = await buildShopGridImageBuffer();
   await sendFileViaBotChannel(
     config.botToken,
     config.channelId,

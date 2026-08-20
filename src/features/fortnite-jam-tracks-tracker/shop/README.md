@@ -105,6 +105,16 @@ border, so if the daily `post` already ran (and cleared the diff), a
 manual re-trigger afterward just won't highlight anything — that's
 correct, since today's new/left status was already reported once.
 
+## On-demand: `.a fjamtrack shop`
+
+Same grid as `npm run post-grid` above (same `buildShopGridImageBuffer()`
+underneath, in `postGridImage.js`), but sent as a reply in whichever
+channel you type it in, rather than posted to the fixed tracking channel —
+handled by the persistent bot process (`command.js`, see the root README's
+"Persistent bot" section), not a script. Needs the bot running, but not
+`DISCORD_FORTNITE_CHANNEL_ID` — it doesn't post to the tracking channel at
+all, just replies where asked.
+
 ## Schedule
 
 Three workflows, all triggerable manually from the Actions tab

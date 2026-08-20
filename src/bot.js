@@ -4,26 +4,35 @@
 // connected, since slash commands require a live gateway connection to
 // receive interactions. Run with `npm start`.
 //
-// Every command works two ways: as a slash command (/info) and as a prefix
-// command (.a info) — both dispatch to the same command.js's execute(ctx),
-// via the ctx-adapter each handler builds below, so a command never needs
-// to know which one triggered it.
+// Every command is reachable as a prefix command (.a <name> [args...]),
+// dispatched to command.js's execute(ctx, args) via the ctx-adapter each
+// handler builds below. Commands that also have a `description` are
+// additionally registered as slash commands (/name) — see
+// deployCommands.js — since a slash command needs a single-word name and
+// doesn't take freeform args the way "fjamtrack shop" does.
 //
 // New command checklist:
 //   1. Add its command.js under src/features/<name>/ (see features/info/
-//      for the shape: export `data` and `execute(ctx)`, where ctx exposes
-//      `reply(text)`).
+//      for the shape: export `data` — needs at least `name`, plus
+//      `description` if it should also be a slash command — and
+//      `execute(ctx, args)`, where ctx exposes `reply(text)` and
+//      `replyWithFile(buffer, filename)`).
 //   2. Register it in the `commands` map below.
-//   3. Run `npm run deploy-commands` (only needed again when a command's
-//      name/description/options change, not on every bot restart — this
-//      step only affects the slash-command version; the prefix version
-//      picks up new commands as soon as the bot restarts).
+//   3. If it has a `description` (i.e. it's also a slash command), run
+//      `npm run deploy-commands` (only needed again when a command's
+//      name/description/options change, not on every bot restart). Prefix
+//      commands need no registration — they work as soon as the bot
+//      restarts with the new code.
 
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { config } from "./common/config.js";
 import * as infoCommand from "./features/info/command.js";
+import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
 
-const commands = new Map([[infoCommand.data.name, infoCommand]]);
+const commands = new Map([
+  [infoCommand.data.name, infoCommand],
+  [fjamtrackCommand.data.name, fjamtrackCommand],
+]);
 
 // ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,
 // only ".a" alone or ".a <command>".
@@ -57,8 +66,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const command = commands.get(interaction.commandName);
   if (!command) return;
 
+  const ctx = {
+    reply: (text) => interaction.reply(text),
+    replyWithFile: (buffer, filename) => interaction.reply({ files: [{ attachment: buffer, name: filename }] }),
+  };
+
   try {
-    await command.execute({ reply: (text) => interaction.reply(text) });
+    await command.execute(ctx, []);
   } catch (err) {
     console.error(`Error handling /${interaction.commandName}:`, err);
     const payload = { content: "Something went wrong running that command.", ephemeral: true };
@@ -74,12 +88,19 @@ client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (message.content !== PREFIX && !message.content.startsWith(`${PREFIX} `)) return;
 
-  const commandName = message.content.slice(PREFIX.length).trim().split(/\s+/)[0]?.toLowerCase();
+  const tokens = message.content.slice(PREFIX.length).trim().split(/\s+/).filter(Boolean);
+  const commandName = tokens[0]?.toLowerCase();
+  const args = tokens.slice(1);
   const command = commands.get(commandName);
   if (!command) return;
 
+  const ctx = {
+    reply: (text) => message.reply(text),
+    replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
+  };
+
   try {
-    await command.execute({ reply: (text) => message.reply(text) });
+    await command.execute(ctx, args);
   } catch (err) {
     console.error(`Error handling "${PREFIX} ${commandName}":`, err);
     await message.reply("Something went wrong running that command.").catch(() => {});

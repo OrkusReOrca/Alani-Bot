@@ -9,9 +9,10 @@ existing ones.
 ```
 src/
   bot.js                         the persistent 24/7 bot process — only needed for
-                                  slash commands (interactions require a live gateway
-                                  connection); everything else here runs as one-off
-                                  scheduled scripts and doesn't need this running
+                                  interactive commands (slash + prefix both require
+                                  a live gateway connection); everything else here
+                                  runs as one-off scheduled scripts and doesn't
+                                  need this running
   deployCommands.js              registers slash commands with Discord — run once,
                                   and again whenever a command's shape changes
   common/                       shared plumbing used by every feature
@@ -24,8 +25,11 @@ src/
     <feature-name>/             one folder per independent capability
       config.js                 env vars this feature needs
       README.md                 feature-specific setup & usage docs
-      command.js                (slash-command features only) `data` + `execute`,
-                                 registered in bot.js's command map
+      command.js                (interactive features only) `data` + `execute(ctx,
+                                 args)`, registered in bot.js's command map. Always
+                                 reachable as a prefix command (.a <name>); also a
+                                 slash command (/name) if `data` has a `description`
+                                 — see bot.js's own header comment.
       ...                       the rest of its code
 
 data/
@@ -48,9 +52,10 @@ features — same rules apply one level deeper: each sub-feature still gets
 its own `data/` subfolder, npm scripts, and workflow file.
 
 A feature is either **scheduled** (a script, triggered by a GitHub Actions
-workflow, doesn't need the bot running) or a **slash command** (needs
-`src/bot.js` connected 24/7, since Discord delivers interactions over a
-live gateway connection, not a webhook you can trigger on a schedule).
+workflow, doesn't need the bot running) or an **interactive command**
+(slash and/or prefix — needs `src/bot.js` connected 24/7, since Discord
+delivers interactions and messages over a live gateway connection, not
+something you can trigger on a schedule).
 
 ## Features
 
@@ -61,7 +66,8 @@ live gateway connection, not a webhook you can trigger on a schedule).
   — daily channel posts (friend server) tracking Fortnite's Jam Tracks:
   - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
     grid image of every Jam Track currently in the purchasable item shop
-    (new ones outlined in green), plus a message for tracks that left.
+    (new ones outlined in green), plus a message for tracks that left. Also
+    available on demand via `.a fjamtrack shop`.
 - **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
 
@@ -76,17 +82,22 @@ See each feature's own README for what env vars it needs and how to run it.
 
 ## Persistent bot (slash + prefix commands)
 
-Only needed for interactive features (currently just `info`) — the
-scheduled features above don't need this running at all.
+Only needed for interactive commands (currently `info` and
+`fjamtrack shop`) — the scheduled features above don't need this running
+at all.
 
-Every command works two ways, both handled by the same running process:
-- **Slash command** — `/info`, needs registering once (see below).
-- **Prefix command** — `.a info`, typed as a plain message in any channel
-  Alani can see. No registration needed, but Discord requires explicitly
-  turning on the **Message Content** privileged intent for this bot
-  (Discord Developer Portal -> your application -> Bot tab -> "Message
-  Content Intent") — without it, `.a info` is silently ignored (the bot
-  isn't allowed to read message text at all otherwise).
+Every command is reachable as a **prefix command** — `.a <name> [args]`
+(e.g. `.a info`, `.a fjamtrack shop`), typed as a plain message in any
+channel Alani can see. No registration needed, but Discord requires
+explicitly turning on the **Message Content** privileged intent for this
+bot (Discord Developer Portal -> your application -> Bot tab -> "Message
+Content Intent") — without it, prefix commands are silently ignored (the
+bot isn't allowed to read message text at all otherwise).
+
+Some commands (currently just `info`) are also **slash commands** —
+`/info` — which need registering once (see below). Slash commands need a
+single-word name and structured options, so a command like
+`fjamtrack shop` (a name plus a freeform subcommand) stays prefix-only.
 
 ```bash
 npm run deploy-commands   # once, and again whenever a command's shape changes
