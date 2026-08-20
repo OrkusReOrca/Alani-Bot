@@ -65,4 +65,51 @@ function ensureColumn(table, column, definition) {
 ensureColumn("reminders", "created_by", "TEXT");
 ensureColumn("reminders", "channel_id", "TEXT");
 
+// display_number: the small, user-facing number reminders are actually
+// added/edited/deleted by — separate from `id` (the real primary key,
+// permanent, never reused, never shown to users). display_number IS
+// reused once its holder is deleted: the smallest positive integer not
+// currently used by any existing reminder (see getNextDisplayNumber()).
+// With <=20 reminders active this naturally stays packed into 1-20 and
+// keeps recycling; it only grows past 20 once all of 1-20 are genuinely
+// in use at once, and shrinks back down as soon as gaps open up again —
+// no separate "current range" bookkeeping needed, this falls out of
+// "always take the smallest free number" on its own.
+ensureColumn("reminders", "display_number", "INTEGER");
+
+// One-time backfill for rows that predate this column (display_number
+// comes back NULL for those otherwise, making them unaddressable by the
+// new scheme) — assigns each the next available number in `id` order,
+// same rule new reminders get.
+{
+  const unbackfilled = db.prepare(`SELECT id FROM reminders WHERE display_number IS NULL ORDER BY id`).all();
+  if (unbackfilled.length > 0) {
+    const used = new Set(
+      db
+        .prepare(`SELECT display_number FROM reminders WHERE display_number IS NOT NULL`)
+        .all()
+        .map((r) => r.display_number)
+    );
+    let next = 1;
+    for (const row of unbackfilled) {
+      while (used.has(next)) next++;
+      db.prepare(`UPDATE reminders SET display_number = ? WHERE id = ?`).run(next, row.id);
+      used.add(next);
+    }
+  }
+}
+
+// Smallest positive integer not currently used by any existing reminder.
+export function getNextDisplayNumber() {
+  const used = new Set(
+    db
+      .prepare(`SELECT display_number FROM reminders WHERE display_number IS NOT NULL`)
+      .all()
+      .map((r) => r.display_number)
+  );
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
+}
+
 export default db;

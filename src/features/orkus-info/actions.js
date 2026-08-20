@@ -6,9 +6,16 @@
 // (for ctx.userId — who's making the request), and returns a reply
 // string — never throws for user-facing input errors, just returns a
 // usage message instead.
+//
+// Reminders are addressed by display_number (a small, reused number —
+// see db.js's getNextDisplayNumber()), not the internal `id` (permanent,
+// never reused, never shown to users — that's what the scheduler/events
+// still use `id` for, unaffected by any of this). Events aren't affected
+// either — only reminders tend to accumulate/churn enough for a large
+// growing number to actually matter.
 
 import { PermissionsBitField } from "discord.js";
-import db from "./db.js";
+import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
 import { parseIct, fmtIct } from "./format.js";
 
@@ -84,21 +91,22 @@ export async function addReminderRecord({ text, remindAt, channelId = null, crea
   const windowStart = new Date(remindAt.getTime() - DEDUP_WINDOW_MS).toISOString();
   const windowEnd = new Date(remindAt.getTime() + DEDUP_WINDOW_MS).toISOString();
   const dupe = db
-    .prepare(`SELECT id, text, remind_at FROM reminders WHERE text_normalized = ? AND remind_at BETWEEN ? AND ?`)
+    .prepare(
+      `SELECT display_number, text, remind_at FROM reminders WHERE text_normalized = ? AND remind_at BETWEEN ? AND ?`
+    )
     .get(normalized, windowStart, windowEnd);
 
   if (dupe && !force) {
-    return `Already have a similar reminder — #${dupe.id} "${dupe.text}" at ${fmtIct(dupe.remind_at)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
+    return `Already have a similar reminder — #${dupe.display_number} "${dupe.text}" at ${fmtIct(dupe.remind_at)} — not adding a duplicate. Add \`force\` at the end to add it anyway.`;
   }
 
-  const info = db
-    .prepare(
-      `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id) VALUES (?, ?, ?, ?, ?, ?)`
-    )
-    .run(text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId);
+  const displayNumber = getNextDisplayNumber();
+  db.prepare(
+    `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id, display_number) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId, displayNumber);
 
   const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
-  return `Added reminder #${info.lastInsertRowid}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
+  return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
 }
 
 async function addReminder(args, ctx) {
@@ -113,32 +121,44 @@ async function addReminder(args, ctx) {
 }
 
 function listReminders() {
-  const rows = db.prepare(`SELECT id, text, remind_at, channel_id FROM reminders ORDER BY remind_at ASC`).all();
+  const rows = db
+    .prepare(`SELECT display_number, text, remind_at, channel_id FROM reminders ORDER BY remind_at ASC`)
+    .all();
   if (rows.length === 0) return "No reminders.";
   return rows
-    .map((r) => `#${r.id} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"})`)
+    .map(
+      (r) =>
+        `#${r.display_number} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"})`
+    )
     .join("\n");
 }
 
-function deleteReminder(id) {
-  if (!id) return "Usage: `.a db delete reminder <id>`";
-  const result = db.prepare(`DELETE FROM reminders WHERE id = ?`).run(Number(id));
-  return result.changes > 0 ? `Deleted reminder #${id}.` : `No reminder #${id}.`;
+// "all" deletes every active reminder — its own path (not just "id ==
+// 'all'" on the normal one) since it doesn't reference a display_number
+// at all.
+function deleteReminder(displayNumber) {
+  if (!displayNumber) return "Usage: `.a db delete reminder <id|all>`";
+  if (displayNumber.toLowerCase() === "all") {
+    const result = db.prepare(`DELETE FROM reminders`).run();
+    return result.changes > 0 ? `Deleted all ${result.changes} reminder(s).` : "No reminders to delete.";
+  }
+  const result = db.prepare(`DELETE FROM reminders WHERE display_number = ?`).run(Number(displayNumber));
+  return result.changes > 0 ? `Deleted reminder #${displayNumber}.` : `No reminder #${displayNumber}.`;
 }
 
 function editReminder(args) {
-  const [id, when, ...textParts] = args;
+  const [displayNumber, when, ...textParts] = args;
   const text = textParts.join(" ").trim();
   const remindAt = parseIct(when);
-  if (!id || !remindAt || !text) {
+  if (!displayNumber || !remindAt || !text) {
     return "Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>` (replaces both fields; destination/channel unchanged — delete and re-add to change that)";
   }
   const result = db
-    .prepare(`UPDATE reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE id = ?`)
-    .run(text, normalize(text), remindAt.toISOString(), Number(id));
+    .prepare(`UPDATE reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE display_number = ?`)
+    .run(text, normalize(text), remindAt.toISOString(), Number(displayNumber));
   return result.changes > 0
-    ? `Updated reminder #${id}: "${text}" at ${fmtIct(remindAt.toISOString())}`
-    : `No reminder #${id}.`;
+    ? `Updated reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())}`
+    : `No reminder #${displayNumber}.`;
 }
 
 // ---------- events ----------

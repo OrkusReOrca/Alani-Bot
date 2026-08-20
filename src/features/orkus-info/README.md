@@ -15,7 +15,7 @@ omitted — see `src/features/db/README.md`):
 .a db add event <start> <end> <title>          (both ISO datetimes)
 .a db list reminders
 .a db list events
-.a db delete reminder <id>
+.a db delete reminder <id|all>
 .a db delete event <id>
 .a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>
 .a db edit event <id> <start> <end> <title>
@@ -25,6 +25,27 @@ omitted — see `src/features/db/README.md`):
 `format.js`'s `parseIct`/`fmtIct`, explicitly, regardless of what
 timezone the host server itself happens to be running in (see `format.js`
 for why that distinction matters — it's a real bug that shipped once).
+
+## Reminder numbering
+
+The `<id>` reminders are added/listed/edited/deleted by is **not** the
+real database primary key — it's a small, reused `display_number` (see
+`db.js`'s `getNextDisplayNumber()`). The real `id` (permanent, never
+reused, used internally by the scheduler) would otherwise climb forever
+as reminders fire and get deleted, eventually reaching awkward numbers
+like #247 for someone's 5th active reminder.
+
+`display_number` is always the smallest positive integer not currently
+in use by an active reminder — so with a small number of reminders
+active at once, numbers stay packed low and get recycled as soon as one
+frees up (delete #2, the next add becomes #2 again, not #6). It only
+grows past a round number once that many are genuinely active
+simultaneously (e.g. past 20 only once all of 1-20 are truly in use at
+the same time), and naturally drops back down as things get deleted — no
+separate "current range" state to track, this behavior falls straight
+out of "always take the smallest free number."
+
+`.a db delete reminder all` clears every active reminder at once.
 
 ## Reminders: delivery
 
