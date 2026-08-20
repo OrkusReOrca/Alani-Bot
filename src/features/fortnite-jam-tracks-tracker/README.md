@@ -6,8 +6,9 @@ friend server.
 1. **[shop](shop/README.md)** — the purchasable item shop's Jam Tracks
    section. Grid image of everything currently for sale (poster, name,
    price, days left), new/rerun tracks outlined in green, plus a message
-   for tracks that left. Runs 7:30 AM (check) and 8:00 AM (post) Bangkok
-   time.
+   for tracks that left. Runs 7:37 AM (check) and 8:12 AM (post) Bangkok
+   time, in-process on the persistent bot — see the root README's "Daily
+   jobs" section.
 
 Part of the [Alani-Bot](../../../README.md) repo.
 
@@ -21,10 +22,16 @@ data/fortnite-jam-tracks-tracker/
   shop/       shop/state.json, shop/pending-diff.json
 
 .github/workflows/
-  fortnite-jam-tracks-tracker-shop-check.yml
-  fortnite-jam-tracks-tracker-shop-post.yml
+  fortnite-jam-tracks-tracker-shop-check.yml      (deactivated — see below)
+  fortnite-jam-tracks-tracker-shop-post.yml       (deactivated — see below)
   fortnite-jam-tracks-tracker-shop-grid.yml       (manual-only, no cron)
 ```
+
+`check`/`post` now run in-process on the persistent bot's daily timer
+(`src/common/dailyJobs.js`) instead of these two workflows' own
+`schedule:` trigger — deactivated (commented out), not deleted, so
+`workflow_dispatch` still works as a manual fallback. See shop/README.md's
+"Schedule" section and the root README's "Daily jobs" section.
 
 This is grouped under a parent `fortnite-jam-tracks-tracker/` folder
 (rather than being a bare top-level feature) so a related sub-feature can

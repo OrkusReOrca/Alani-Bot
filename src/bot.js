@@ -1,8 +1,15 @@
-// The persistent bot process — the "24/7" part of this repo. Everything
-// else here (src/features/*) is one-off scheduled scripts triggered by
-// GitHub Actions; this is the only thing that needs to stay running and
-// connected, since slash commands require a live gateway connection to
-// receive interactions. Run with `npm start`.
+// The persistent bot process — the "24/7" part of this repo. This is the
+// only thing that needs to stay running and connected, since slash
+// commands require a live gateway connection to receive interactions.
+// Run with `npm start`.
+//
+// Daily jobs (fortnite-jam-tracks-tracker's shop check/post,
+// uni-application-updater) run on an in-process timer now — see
+// common/dailyJobs.js — instead of GitHub Actions cron, since this bot
+// is online 24/7 and doesn't need to wait on GitHub's Actions queue
+// (which was seen running 30-48+ minutes late). Those workflow files are
+// deactivated (schedule trigger removed), not deleted, so they're still
+// there as a manual/backfill fallback via workflow_dispatch.
 //
 // Every command is reachable as a prefix command (.a <name> [args...]),
 // dispatched to command.js's execute(ctx, args) via the ctx-adapter each
@@ -33,6 +40,7 @@ import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/c
 import * as dbCommand from "./features/db/command.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startVoiceApi } from "./features/db/voiceApi.js";
+import { startDailyJobs } from "./common/dailyJobs.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
@@ -70,6 +78,7 @@ client.once(Events.ClientReady, (readyClient) => {
   // fetches) — starting it here rather than at module load.
   startReminderScheduler();
   startVoiceApi();
+  startDailyJobs();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

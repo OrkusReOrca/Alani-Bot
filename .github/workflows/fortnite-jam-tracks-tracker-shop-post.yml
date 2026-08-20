@@ -1,10 +1,10 @@
 name: Fortnite Jam Tracks Tracker (Shop) — Post
 
 on:
-  schedule:
-    # ~8:12 AM Indochina Time (UTC+7) = 01:12 UTC — off a round minute;
-    # see shop-check.yml for why.
-    - cron: "12 1 * * *"
+  # Schedule trigger deactivated — runs in-process on the persistent bot
+  # instead. See shop-check.yml and src/common/dailyJobs.js.
+  # schedule:
+  #   - cron: "12 1 * * *" # ~8:12 AM Indochina Time (UTC+7)
   workflow_dispatch: {}
 
 permissions:

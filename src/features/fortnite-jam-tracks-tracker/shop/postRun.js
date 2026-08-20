@@ -1,10 +1,11 @@
+import { fileURLToPath } from "url";
 import { config } from "./config.js";
 import { loadPendingDiff, clearPendingDiff } from "./state.js";
 import { formatUpdateMessage } from "./formatter.js";
 import { postShopGridImage } from "./postGridImage.js";
 import { sendViaBotChannel } from "../../../common/discordApi.js";
 
-async function main() {
+export async function run() {
   if (!config.botToken || !config.channelId) {
     throw new Error(
       "Not configured. Set DISCORD_BOT_TOKEN + DISCORD_FORTNITE_CHANNEL_ID in .env"
@@ -30,7 +31,13 @@ async function main() {
   console.log("Done.");
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point — still used by the (now-deactivated) GitHub Actions
+// workflow via `npm run post:fortnite-jam-tracks-tracker-shop`. The
+// persistent bot instead imports and calls run() directly — see
+// common/dailyJobs.js.
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

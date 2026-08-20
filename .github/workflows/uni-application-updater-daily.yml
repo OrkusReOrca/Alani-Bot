@@ -1,11 +1,13 @@
 name: Uni Application Updater — Daily
 
 on:
-  schedule:
-    # ~9:19 AM Indochina Time (UTC+7) = 02:19 UTC — off a round minute
-    # (GitHub's schedule trigger queues :00/:05/:30 hardest under load;
-    # this was seen running 48+ min late at :00).
-    - cron: "19 2 * * *"
+  # Schedule trigger deactivated — runs in-process on the persistent bot
+  # instead (bot-hosting.net is online 24/7). See
+  # src/common/dailyJobs.js. Kept here (commented, not deleted) plus
+  # workflow_dispatch below as a manual fallback if ever needed.
+  # schedule:
+  #   - cron: "19 2 * * *" # ~9:19 AM Indochina Time (UTC+7); this was
+  #                        # seen running 48+ min late at the old :00 slot
   workflow_dispatch: {}
 
 permissions:

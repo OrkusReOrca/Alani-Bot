@@ -1,7 +1,8 @@
+import { fileURLToPath } from "url";
 import { fetchJamTracks } from "./fetchShop.js";
 import { loadState, saveState, diffTracks, savePendingDiff } from "./state.js";
 
-async function main() {
+export async function run() {
   console.log("Fetching current Jam Tracks shop...");
   const todayTracks = await fetchJamTracks();
   const prevState = loadState();
@@ -18,7 +19,14 @@ async function main() {
   console.log("Check complete — pending diff and state saved.");
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point — still used by the (now-deactivated) GitHub Actions
+// workflow via `npm run check:fortnite-jam-tracks-tracker-shop`. The
+// persistent bot instead imports and calls run() directly on a timer —
+// see common/dailyJobs.js — so this only fires when the file is actually
+// run as a script, not when it's imported.
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

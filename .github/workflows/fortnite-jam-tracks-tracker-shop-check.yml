@@ -1,11 +1,14 @@
 name: Fortnite Jam Tracks Tracker (Shop) — Check
 
 on:
-  schedule:
-    # ~7:37 AM Indochina Time (UTC+7) = 00:37 UTC — off a round minute
-    # (avoid :00/:05/:30) since GitHub's scheduler queues those hardest
-    # under load; see root README for the delay writeup.
-    - cron: "37 0 * * *"
+  # Schedule trigger deactivated — this job now runs in-process on the
+  # persistent bot instead (bot-hosting.net is online 24/7, so there's no
+  # reason to wait on GitHub's Actions queue, which was seen running
+  # 30-48+ minutes late). See src/common/dailyJobs.js. Kept here
+  # (commented, not deleted) plus workflow_dispatch below as a manual
+  # fallback if ever needed.
+  # schedule:
+  #   - cron: "37 0 * * *" # ~7:37 AM Indochina Time (UTC+7)
   workflow_dispatch: {}
 
 permissions:

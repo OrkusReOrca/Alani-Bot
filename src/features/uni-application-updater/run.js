@@ -1,12 +1,16 @@
+import { fileURLToPath } from "url";
 import { config } from "./config.js";
 import { loadPrograms } from "./programs.js";
 import { loadState, saveState, diffPrograms, stateFromPrograms } from "./state.js";
 import { formatDailyMessage, formatChangeAlert } from "./formatter.js";
 import { sendViaDM, sendViaBotChannel } from "../../common/discordApi.js";
 
-const isManualRun = process.env.FORCE_DM === "true";
-
-async function main() {
+// forceDm: true for a manual/verification run (was previously only the
+// GitHub Actions workflow_dispatch case, via FORCE_DM=true) — sends a
+// DM even with no status change, just to confirm delivery still works.
+// The persistent bot's daily timer (see common/dailyJobs.js) always
+// calls run() with no argument, matching the old scheduled-cron behavior.
+export async function run(forceDm = process.env.FORCE_DM === "true") {
   const programs = loadPrograms();
   const prevState = loadState();
   const diffMap = diffPrograms(programs, prevState);
@@ -25,7 +29,7 @@ async function main() {
   //    manually triggered (workflow_dispatch) so delivery can be verified
   //    on demand even if nothing changed.
   const changeAlert = formatChangeAlert(programs, diffMap);
-  const shouldDM = changeAlert || isManualRun;
+  const shouldDM = changeAlert || forceDm;
 
   if (shouldDM) {
     if (config.botToken && config.userId) {
@@ -47,7 +51,12 @@ async function main() {
   console.log("Done.");
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point — still used by the (now-deactivated) GitHub Actions
+// workflow via `npm run start:uni-application-updater`. The persistent
+// bot instead imports and calls run() directly — see common/dailyJobs.js.
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

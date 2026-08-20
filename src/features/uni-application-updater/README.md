@@ -95,28 +95,29 @@ npm run start:uni-application-updater
 This sends the full formatted status list and updates
 `data/uni-application-updater/state.json`.
 
-## 5. Schedule it to run daily at 9:00 AM (Bangkok time)
+## 5. Daily schedule (~9:19 AM Bangkok time)
 
-A GitHub Actions workflow is already set up at
-`.github/workflows/uni-application-updater-daily.yml`, scheduled for
-`0 2 * * *` UTC (= 9:00 AM Indochina Time).
+Runs in-process on the persistent bot's daily timer —
+`src/common/dailyJobs.js`, started from `bot.js`'s `ClientReady` handler —
+as long as `npm start` is running with `DISCORD_BOT_TOKEN`,
+`DISCORD_USER_ID`, and `DISCORD_CHANNEL_ID` set in its `.env`. No
+GitHub Actions setup needed for this to run daily; see the root README's
+"Daily jobs" section for how the in-process timer works.
 
-To activate it:
+`.github/workflows/uni-application-updater-daily.yml` still exists but is
+**deactivated** (its `schedule:` trigger is commented out) — kept as a
+manual fallback via the **Actions** tab's "Run workflow" button
+(`workflow_dispatch`), which still needs `DISCORD_BOT_TOKEN`,
+`DISCORD_USER_ID`, `DISCORD_CHANNEL_ID` set as repository secrets
+(**Settings → Secrets and variables → Actions**) to work. A manual run
+that way sends a DM even with no status changes (`FORCE_DM=true`, set
+automatically for `workflow_dispatch`), and writes `state.json` back into
+the repo via git commit — the in-process daily job writes straight to the
+bot host's own disk instead, no git commit involved.
 
-1. In the repo, go to **Settings → Secrets and variables → Actions** and add
-   these repository secrets (same values as your `.env`):
-   - `DISCORD_BOT_TOKEN`
-   - `DISCORD_USER_ID`
-   - `DISCORD_CHANNEL_ID`
-2. That's it — GitHub will run the job daily and commit the updated
-   `state.json` back to the repo so the "what changed" diff keeps working
-   across runs.
-3. You can trigger it manually anytime from the **Actions** tab
-   ("Run workflow" button — `workflow_dispatch` is enabled).
-
-If you'd rather not use GitHub Actions, any machine that stays on (or a
-cheap VPS / Windows Task Scheduler / cron) can just run
-`npm run start:uni-application-updater` once a day instead.
+If you'd rather not run the persistent bot at all, any machine that stays
+on (a cheap VPS, Windows Task Scheduler, plain `cron`) can still just run
+`npm run start:uni-application-updater` once a day.
 
 ## Updating program status
 
