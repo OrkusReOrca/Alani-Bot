@@ -107,13 +107,19 @@ correct, since today's new/left status was already reported once.
 
 ## On-demand: `.a fjamtrack shop`
 
-Same grid as `npm run post-grid` above (same `buildShopGridImageBuffer()`
-underneath, in `postGridImage.js`), but sent as a reply in whichever
-channel you type it in, rather than posted to the fixed tracking channel —
-handled by the persistent bot process (`command.js`, see the root README's
-"Persistent bot" section), not a script. Needs the bot running, but not
-`DISCORD_FORTNITE_CHANNEL_ID` — it doesn't post to the tracking channel at
-all, just replies where asked.
+Replies with the most recently posted grid image, relayed from the
+tracking channel into whichever channel you typed it in. Handled by the
+persistent bot process (`command.js`, see the root README's "Persistent
+bot" section), not a script — needs the bot running, plus
+`DISCORD_FORTNITE_CHANNEL_ID` (to know which channel to look in).
+
+Deliberately does NOT regenerate the grid live like `npm run post-grid`
+does — that needs `canvas`, a native module some hosts won't let build
+(bot-hosting.net's default script policy blocks it, which crashed the
+whole bot the first time this command tried to run it). Since the grid
+only actually changes once a day when the shop rotates, relaying whatever
+the scheduled workflow posted most recently is equivalent in practice, and
+sidesteps needing `canvas` on the bot's host entirely.
 
 ## Schedule
 
