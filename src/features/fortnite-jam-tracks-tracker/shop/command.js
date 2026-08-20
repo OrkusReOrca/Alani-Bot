@@ -1,22 +1,23 @@
-// ".a fjamtrack shop" — relays the most recently posted grid image from
-// the tracking channel into whichever channel asked.
+// ".a fjamtrack shop" — relays the most recently posted grid image into
+// whichever channel asked, from local state (state.js's
+// loadLastGridImage(), written by postGridImage.js right after each
+// scheduled post). Deliberately doesn't need DISCORD_FORTNITE_CHANNEL_ID
+// or any Discord API call of its own — it's not looking anything up
+// remotely, just reading a file that's already there (committed back to
+// the repo by the scheduled workflow, the same way state.json is).
 //
-// Deliberately does NOT regenerate the grid live (that needs the `canvas`
-// native module, which some hosts — including bot-hosting.net's default
-// script-execution policy — won't let build; this command crashed the
-// whole bot on startup, then failed on every use, before this fix). The
-// scheduled workflow (postGridImage.js, run via GitHub Actions, which has
-// a real build toolchain) already renders and posts a fresh grid daily —
-// this just re-sends that. In practice the grid only changes once a day
-// when the shop rotates, so "most recently posted" and "current" are the
-// same thing almost all the time.
+// Also deliberately does NOT regenerate the grid live — that needs the
+// `canvas` native module, which some hosts won't let build (bot-hosting.net's
+// default script policy blocks it; this crashed the whole bot on startup,
+// then failed on every use, before this design). The grid only actually
+// changes once a day when the shop rotates, so "most recently posted" and
+// "current" are the same thing almost all the time.
 //
 // Prefix-only for now — not registered as a slash command, since
 // "fjamtrack shop" is a two-word name/subcommand that doesn't map onto a
 // single slash command the way info's does.
 
-import { config } from "./config.js";
-import { getLatestImageAttachment } from "../../../common/discordApi.js";
+import { loadLastGridImage } from "./state.js";
 
 export const data = {
   name: "fjamtrack",
@@ -29,20 +30,13 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  if (!config.botToken || !config.channelId) {
-    await ctx.reply("Not configured — missing DISCORD_FORTNITE_CHANNEL_ID.");
+  const last = loadLastGridImage();
+  if (!last) {
+    await ctx.reply("No grid image has been posted yet — the scheduled post may not have run.");
     return;
   }
 
-  const latest = await getLatestImageAttachment(config.botToken, config.channelId);
-  if (!latest) {
-    await ctx.reply(
-      "Couldn't find a recent grid image in the tracking channel — the scheduled post may not have run yet."
-    );
-    return;
-  }
-
-  const res = await fetch(latest.url);
+  const res = await fetch(last.url);
   const buffer = Buffer.from(await res.arrayBuffer());
-  await ctx.replyWithFile(buffer, latest.filename);
+  await ctx.replyWithFile(buffer, last.filename);
 }

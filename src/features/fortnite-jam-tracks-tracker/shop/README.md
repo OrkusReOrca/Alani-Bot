@@ -107,11 +107,14 @@ correct, since today's new/left status was already reported once.
 
 ## On-demand: `.a fjamtrack shop`
 
-Replies with the most recently posted grid image, relayed from the
-tracking channel into whichever channel you typed it in. Handled by the
-persistent bot process (`command.js`, see the root README's "Persistent
-bot" section), not a script — needs the bot running, plus
-`DISCORD_FORTNITE_CHANNEL_ID` (to know which channel to look in).
+Replies with the most recently posted grid image in whichever channel you
+typed it in — from local state (`data/fortnite-jam-tracks-tracker/shop/last-grid.json`,
+written by `postShopGridImage()` right after each scheduled post, committed
+back to the repo the same way `state.json` is). Handled by the persistent
+bot process (`command.js`, see the root README's "Persistent bot"
+section), not a script — needs the bot running, but **not**
+`DISCORD_FORTNITE_CHANNEL_ID` or any Discord API lookup of its own; it
+just reads that file.
 
 Deliberately does NOT regenerate the grid live like `npm run post-grid`
 does — that needs `canvas`, a native module some hosts won't let build
@@ -120,6 +123,11 @@ whole bot the first time this command tried to run it). Since the grid
 only actually changes once a day when the shop rotates, relaying whatever
 the scheduled workflow posted most recently is equivalent in practice, and
 sidesteps needing `canvas` on the bot's host entirely.
+
+First use after adding this feature will say "No grid image has been
+posted yet" until the next scheduled post (or a manual `workflow_dispatch`
+of `fortnite-jam-tracks-tracker-shop-grid.yml` or `-post.yml`) actually
+runs and commits `last-grid.json` for the first time.
 
 ## Schedule
 

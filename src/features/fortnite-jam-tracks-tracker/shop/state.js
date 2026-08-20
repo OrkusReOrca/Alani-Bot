@@ -6,6 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "..", "..", "..", "data", "fortnite-jam-tracks-tracker", "shop");
 const STATE_PATH = path.join(DATA_DIR, "state.json");
 const PENDING_DIFF_PATH = path.join(DATA_DIR, "pending-diff.json");
+const LAST_GRID_PATH = path.join(DATA_DIR, "last-grid.json");
 
 export function loadState() {
   if (!fs.existsSync(STATE_PATH)) return {};
@@ -49,4 +50,25 @@ export function loadPendingDiff() {
 
 export function clearPendingDiff() {
   savePendingDiff({ newTracks: [], leftTracks: [] });
+}
+
+// Where the most recently posted grid image actually lives (url + filename
+// of the message attachment), so the ".a fjamtrack shop" on-demand command
+// can relay it without needing to know DISCORD_FORTNITE_CHANNEL_ID itself
+// or make a Discord API call to search channel history — it just reads
+// this. Written by postShopGridImage() right after posting; committed back
+// to the repo by the scheduled workflow the same way state.json is, so
+// it's already present after any git pull, not just on the machine that
+// posted it.
+export function saveLastGridImage(attachment) {
+  fs.writeFileSync(LAST_GRID_PATH, JSON.stringify(attachment, null, 2), "utf-8");
+}
+
+export function loadLastGridImage() {
+  if (!fs.existsSync(LAST_GRID_PATH)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(LAST_GRID_PATH, "utf-8"));
+  } catch {
+    return null;
+  }
 }

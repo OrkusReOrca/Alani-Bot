@@ -77,19 +77,6 @@ async function discordApi(botToken, path, options = {}, retriesLeft = 5) {
   return res.status === 204 ? null : res.json();
 }
 
-// Finds the most recent message in a channel with an image attachment,
-// e.g. to relay a previously-posted image on demand without regenerating
-// it. Returns { url, filename } or null if none of the last `limit`
-// messages has one.
-export async function getLatestImageAttachment(botToken, channelId, limit = 10) {
-  const messages = await discordApi(botToken, `/channels/${channelId}/messages?limit=${limit}`);
-  for (const msg of messages) {
-    const attachment = msg.attachments?.find((a) => a.content_type?.startsWith("image/"));
-    if (attachment) return { url: attachment.url, filename: attachment.filename };
-  }
-  return null;
-}
-
 export async function sendViaDM(botToken, userId, message) {
   const dmChannel = await discordApi(botToken, "/users/@me/channels", {
     method: "POST",
@@ -147,4 +134,5 @@ export async function sendFileViaBotChannel(
     const body = await res.text();
     throw new Error(`Discord file send failed: ${res.status} ${res.statusText} - ${body}`);
   }
+  return res.json(); // the posted message, e.g. for its .attachments[0].url
 }

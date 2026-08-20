@@ -30,10 +30,10 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
 
-      - name: Clear pending diff
+      - name: Clear pending diff, record posted grid image
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/fortnite-jam-tracks-tracker/shop/pending-diff.json
+          git add data/fortnite-jam-tracks-tracker/shop/pending-diff.json data/fortnite-jam-tracks-tracker/shop/last-grid.json
           git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-tracker): clear shop pending diff after posting [skip ci]"
           git push

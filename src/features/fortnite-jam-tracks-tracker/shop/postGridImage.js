@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import { loadState, loadPendingDiff } from "./state.js";
+import { loadState, loadPendingDiff, saveLastGridImage } from "./state.js";
 import { generateShopGridImage } from "./generateGridImage.js";
 import { sendFileViaBotChannel } from "../../../common/discordApi.js";
 
@@ -7,10 +7,8 @@ import { sendFileViaBotChannel } from "../../../common/discordApi.js";
 // most recent check run). Green-border "new today" tracks come from
 // whatever the pending diff currently holds — if the daily post already
 // ran and cleared it, this just won't highlight anything, which is
-// correct: today's new/left status was already reported. Used both by
-// postShopGridImage() (below, posts to the fixed tracking channel) and by
-// the ".a fjamtrack shop" command (replies wherever it was asked).
-export async function buildShopGridImageBuffer() {
+// correct: today's new/left status was already reported.
+async function buildShopGridImageBuffer() {
   const todayTracks = Object.values(loadState()).sort(
     (a, b) => new Date(b.inDate) - new Date(a.inDate)
   );
@@ -23,7 +21,11 @@ export async function buildShopGridImageBuffer() {
 }
 
 // Posts the grid to the configured Fortnite tracking channel — used by the
-// scheduled workflow (postGridRun.js).
+// scheduled workflow (postGridRun.js/postRun.js). Also records where it
+// landed (state.js's saveLastGridImage) so the ".a fjamtrack shop" command
+// can relay this exact image on demand without regenerating it (that needs
+// `canvas`, which isn't reliably buildable on every host — see
+// command.js) or needing to know the tracking channel itself.
 export async function postShopGridImage() {
   if (!config.botToken || !config.channelId) {
     throw new Error(
@@ -33,11 +35,12 @@ export async function postShopGridImage() {
 
   console.log("Generating shop grid image...");
   const { imageBuffer, dateLabel } = await buildShopGridImageBuffer();
-  await sendFileViaBotChannel(
-    config.botToken,
-    config.channelId,
-    imageBuffer,
-    `jam-tracks-shop-${dateLabel}.png`
-  );
+  const filename = `jam-tracks-shop-${dateLabel}.png`;
+  const message = await sendFileViaBotChannel(config.botToken, config.channelId, imageBuffer, filename);
+
+  const attachment = message?.attachments?.[0];
+  if (attachment) {
+    saveLastGridImage({ url: attachment.url, filename: attachment.filename });
+  }
   console.log("Grid image posted.");
 }
