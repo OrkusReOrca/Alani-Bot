@@ -3,9 +3,18 @@
 // 24/7 on bot-hosting.net, so there's no reason to wait on GitHub's
 // Actions queue (seen running 30-48+ minutes late — see the workflow
 // files' own comments) for something the bot can just do itself on a
-// timer. The GitHub workflows are deactivated (schedule trigger removed,
-// workflow_dispatch kept), not deleted — see .github/workflows/*.yml —
-// so they're still there as a manual fallback/backfill tool if ever needed.
+// timer.
+//
+// fortnite-jam-tracks-tracker's shop check/post is NOT here, even though
+// it was originally moved here too — reverted back to GitHub Actions
+// (see fortnite-jam-tracks-tracker-shop-check.yml/-post.yml, schedule
+// re-enabled) because `postRun.js` needs the `canvas` native module to
+// draw the grid image, and bot-hosting.net's script policy blocks
+// native-module builds — this is the exact same constraint
+// command.js's ".a fjamtrack shop" already works around by never
+// regenerating the grid live on this host. GitHub Actions' runners can
+// build canvas fine (apt-get + npm install, see that workflow's own
+// steps), so that job has to stay there.
 //
 // Same simple poll pattern as orkus-info/scheduler.js: tick every 30s,
 // compare against a fixed "HH:MM" ICT time, and run once per calendar day
@@ -14,22 +23,16 @@
 // minute is a much smaller problem than the 30-48 minute lateness this
 // replaces.
 
-import { run as checkFortniteShop } from "../features/fortnite-jam-tracks-tracker/shop/checkRun.js";
-import { run as postFortniteShop } from "../features/fortnite-jam-tracks-tracker/shop/postRun.js";
 import { run as runUniUpdater } from "../features/uni-application-updater/run.js";
 
 const CHECK_INTERVAL_MS = 30 * 1000;
 const ICT_OFFSET_MINUTES = 7 * 60;
 
-// Same times the GitHub Actions cron schedules used — no longer picked to
+// Same time the GitHub Actions cron schedule used — no longer picked to
 // dodge GitHub's own scheduler congestion (an in-process timer has no
-// queue to dodge), just kept identical so daily posts keep landing at the
-// time users are already used to.
-const JOBS = [
-  { name: "fortnite-jam-tracks-tracker: shop check", hour: 7, minute: 37, run: checkFortniteShop },
-  { name: "fortnite-jam-tracks-tracker: shop post", hour: 8, minute: 12, run: postFortniteShop },
-  { name: "uni-application-updater: daily", hour: 9, minute: 19, run: () => runUniUpdater() },
-];
+// queue to dodge), just kept identical so the daily post keeps landing
+// at the time users are already used to.
+const JOBS = [{ name: "uni-application-updater: daily", hour: 9, minute: 19, run: () => runUniUpdater() }];
 
 function ictNow() {
   const shifted = new Date(Date.now() + ICT_OFFSET_MINUTES * 60 * 1000);

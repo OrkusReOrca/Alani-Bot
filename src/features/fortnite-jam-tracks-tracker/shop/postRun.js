@@ -31,10 +31,11 @@ export async function run() {
   console.log("Done.");
 }
 
-// CLI entry point — still used by the (now-deactivated) GitHub Actions
-// workflow via `npm run post:fortnite-jam-tracks-tracker-shop`. The
-// persistent bot instead imports and calls run() directly — see
-// common/dailyJobs.js.
+// CLI entry point, used by the GitHub Actions workflow via
+// `npm run post:fortnite-jam-tracks-tracker-shop` — this needs the
+// `canvas` native module (via postShopGridImage.js), which is exactly
+// why this stays a GitHub Actions script rather than running in-process
+// on bot-hosting.net; see common/dailyJobs.js.
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   run().catch((err) => {
     console.error(err);

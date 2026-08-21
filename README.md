@@ -10,11 +10,12 @@ existing ones.
 src/
   bot.js                         the persistent 24/7 bot process — needed for
                                   interactive commands (slash + prefix both require
-                                  a live gateway connection) AND for every feature's
-                                  daily job (see common/dailyJobs.js) — those used to
-                                  be standalone GitHub Actions cron scripts, now run
-                                  in-process instead since the bot is online 24/7
-                                  anyway
+                                  a live gateway connection) AND for whichever daily
+                                  jobs run in-process (see common/dailyJobs.js) —
+                                  not every feature's daily job qualifies; some still
+                                  need GitHub Actions specifically (e.g. one needing
+                                  a native module bot-hosting.net's script policy
+                                  blocks), see "Daily jobs" in this README
   deployCommands.js              registers slash commands with Discord — run once,
                                   and again whenever a command's shape changes
   common/                       shared plumbing used by every feature
@@ -39,14 +40,12 @@ src/
 
 data/
   <feature-name>/                this feature's persisted state / source data.
-                                  JSON state files used to be committed back to git
-                                  by their workflow on every scheduled run; now that
-                                  those jobs run in-process (see "Daily jobs" below),
-                                  they're written straight to the host's own disk
-                                  instead, same as *.db SQLite files (e.g.
+                                  JSON state files are committed back to git by their
+                                  workflow on every scheduled run — UNLESS that job
+                                  now runs in-process (see "Daily jobs" below), in
+                                  which case it's written straight to the host's own
+                                  disk instead, same as *.db SQLite files (e.g.
                                   orkus-info/) always have been — see .gitignore.
-                                  The workflow's git-commit step still exists for a
-                                  manual/backfill run via workflow_dispatch.
 
 .github/workflows/
   <feature-name>-*.yml           this feature's scheduled trigger(s)
@@ -64,14 +63,14 @@ under one parent feature folder with sub-feature subfolders (e.g.
 features — same rules apply one level deeper: each sub-feature still gets
 its own `data/` subfolder, npm scripts, and workflow file.
 
-A feature is either a **daily job** (a `run()` function, triggered
-in-process by `src/common/dailyJobs.js` on a timer — see "Daily jobs"
-below — and still runnable standalone via its `.github/workflows/*.yml`'s
-`workflow_dispatch` as a manual fallback) or an **interactive command**
-(slash and/or prefix — needs `src/bot.js` connected 24/7, since Discord
-delivers interactions and messages over a live gateway connection, not
-something you can trigger on a schedule). Both kinds need the persistent
-bot running now — see "Daily jobs" below for why that wasn't always true.
+A feature is either a **daily job** — a `run()` function, either
+triggered in-process by `src/common/dailyJobs.js` on a timer, or still a
+standalone script triggered by a GitHub Actions workflow (when the bot
+host can't run it itself — see "Daily jobs" below for why that's not
+always a free choice) — or an **interactive command** (slash and/or
+prefix — needs `src/bot.js` connected 24/7, since Discord delivers
+interactions and messages over a live gateway connection, not something
+you can trigger on a schedule).
 
 ## Features
 
@@ -101,12 +100,11 @@ cp .env.example .env   # fill in your bot token + IDs
 
 See each feature's own README for what env vars it needs and how to run it.
 
-## Persistent bot (slash + prefix commands, and daily jobs)
+## Persistent bot (slash + prefix commands, and some daily jobs)
 
 Needed for interactive commands (currently `info`, `fjamtrack shop`, and
-`db`) and, as of the in-process migration below, for every feature's
-daily job too — nothing here is a standalone script anymore in normal
-operation.
+`db`) and for whichever daily jobs run in-process — see "Daily jobs"
+below for which ones that currently is, and why not all of them qualify.
 
 Every command is reachable as a **prefix command** — `.a <name> [args]`
 (e.g. `.a info`, `.a fjamtrack shop`, `.a db list events`), typed as a
@@ -206,28 +204,30 @@ in front (their "Domains" feature) rather than trusting this bare.
 
 ## Daily jobs
 
-`fortnite-jam-tracks-tracker`'s shop check/post and
-`uni-application-updater`'s daily update all run in-process now, on a
-30s-poll timer in `src/common/dailyJobs.js` (started from `bot.js`'s
+`uni-application-updater`'s daily update runs in-process, on a 30s-poll
+timer in `src/common/dailyJobs.js` (started from `bot.js`'s
 `ClientReady` handler, same as `orkus-info`'s reminder scheduler) —
-moved off GitHub Actions cron entirely once the bot itself became a
-24/7 process on bot-hosting.net, since there's no reason to wait on
-GitHub's Actions queue (see the note on timing below) for something the
-always-on bot can just do itself, dead on time, every day.
+moved off GitHub Actions cron once the bot itself became a 24/7 process
+on bot-hosting.net, since there's no reason to wait on GitHub's Actions
+queue (see the note on timing below) for something the always-on bot can
+just do itself, dead on time, every day.
 
-Each job is still a plain exported `run()` function in its usual file
-(`checkRun.js`, `postRun.js`, `run.js`) — `dailyJobs.js` just imports and
-calls those directly instead of them being invoked as a separate `node`
-process. Every one of those files still has its own CLI entry point too
-(guarded so it only fires when the file is actually run as a script, not
-when `dailyJobs.js` imports it), so `npm run check:fortnite-jam-tracks-tracker-shop`
-etc. still work exactly as before.
+The job is still a plain exported `run()` function in its usual file
+(`run.js`) — `dailyJobs.js` just imports and calls it directly instead of
+it being invoked as a separate `node` process. That file still has its
+own CLI entry point too (guarded so it only fires when the file is
+actually run as a script, not when `dailyJobs.js` imports it), so
+`npm run start:uni-application-updater` still works exactly as before.
 
-The corresponding `.github/workflows/*.yml` files are **deactivated, not
-deleted** — their `schedule:` trigger is commented out, `workflow_dispatch`
-is kept, so they're still there as a manual/backfill tool (e.g. to force a
-run from the Actions tab without needing the bot host at all) if that's
-ever useful.
+**`fortnite-jam-tracks-tracker`'s shop check/post is NOT here** — it was
+tried the same way and reverted. `postRun.js` needs the `canvas` native
+module to draw the grid image, and bot-hosting.net's script policy
+blocks native-module builds (the exact same constraint `.a fjamtrack
+shop`'s command already works around by never regenerating the grid
+live on this host — see that command's own comment). GitHub Actions'
+runners build `canvas` fine (an `apt-get` step installs its system libs
+first), so that job stays on its original `.github/workflows/*.yml`
+schedule, unchanged.
 
 ## A note on scheduled workflow timing
 
@@ -238,9 +238,12 @@ case, since every other repo on the platform tends to schedule there too.
 This was observed directly in this repo: crons set at `:00`/`:30` ran
 45-90 minutes late. There's no paid tier that fixes this — it's a
 platform-wide scheduling-service behavior, not a runner-capacity limit.
-This is exactly the lateness the "Daily jobs" section above moved off of
-— the off-round-minute cron times (`:19`, `:37`, `:12`) live on in
-`dailyJobs.js`'s job times, kept identical so daily posts still land at
-the times users are used to, even though there's no GitHub queue left to
-dodge. If you ever add a new GitHub-Actions-scheduled workflow instead
-of an in-process daily job, follow the same off-round-minute pattern.
+This is exactly the lateness `uni-application-updater`'s move to
+`dailyJobs.js` sidesteps (its `:19` time lives on there, kept identical
+so the daily post still lands when users are used to, even though
+there's no GitHub queue left to dodge for that one). `fortnite-jam-
+tracks-tracker`'s shop check/post is still on real GitHub Actions cron
+(`:37`/`:12`) — it's stuck with this lateness risk until/unless `canvas`
+becomes buildable on the bot host some other way. If you ever add a new
+GitHub-Actions-scheduled workflow, follow the same off-round-minute
+pattern regardless.

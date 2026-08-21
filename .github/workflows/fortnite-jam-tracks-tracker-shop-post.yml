@@ -1,10 +1,12 @@
 name: Fortnite Jam Tracks Tracker (Shop) — Post
 
 on:
-  # Schedule trigger deactivated — runs in-process on the persistent bot
-  # instead. See shop-check.yml and src/common/dailyJobs.js.
-  # schedule:
-  #   - cron: "12 1 * * *" # ~8:12 AM Indochina Time (UTC+7)
+  # Re-activated — see shop-check.yml's comment for why (canvas can't
+  # build on bot-hosting.net).
+  schedule:
+    # ~8:12 AM Indochina Time (UTC+7) = 01:12 UTC — off a round minute;
+    # see shop-check.yml for why.
+    - cron: "12 1 * * *"
   workflow_dispatch: {}
 
 permissions:

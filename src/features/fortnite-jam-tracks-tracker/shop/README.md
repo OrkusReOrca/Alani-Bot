@@ -40,14 +40,13 @@ Runs as two separate steps, ~30 minutes apart:
      when there's something to report.
 
 The two steps are split (rather than one script doing both) to give a
-buffer window. Both run in-process on the persistent bot now, on a timer
-in `src/common/dailyJobs.js` — see the root README's "Daily jobs"
-section — not as standalone GitHub Actions runs anymore; the underlying
-`checkRun.js`/`postRun.js` are unchanged either way, just called
-in-process instead of as separate `node` processes. Both times are
-approximate and deliberately off round minutes (a holdover from the
-GitHub Actions cron era — see the root README for why) rather than
-anything meaningful now.
+buffer window — still real GitHub Actions runs, each on its own
+`.github/workflows/*.yml` cron. (A brief attempt moved both in-process on
+the persistent bot; reverted because `post` needs the `canvas` native
+module, which bot-hosting.net's script policy blocks from building — see
+the root README's "Daily jobs" section.) Both times are deliberately off
+round minutes — see the root README's note on scheduled workflow timing
+for why.
 
 ### Why fortnite-api.com instead of fortnite.gg directly
 
@@ -113,9 +112,10 @@ correct, since today's new/left status was already reported once.
 
 Replies with the most recently posted grid image in whichever channel you
 typed it in — from local state (`data/fortnite-jam-tracks-tracker/shop/last-grid.json`,
-written by `postShopGridImage()` right after each daily post). Handled by
-the persistent bot process (`command.js`, see the root README's
-"Persistent bot" section), not a script — needs the bot running, but
+written by `postShopGridImage()` right after each scheduled post, committed
+back to the repo the same way `state.json` is). Handled by the persistent
+bot process (`command.js`, see the root README's "Persistent bot"
+section), not a script — needs the bot running, but
 **not** `DISCORD_FORTNITE_CHANNEL_ID` or any Discord API lookup of its
 own; it just reads that file.
 
@@ -124,33 +124,31 @@ does — that needs `canvas`, a native module some hosts won't let build
 (bot-hosting.net's default script policy blocks it, which crashed the
 whole bot the first time this command tried to run it). Since the grid
 only actually changes once a day when the shop rotates, relaying whatever
-the daily job posted most recently is equivalent in practice, and
+the scheduled workflow posted most recently is equivalent in practice, and
 sidesteps needing `canvas` on the bot's host entirely.
 
 First use after adding this feature will say "No grid image has been
-posted yet" until the next daily post (or a manual `npm run post:fortnite-jam-tracks-tracker-shop`
-/ `workflow_dispatch` of `fortnite-jam-tracks-tracker-shop-grid.yml` or
-`-post.yml`) actually runs and writes `last-grid.json` for the first time.
+posted yet" until the next scheduled post (or a manual `workflow_dispatch`
+of `fortnite-jam-tracks-tracker-shop-grid.yml` or `-post.yml`) actually
+runs and commits `last-grid.json` for the first time.
 
 ## Schedule
 
-Check and post run in-process on the persistent bot's daily timer (see
-the root README's "Daily jobs" section) — `~7:37 AM` / `~8:12 AM`
-Bangkok time respectively, same times as the old GitHub Actions cron.
-Their `.github/workflows/*.yml` files still exist but are deactivated
-(schedule trigger commented out); each is still triggerable manually from
-the Actions tab (`workflow_dispatch`) as a fallback:
+Three workflows, all triggerable manually from the Actions tab
+(`workflow_dispatch`) in addition to their schedule — see the root
+README's "Daily jobs" section for why these run here and not in-process
+on the bot like some other daily jobs in this repo (short version:
+`post` needs the `canvas` native module, which bot-hosting.net's script
+policy blocks from building):
 
-- `fortnite-jam-tracks-tracker-shop-check.yml`
-- `fortnite-jam-tracks-tracker-shop-post.yml` — the full daily flow (grid
-  image + update text message).
-- `fortnite-jam-tracks-tracker-shop-grid.yml` — **manual only**, never
-  scheduled (in-process or otherwise). Runs just `post-grid` above, for
-  triggering the grid image by itself.
+- `fortnite-jam-tracks-tracker-shop-check.yml` — ~7:37 AM Bangkok, cron.
+- `fortnite-jam-tracks-tracker-shop-post.yml` — ~8:12 AM Bangkok, cron.
+  Runs the full daily flow (grid image + update text message).
+- `fortnite-jam-tracks-tracker-shop-grid.yml` — **manual only**, no cron.
+  Runs just `post-grid` above, for triggering the grid image by itself.
 
-`DISCORD_FORTNITE_CHANNEL_ID` (alongside the existing `DISCORD_BOT_TOKEN`)
-must be set wherever these actually run — the bot host's env for the
-in-process daily job, or as a repo secret for a manual `workflow_dispatch`.
+Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret alongside the existing
+`DISCORD_BOT_TOKEN` to activate all three.
 
 ## First run
 

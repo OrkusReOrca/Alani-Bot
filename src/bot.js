@@ -3,13 +3,14 @@
 // commands require a live gateway connection to receive interactions.
 // Run with `npm start`.
 //
-// Daily jobs (fortnite-jam-tracks-tracker's shop check/post,
-// uni-application-updater) run on an in-process timer now — see
-// common/dailyJobs.js — instead of GitHub Actions cron, since this bot
-// is online 24/7 and doesn't need to wait on GitHub's Actions queue
-// (which was seen running 30-48+ minutes late). Those workflow files are
-// deactivated (schedule trigger removed), not deleted, so they're still
-// there as a manual/backfill fallback via workflow_dispatch.
+// uni-application-updater's daily job runs on an in-process timer now —
+// see common/dailyJobs.js — instead of GitHub Actions cron, since this
+// bot is online 24/7 and doesn't need to wait on GitHub's Actions queue
+// (which was seen running 30-48+ minutes late). fortnite-jam-tracks-
+// tracker's shop check/post was tried the same way and reverted back to
+// GitHub Actions — its post step needs the `canvas` native module, which
+// bot-hosting.net's script policy blocks from building (see
+// common/dailyJobs.js's comment for the full story).
 //
 // Every command is reachable as a prefix command (.a <name> [args...]),
 // dispatched to command.js's execute(ctx, args) via the ctx-adapter each

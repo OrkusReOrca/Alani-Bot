@@ -19,11 +19,13 @@ export async function run() {
   console.log("Check complete — pending diff and state saved.");
 }
 
-// CLI entry point — still used by the (now-deactivated) GitHub Actions
-// workflow via `npm run check:fortnite-jam-tracks-tracker-shop`. The
-// persistent bot instead imports and calls run() directly on a timer —
-// see common/dailyJobs.js — so this only fires when the file is actually
-// run as a script, not when it's imported.
+// CLI entry point, used by the GitHub Actions workflow via
+// `npm run check:fortnite-jam-tracks-tracker-shop` (guarded so this only
+// fires when the file is actually run as a script, not on import — a
+// leftover from a brief attempt at running this in-process on the bot,
+// reverted because postRun.js needs the `canvas` native module, which
+// bot-hosting.net's script policy blocks from building; see
+// common/dailyJobs.js).
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   run().catch((err) => {
     console.error(err);
