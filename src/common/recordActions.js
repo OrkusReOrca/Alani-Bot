@@ -20,6 +20,8 @@
 import storeDb, { getNextDisplayNumber, logEvent } from "../features/db/store.js";
 import { getClient } from "./discordClient.js";
 import { canSendInChannel } from "./channelAccess.js";
+import { extractQuoted } from "./textParsing.js";
+import { resolveMentions, formatMentions } from "./mentions.js";
 import { parseIct, fmtIct, fmtIctDate, startOfIctDay } from "../features/orkus-info/format.js";
 
 const DEDUP_WINDOW_MS = 60 * 60 * 1000;
@@ -29,10 +31,14 @@ function normalize(text) {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function stripTrailingModifiers(args) {
+// Same shape as orkus-info/actions.js's own copy — see that file's
+// comment for the full reasoning (duplicated here, not shared, per this
+// module's own top comment).
+function stripTrailingModifiers(args, { allowMentions = false } = {}) {
   const rest = [...args];
   let force = false;
   let channelId = null;
+  let mentions = null;
 
   while (rest.length > 0) {
     const last = rest[rest.length - 1];
@@ -42,27 +48,27 @@ function stripTrailingModifiers(args) {
     } else if (/^\d{15,20}$/.test(last)) {
       channelId = last;
       rest.pop();
+    } else if (allowMentions && mentions === null) {
+      mentions = last;
+      rest.pop();
     } else {
       break;
     }
   }
-  return { rest, force, channelId };
+  return { rest, force, channelId, mentions };
 }
 
-// Splits an args array on a literal "|" token — everything before is the
-// title, everything after (joined back with spaces) is the location.
-// Used only by add/edit event; a title genuinely containing "|" isn't
-// supported (an edge case accepted for the sake of an unambiguous split).
-function splitOnPipe(tokens) {
-  const idx = tokens.indexOf("|");
-  if (idx === -1) return { main: tokens, location: null };
-  return { main: tokens.slice(0, idx), location: tokens.slice(idx + 1).join(" ").trim() || null };
-}
-
-export function createRecordActions({ databaseId, databaseName, onEventCreate = async () => ({}), onEventUpdate = async () => {}, onEventDelete = async () => {} }) {
+export function createRecordActions({
+  databaseId,
+  databaseName,
+  guildId = null,
+  onEventCreate = async () => ({}),
+  onEventUpdate = async () => {},
+  onEventDelete = async () => {},
+}) {
   // ---------- reminders ----------
 
-  async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false, ctx = null }) {
+  async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false, mentionIds = [], ctx = null }) {
     if (channelId) {
       const client = getClient();
       let channel;
@@ -92,9 +98,19 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
     const displayNumber = getNextDisplayNumber(databaseId);
     storeDb
       .prepare(
-        `INSERT INTO gen_reminders (database_id, text, text_normalized, remind_at, created_at, created_by, channel_id, display_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO gen_reminders (database_id, text, text_normalized, remind_at, created_at, created_by, channel_id, display_number, mentions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(databaseId, text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId, displayNumber);
+      .run(
+        databaseId,
+        text,
+        normalized,
+        remindAt.toISOString(),
+        new Date().toISOString(),
+        createdBy,
+        channelId,
+        displayNumber,
+        mentionIds.length > 0 ? mentionIds.join(",") : null
+      );
     logEvent("reminder_created", createdBy, {
       databaseId,
       detail: { text, remindAt: remindAt.toISOString() },
@@ -103,30 +119,58 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
     });
 
     const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
-    return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
+    const mentionNote = mentionIds.length > 0 ? `, will also tag ${formatMentions(mentionIds)}` : "";
+    return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination}${mentionNote})`;
   }
 
+  // Reminder "name" field is quoted (`"..."`) so it can safely contain
+  // spaces, commas, emoji — anything — same standard as orkus-info's own
+  // reminders/events; see common/textParsing.js's extractQuoted().
+  const ADD_REMINDER_USAGE =
+    'Usage: `.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]` (24hr time, Indochina/Bangkok timezone; mentions is a comma-separated list of user IDs and/or usernames, tagged when the reminder fires)';
+
   async function addReminder(args, ctx) {
-    const { rest, force, channelId } = stripTrailingModifiers(args);
-    const [when, ...textParts] = rest;
-    const text = textParts.join(" ").trim();
+    const [when, ...afterWhen] = args;
     const remindAt = parseIct(when);
-    if (!remindAt || !text) {
-      return "Usage: `.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
+    const quoted = extractQuoted(afterWhen);
+    if (!remindAt || !quoted || !quoted.text.trim()) return ADD_REMINDER_USAGE;
+
+    const text = quoted.text.trim();
+    const { force, channelId, mentions } = stripTrailingModifiers(quoted.after, { allowMentions: true });
+
+    let mentionIds = [];
+    if (mentions) {
+      // Same guild the channel-id destination belongs to, if one was
+      // given; otherwise this database's own guild_id (populated at
+      // creation for both kinds — see db/store.js) as the best fallback.
+      let mentionGuildId = guildId;
+      if (channelId) {
+        try {
+          mentionGuildId = (await getClient().channels.fetch(channelId))?.guildId ?? guildId;
+        } catch {
+          // keep the database's own guildId fallback
+        }
+      }
+      const { resolved, unresolved } = await resolveMentions(mentions, mentionGuildId);
+      if (unresolved.length > 0) {
+        return `Couldn't resolve ${unresolved.map((u) => `"${u}"`).join(", ")} to a Discord user${mentionGuildId ? "" : " (no server context available to search by username — try their user ID instead)"} — fix and try again.`;
+      }
+      mentionIds = resolved;
     }
-    return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force, ctx });
+
+    return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force, mentionIds, ctx });
   }
 
   function listReminders() {
     const rows = storeDb
-      .prepare(`SELECT display_number, text, remind_at, channel_id FROM gen_reminders WHERE database_id = ? ORDER BY remind_at ASC`)
+      .prepare(`SELECT display_number, text, remind_at, channel_id, mentions FROM gen_reminders WHERE database_id = ? ORDER BY remind_at ASC`)
       .all(databaseId);
     if (rows.length === 0) return "No reminders.";
     return rows
-      .map(
-        (r) =>
-          `#${r.display_number} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"})`
-      )
+      .map((r) => {
+        const mentionNote = r.mentions ? `, tags ${formatMentions(r.mentions.split(","))}` : "";
+        return `#${r.display_number} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"}${mentionNote})`;
+      })
       .join("\n");
   }
 
@@ -143,11 +187,12 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
   }
 
   function editReminder(args) {
-    const [displayNumber, when, ...textParts] = args;
-    const text = textParts.join(" ").trim();
+    const quoted = extractQuoted(args);
+    const [displayNumber, when] = quoted?.before ?? [];
+    const text = quoted?.text.trim();
     const remindAt = parseIct(when);
     if (!displayNumber || !remindAt || !text) {
-      return "Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>` (replaces both fields; destination/channel unchanged — delete and re-add to change that)";
+      return 'Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> "<text>"` (replaces both fields; destination/channel/mentions unchanged — delete and re-add to change those)';
     }
     const result = storeDb
       .prepare(`UPDATE gen_reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE database_id = ? AND display_number = ?`)
@@ -160,37 +205,47 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
   // ---------- events ----------
 
   const ADD_EVENT_USAGE =
-    "Usage: `.a db add event <start> [end|allday] <title> [| <location>]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check; `| <location>` is optional, defaults to this database's name)";
+    'Usage: `.a db add event <start> [end|allday] "<title>" [| <location>] [force]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; `| <location>` is optional, defaults to this database\'s name; add `force` at the end to skip the duplicate check)';
+
+  // Splits the tokens AFTER a quoted title's closing quote on a literal
+  // "|" — everything before it (if any) is checked for "force", everything
+  // after (joined back with spaces) is the location. Location itself
+  // isn't quoted (only the title/text "name" fields are, per the
+  // standard) — it's just whatever's left, same as before this file's
+  // title parsing switched to quotes.
+  function parseEventModifiers(tokens) {
+    const pipeIdx = tokens.indexOf("|");
+    const modifierTokens = pipeIdx === -1 ? tokens : tokens.slice(0, pipeIdx);
+    const location = pipeIdx === -1 ? null : tokens.slice(pipeIdx + 1).join(" ").trim() || null;
+    const force = modifierTokens.some((t) => t.toLowerCase() === "force");
+    return { force, location };
+  }
 
   async function addEvent(args, ctx = null) {
-    const { rest, force } = stripTrailingModifiers(args);
-    const { main, location: pipedLocation } = splitOnPipe(rest);
-    const [startRaw, second, ...others] = main;
+    const quoted = extractQuoted(args);
+    if (!quoted) return ADD_EVENT_USAGE;
+    const { force, location: pipedLocation } = parseEventModifiers(quoted.after);
+    const [startRaw, second] = quoted.before;
     const parsedStart = parseIct(startRaw);
     if (!parsedStart) return ADD_EVENT_USAGE;
 
     let startTime = parsedStart;
     let endTime;
     let allDay = false;
-    let titleParts;
 
     if (second?.toLowerCase() === "allday") {
       allDay = true;
       startTime = startOfIctDay(parsedStart);
       endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
-      titleParts = others;
+    } else if (second) {
+      const parsedEnd = parseIct(second);
+      if (!parsedEnd) return ADD_EVENT_USAGE;
+      endTime = parsedEnd;
     } else {
-      const parsedEnd = second ? parseIct(second) : null;
-      if (parsedEnd) {
-        endTime = parsedEnd;
-        titleParts = others;
-      } else {
-        endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
-        titleParts = second !== undefined ? [second, ...others] : others;
-      }
+      endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
     }
 
-    const title = titleParts.join(" ").trim();
+    const title = quoted.text.trim();
     if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
     const location = pipedLocation ?? databaseName;
 
@@ -272,13 +327,14 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
   }
 
   async function editEvent(args) {
-    const { main, location: pipedLocation } = splitOnPipe(args);
-    const [id, start, end, ...titleParts] = main;
-    const title = titleParts.join(" ").trim();
+    const quoted = extractQuoted(args);
+    const [id, start, end] = quoted?.before ?? [];
+    const title = quoted?.text.trim();
+    const { location: pipedLocation } = parseEventModifiers(quoted?.after ?? []);
     const startTime = parseIct(start);
     const endTime = parseIct(end);
     if (!id || !startTime || !endTime || !title || endTime <= startTime) {
-      return "Usage: `.a db edit event <id> <start> <end> <title> [| <location>]` (replaces all fields, 24hr time, Indochina/Bangkok timezone; location unchanged if omitted)";
+      return 'Usage: `.a db edit event <id> <start> <end> "<title>" [| <location>]` (replaces all fields, 24hr time, Indochina/Bangkok timezone; location unchanged if omitted)';
     }
 
     const existing = storeDb.prepare(`SELECT discord_event_id, location FROM gen_events WHERE database_id = ? AND id = ?`).get(databaseId, Number(id));

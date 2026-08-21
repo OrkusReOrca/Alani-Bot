@@ -14,7 +14,11 @@
 import { createRecordActions } from "../../common/recordActions.js";
 
 function actionsFor(instance) {
-  return createRecordActions({ databaseId: instance.id, databaseName: instance.name });
+  // guildId here is purely informational (which guild this personal db
+  // happened to be created in, if any — see db/store.js) — used only as
+  // a best-effort fallback for resolving mentions by username; a
+  // personal database is never actually restricted to that guild.
+  return createRecordActions({ databaseId: instance.id, databaseName: instance.name, guildId: instance.guild_id });
 }
 
 async function add(args, ctx, instance) {

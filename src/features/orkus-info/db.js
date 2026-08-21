@@ -77,6 +77,12 @@ ensureColumn("reminders", "channel_id", "TEXT");
 // "always take the smallest free number" on its own.
 ensureColumn("reminders", "display_number", "INTEGER");
 
+// mentions: comma-separated Discord user IDs to tag when this reminder
+// fires, alongside the normal DM/channel delivery — resolved from
+// usernames/IDs at add-time (see common/mentions.js), never at fire
+// time. NULL/empty means no extra mentions, same as before this existed.
+ensureColumn("reminders", "mentions", "TEXT");
+
 // One-time backfill for rows that predate this column (display_number
 // comes back NULL for those otherwise, making them unaddressable by the
 // new scheme) — assigns each the next available number in `id` order,

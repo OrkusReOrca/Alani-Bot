@@ -8,20 +8,22 @@
 
 import db from "./store.js";
 import { getClient } from "../../common/discordClient.js";
+import { formatMentions } from "../../common/mentions.js";
 import { fmtIct } from "../orkus-info/format.js";
 
 const CHECK_INTERVAL_MS = 30 * 1000;
 
 async function fireReminder(reminder) {
   const text = `🚨 REMINDER: *${reminder.text}* at ${fmtIct(reminder.remind_at)}`;
+  const mentions = reminder.mentions ? formatMentions(reminder.mentions.split(",")) : "";
 
   if (reminder.channel_id) {
     const channel = await getClient().channels.fetch(reminder.channel_id);
     const user = await getClient().users.fetch(reminder.created_by);
-    await channel.send(`${text} by *${user.username}*`);
+    await channel.send(`${text} by *${user.username}*${mentions ? ` ${mentions}` : ""}`);
   } else {
     const user = await getClient().users.fetch(reminder.created_by);
-    await user.send(text);
+    await user.send(`${text}${mentions ? ` ${mentions}` : ""}`);
   }
 }
 

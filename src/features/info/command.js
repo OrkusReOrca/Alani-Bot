@@ -9,6 +9,8 @@
 // run inside Alani's own private server (PRIVATE_SERVER_ID below).
 // Everywhere else (other servers, DMs), only the public entries show.
 
+import { chunkMessage } from "../../common/discordApi.js";
+
 export const data = {
   name: "info",
   description: "About Alani — what she can do and how to use her",
@@ -78,16 +80,23 @@ const DB_INFO = [
     "even the whole date can be left off and today's is assumed — " +
     "`T19:00` alone means \"today at 7pm\".",
   "",
+  "**Text fields are quoted**: reminder text and event titles go in " +
+    "double quotes — `\"like this\"` — so they can contain spaces, " +
+    "commas, or emoji freely. It's required, not optional.",
+  "**Reminders can tag people**: add a comma-separated list of user IDs " +
+    "and/or usernames after the text and they'll be tagged when it fires " +
+    "— `... \"take out the trash\" alice,791886420435533864`.",
+  "",
   "**If you've lost track of what you can access**: `.a list db`.",
   "",
   "**Once you have a database**:",
   "```",
-  ".a db [<name>] add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]",
-  ".a db [<name>] add event <start> [end|allday] <title> [| <location>]",
+  '.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]',
+  '.a db [<name>] add event <start> [end|allday] "<title>" [| <location>]',
   ".a db [<name>] list reminders / events",
   ".a db [<name>] delete reminder <id|all> / event <id>",
-  ".a db [<name>] edit reminder <id> <YYYY-MM-DDTHH:MM> <text>",
-  ".a db [<name>] edit event <id> <start> <end> <title> [| <location>]",
+  '.a db [<name>] edit reminder <id> <YYYY-MM-DDTHH:MM> "<text>"',
+  '.a db [<name>] edit event <id> <start> <end> "<title>" [| <location>]',
   "```",
   "`<name>` can be left off once you only have one database to pick from.",
 ].join("\n");
@@ -99,7 +108,14 @@ const DB_INFO = [
 // this shape.
 export async function execute(ctx, args = []) {
   if (args[0]?.toLowerCase() === "db") {
-    await ctx.reply(DB_INFO);
+    // Chunked (not a single ctx.reply()) since this has grown past
+    // Discord's 2000-char single-message limit — safe to call ctx.reply()
+    // more than once here since `.a info db` is prefix-only (message-
+    // based ctx), never a slash interaction (which could only ever
+    // reply once without a followUp ctx doesn't expose).
+    for (const chunk of chunkMessage(DB_INFO)) {
+      await ctx.reply(chunk);
+    }
     return;
   }
 

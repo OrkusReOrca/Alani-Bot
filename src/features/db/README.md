@@ -82,19 +82,51 @@ Once a database (Main or otherwise) is resolved, the verbs are identical
 everywhere:
 
 ```
-.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]
-.a db [<name>] add event <start> [end|allday] <title> [| <location>]
+.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]
+.a db [<name>] add event <start> [end|allday] "<title>" [| <location>] [force]
 .a db [<name>] list reminders / events
 .a db [<name>] delete reminder <id|all> / event <id>
-.a db [<name>] edit reminder <id> <YYYY-MM-DDTHH:MM> <text>
-.a db [<name>] edit event <id> <start> <end> <title> [| <location>]
+.a db [<name>] edit reminder <id> <YYYY-MM-DDTHH:MM> "<text>"
+.a db [<name>] edit event <id> <start> <end> "<title>" [| <location>]
 ```
 
-`| <location>` is optional on add/edit event — only meaningful for
+**`"<text>"` / `"<title>"` are quoted** — required, not optional
+punctuation. This is the standard for every free-text "name" field in
+this repo now (reminders, events, and any future one): wrap it in double
+quotes so it can safely contain spaces, commas, emoji, anything, without
+being mistaken for a trailing modifier. `common/textParsing.js`'s
+`extractQuoted()` re-joins the tokens between the opening and closing
+`"` — necessary because bot.js's own message tokenizer has no
+quote-awareness at all, splitting purely on whitespace before any of
+this code sees it, so a typed `"hello there"` arrives as two separate
+tokens (`"hello`, `there"`) that have to be reassembled. Missing quotes
+is a usage error, not a silent fallback to the old unquoted behavior.
+
+**`[mentions]`** (reminders only) — a comma-separated list of Discord
+user IDs and/or usernames, tagged when the reminder fires (in addition to
+its normal DM/channel delivery). Resolved to real user IDs once, at
+add-time (fail clearly then, not hours later at fire-time) —
+`common/mentions.js`. A username needs SOME guild to search in (Discord
+has no global username index): the reminder's own target channel's
+guild if one's given, else the database's own guild (informational for
+general-user-db, functional for general-server-db), else Main's
+command-box channel's guild. No guild context at all means only raw user
+IDs work, not usernames. A single bare numeric mention with no comma is
+indistinguishable from a channel-id and resolves as one — use a comma
+(even for just one entry) or a username to avoid that ambiguity. Only
+actually notifies anyone when the reminder posts to a shared channel — a
+DM only reaches the original creator, so mentioning someone else there
+doesn't ping them at all (Discord's DM channels aren't shared spaces).
+Edit doesn't let you change mentions (same as channel destination) —
+delete and re-add to change those.
+
+**`| <location>`** is optional on add/edit event — only meaningful for
 general-server-db (it's the location Discord's Scheduled Event API
-requires; see that feature's own README), ignored everywhere else.
-Defaults to the database's own name if omitted on add; left unchanged if
-omitted on edit.
+requires; see that feature's own README), ignored everywhere else. Not
+quoted (only the title/text fields use the quoting standard above) —
+just whatever's left after the pipe, joined back with spaces. Defaults
+to the database's own name if omitted on add; left unchanged if omitted
+on edit.
 
 **Dates**: 24-hour, Indochina/Bangkok time. Year, month, and the date
 itself can each be omitted independently and today's ICT value is
@@ -194,6 +226,12 @@ completely out of this too, consistent with the rest of this feature's
    `command.js`'s resolution/verb-handling — this part currently has no
    generic plug-in point, since there have only ever been two tiers to
    support so far.
+5. Any free-text "name" field (a title, a label, anything a user types
+   that should safely allow spaces/commas/emoji) must use the double-quote
+   standard — `common/textParsing.js`'s `extractQuoted()` — rather than a
+   bespoke "everything after here, joined" parser. This is the
+   established convention for the whole repo now, not just reminders/
+   events.
 
 ## Setup
 

@@ -121,6 +121,20 @@ async function handleDeleteReminder(req, res) {
   sendJson(res, 200, { message });
 }
 
+// Events' title is now a double-quoted "name" field in the chat grammar
+// (see common/textParsing.js's extractQuoted, and actions.js's addEvent)
+// — since this handler forwards to that same token-based dispatcher
+// rather than a JSON-native insert path (events never got the direct-call
+// treatment addReminderRecord did), it has to fake the quote marks onto
+// the token array itself: a multi-word title becomes ["\"first", "word",
+// "last\""], not a single already-quoted string, matching exactly what
+// the chat tokenizer would have produced from someone typing it.
+function quoteTokens(text) {
+  const words = text.trim().split(/\s+/);
+  if (words.length === 1) return [`"${words[0]}"`];
+  return [`"${words[0]}`, ...words.slice(1, -1), `${words[words.length - 1]}"`];
+}
+
 // Events: no owner/DM defaulting to work out like reminders needed —
 // they don't have a "who gets notified" concept, so this just forwards
 // straight to the same dispatcher the chat command uses. end/allDay are
@@ -142,7 +156,12 @@ async function handleAddEvent(req, res) {
     return sendJson(res, 400, { error: "title and start (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required" });
   }
 
-  const args = allDay ? ["event", start, "allday", title] : end ? ["event", start, end, title] : ["event", start, title];
+  const titleTokens = quoteTokens(title);
+  const args = allDay
+    ? ["event", start, "allday", ...titleTokens]
+    : end
+      ? ["event", start, end, ...titleTokens]
+      : ["event", start, ...titleTokens];
   const message = await orkusInfoActions.add(args);
   sendJson(res, 200, { message });
 }

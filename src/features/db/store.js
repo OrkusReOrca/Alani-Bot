@@ -88,6 +88,23 @@ db.exec(`
   );
 `);
 
+// Column added after this table already existed in production (some
+// general-user-db/general-server-db instances predate it) — same
+// guarded-ALTER pattern as orkus-info/db.js's ensureColumn, not a bare
+// `CREATE TABLE IF NOT EXISTS` column (which only matters for a table
+// that doesn't exist yet at all, not new columns on one that already does).
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+// mentions: comma-separated Discord user IDs to tag when this reminder
+// fires — same field/behavior as orkus-info's own reminders.mentions,
+// just on this shared table instead (see common/mentions.js).
+ensureColumn("gen_reminders", "mentions", "TEXT");
+
 // ---------- audit log ----------
 // Append-only history — "who did what, where, when" — for the two
 // tiered database kinds only (NOT Main/orkus-info, kept fully untouched

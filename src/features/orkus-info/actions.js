@@ -17,6 +17,8 @@
 import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
 import { canSendInChannel } from "../../common/channelAccess.js";
+import { extractQuoted } from "../../common/textParsing.js";
+import { resolveMentions, formatMentions } from "../../common/mentions.js";
 import { parseIct, fmtIct, fmtIctDate, ictDateString, startOfIctDay } from "./format.js";
 import { config } from "./config.js";
 import * as googleCalendar from "../../common/googleCalendar.js";
@@ -31,15 +33,22 @@ function normalize(text) {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-// Pulls trailing modifier tokens (any order) off the end of an args list:
-// "force" (skip the duplicate check) and/or a bare Discord snowflake
-// (channel to post the reminder in, instead of DMing the creator).
-// Stops at the first token that's neither, so reminder text itself never
-// gets mistaken for a modifier.
-function stripTrailingModifiers(args) {
+// Pulls trailing modifier tokens (any order) off the end of an args list
+// that's ALREADY had its quoted "name" field extracted (see
+// common/textParsing.js's extractQuoted) — so what's left here is only
+// ever modifiers, never reminder text itself: "force" (skip the
+// duplicate check), a bare Discord snowflake (channel to post in,
+// instead of DMing the creator), and — reminders only — one mentions
+// token (comma-separated user IDs/usernames, or a single one; see
+// common/mentions.js). A single bare numeric mention with no comma is
+// indistinguishable from a channel-id and resolves as one — a known,
+// accepted limitation; use a comma (even for one entry) or a username
+// to avoid the ambiguity.
+function stripTrailingModifiers(args, { allowMentions = false } = {}) {
   const rest = [...args];
   let force = false;
   let channelId = null;
+  let mentions = null;
 
   while (rest.length > 0) {
     const last = rest[rest.length - 1];
@@ -49,11 +58,14 @@ function stripTrailingModifiers(args) {
     } else if (/^\d{15,20}$/.test(last)) {
       channelId = last;
       rest.pop();
+    } else if (allowMentions && mentions === null) {
+      mentions = last;
+      rest.pop();
     } else {
       break;
     }
   }
-  return { rest, force, channelId };
+  return { rest, force, channelId, mentions };
 }
 
 // ---------- reminders ----------
@@ -63,7 +75,8 @@ function stripTrailingModifiers(args) {
 // values — e.g. the voice API (src/features/db/voiceApi.js), which
 // receives JSON, not a token array — can call this directly instead of
 // faking a fresh set of chat tokens just to go through addReminder().
-export async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false }) {
+export async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false, mentionIds = [] }) {
+  let guildIdForMentions = null;
   if (channelId) {
     const client = getClient();
     let channel;
@@ -75,6 +88,7 @@ export async function addReminderRecord({ text, remindAt, channelId = null, crea
     if (!(await canSendInChannel(client, channel))) {
       return `Can't send in channel \`${channelId}\` — check the ID and that Alani has permission to post there, then try again.`;
     }
+    guildIdForMentions = channel?.guildId ?? null;
   }
 
   const normalized = normalize(text);
@@ -92,34 +106,80 @@ export async function addReminderRecord({ text, remindAt, channelId = null, crea
 
   const displayNumber = getNextDisplayNumber();
   db.prepare(
-    `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id, display_number) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId, displayNumber);
+    `INSERT INTO reminders (text, text_normalized, remind_at, created_at, created_by, channel_id, display_number, mentions) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    text,
+    normalized,
+    remindAt.toISOString(),
+    new Date().toISOString(),
+    createdBy,
+    channelId,
+    displayNumber,
+    mentionIds.length > 0 ? mentionIds.join(",") : null
+  );
 
   const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
-  return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
+  const mentionNote = mentionIds.length > 0 ? `, will also tag ${formatMentions(mentionIds)}` : "";
+  return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination}${mentionNote})`;
 }
 
+// Reminder "name" field is quoted (`"..."`) so it can safely contain
+// spaces, commas, emoji — anything — without colliding with the trailing
+// modifiers after it. See common/textParsing.js's extractQuoted() for why
+// (bot.js's own tokenizer has no quote-awareness, splitting purely on
+// whitespace before any of this code sees it).
+const ADD_REMINDER_USAGE =
+  'Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]` (24hr time, Indochina/Bangkok timezone; mentions is a comma-separated list of user IDs and/or usernames, tagged when the reminder fires)';
+
 async function addReminder(args, ctx) {
-  const { rest, force, channelId } = stripTrailingModifiers(args);
-  const [when, ...textParts] = rest;
-  const text = textParts.join(" ").trim();
+  const [when, ...afterWhen] = args;
   const remindAt = parseIct(when);
-  if (!remindAt || !text) {
-    return "Usage: `.a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
+  const quoted = extractQuoted(afterWhen);
+  if (!remindAt || !quoted || !quoted.text.trim()) return ADD_REMINDER_USAGE;
+
+  const text = quoted.text.trim();
+  const { force, channelId, mentions } = stripTrailingModifiers(quoted.after, { allowMentions: true });
+
+  let mentionIds = [];
+  if (mentions) {
+    // Same guild the channel-id destination belongs to, if one was
+    // given; otherwise fall back to wherever the command-box channel
+    // lives — Main tier always operates through that one fixed channel,
+    // so it's the closest thing this tier has to a "home guild".
+    let guildId = null;
+    if (channelId) {
+      try {
+        guildId = (await getClient().channels.fetch(channelId))?.guildId ?? null;
+      } catch {
+        guildId = null;
+      }
+    } else if (config.commandBoxChannelId) {
+      try {
+        guildId = (await getClient().channels.fetch(config.commandBoxChannelId))?.guildId ?? null;
+      } catch {
+        guildId = null;
+      }
+    }
+    const { resolved, unresolved } = await resolveMentions(mentions, guildId);
+    if (unresolved.length > 0) {
+      return `Couldn't resolve ${unresolved.map((u) => `"${u}"`).join(", ")} to a Discord user${guildId ? "" : " (no server context available to search by username — try their user ID instead)"} — fix and try again.`;
+    }
+    mentionIds = resolved;
   }
-  return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force });
+
+  return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force, mentionIds });
 }
 
 function listReminders() {
   const rows = db
-    .prepare(`SELECT display_number, text, remind_at, channel_id FROM reminders ORDER BY remind_at ASC`)
+    .prepare(`SELECT display_number, text, remind_at, channel_id, mentions FROM reminders ORDER BY remind_at ASC`)
     .all();
   if (rows.length === 0) return "No reminders.";
   return rows
-    .map(
-      (r) =>
-        `#${r.display_number} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"})`
-    )
+    .map((r) => {
+      const mentionNote = r.mentions ? `, tags ${formatMentions(r.mentions.split(","))}` : "";
+      return `#${r.display_number} — ${fmtIct(r.remind_at)} — ${r.text} (${r.channel_id ? `<#${r.channel_id}>` : "DM"}${mentionNote})`;
+    })
     .join("\n");
 }
 
@@ -137,11 +197,12 @@ function deleteReminder(displayNumber) {
 }
 
 function editReminder(args) {
-  const [displayNumber, when, ...textParts] = args;
-  const text = textParts.join(" ").trim();
+  const quoted = extractQuoted(args);
+  const [displayNumber, when] = quoted?.before ?? [];
+  const text = quoted?.text.trim();
   const remindAt = parseIct(when);
   if (!displayNumber || !remindAt || !text) {
-    return "Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> <text>` (replaces both fields; destination/channel unchanged — delete and re-add to change that)";
+    return 'Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> "<text>"` (replaces both fields; destination/channel/mentions unchanged — delete and re-add to change those)';
   }
   const result = db
     .prepare(`UPDATE reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE display_number = ?`)
@@ -164,39 +225,37 @@ function editReminder(args) {
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000; // 1 hour, when no end is given
 
 const ADD_EVENT_USAGE =
-  "Usage: `.a db add event <start> [end|allday] <title>` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check)";
+  'Usage: `.a db add event <start> [end|allday] "<title>" [force]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check)';
 
 async function addEvent(args) {
-  const { rest, force } = stripTrailingModifiers(args);
-  const [startRaw, second, ...others] = rest;
+  const quoted = extractQuoted(args);
+  if (!quoted) return ADD_EVENT_USAGE;
+  const force = quoted.after.some((t) => t.toLowerCase() === "force");
+  const [startRaw, second] = quoted.before;
   const parsedStart = parseIct(startRaw);
   if (!parsedStart) return ADD_EVENT_USAGE;
 
-  // `second` is ambiguous on its own — it's the end time/date if it
-  // parses as one, "allday" for an all-day event, or (if neither) it's
-  // actually the first word of the title and no end was given at all.
+  // The title is already unambiguously delimited by quotes now, so
+  // `second` (whatever's between start and the opening quote) can only
+  // ever be the optional end/allday token — no more guessing whether it
+  // was actually the first word of an unquoted title.
   let startTime = parsedStart;
   let endTime;
   let allDay = false;
-  let titleParts;
 
   if (second?.toLowerCase() === "allday") {
     allDay = true;
     startTime = startOfIctDay(parsedStart);
     endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
-    titleParts = others;
+  } else if (second) {
+    const parsedEnd = parseIct(second);
+    if (!parsedEnd) return ADD_EVENT_USAGE;
+    endTime = parsedEnd;
   } else {
-    const parsedEnd = second ? parseIct(second) : null;
-    if (parsedEnd) {
-      endTime = parsedEnd;
-      titleParts = others;
-    } else {
-      endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
-      titleParts = second !== undefined ? [second, ...others] : others;
-    }
+    endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
   }
 
-  const title = titleParts.join(" ").trim();
+  const title = quoted.text.trim();
   if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
 
   const normalized = normalize(title);
@@ -277,12 +336,13 @@ async function deleteEvent(id) {
 }
 
 async function editEvent(args) {
-  const [id, start, end, ...titleParts] = args;
-  const title = titleParts.join(" ").trim();
+  const quoted = extractQuoted(args);
+  const [id, start, end] = quoted?.before ?? [];
+  const title = quoted?.text.trim();
   const startTime = parseIct(start);
   const endTime = parseIct(end);
   if (!id || !startTime || !endTime || !title || endTime <= startTime) {
-    return "Usage: `.a db edit event <id> <start> <end> <title>` (replaces all fields, 24hr time, Indochina/Bangkok timezone)";
+    return 'Usage: `.a db edit event <id> <start> <end> "<title>"` (replaces all fields, 24hr time, Indochina/Bangkok timezone)';
   }
 
   const existing = db.prepare(`SELECT google_event_id FROM events WHERE id = ?`).get(Number(id));

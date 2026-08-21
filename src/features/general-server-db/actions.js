@@ -17,6 +17,7 @@ function actionsFor(instance) {
   return createRecordActions({
     databaseId: instance.id,
     databaseName: instance.name,
+    guildId: instance.guild_id,
     onEventCreate: async ({ title, start, end, location }) => {
       const discordEventId = await createScheduledEvent(instance.guild_id, { name: title, start, end, location });
       return { discordEventId };
