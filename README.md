@@ -85,11 +85,29 @@ you can trigger on a schedule).
     available on demand via `.a fjamtrack shop`.
 - **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
-- **[db](src/features/db/README.md)** — `.a db ...`, admin-level (owner-only,
-  one dedicated channel) access to structured data — reminders and
-  calendar events for now, via **[orkus-info](src/features/orkus-info/README.md)**,
-  extensible to more databases later. SQLite-backed, with duplicate and
-  overlap detection.
+- **[db](src/features/db/README.md)** — `.a db ...`, structured data
+  (reminders, calendar events) across a tiered permission system: a fixed
+  owner-only Main database (**[orkus-info](src/features/orkus-info/README.md)**,
+  synced to Google Calendar) plus Tier Personal/Tier Server, which let
+  owner-granted regular users create and manage their own private or
+  guild-scoped database. See "Tiers" below. SQLite-backed throughout, with
+  duplicate and overlap detection.
+
+## Tiers
+
+`.a db`'s permission model is per-database, not one flat gate. Full
+detail (exact commands, resolution rules, frozen/revoke semantics) is in
+[src/features/db/README.md](src/features/db/README.md) — summary:
+
+| Tier | Who | Database | Access | Google Calendar | Discord Scheduled Event |
+|---|---|---|---|---|---|
+| **Main** | fixed — `DISCORD_OWNER_0`/`DISCORD_OWNER_1` only | orkus-info (the original, single database) | command-box channel only | yes | no |
+| **Personal** | any user an owner grants it to | one private "general-user-db" per user | any channel, owner only | no | no |
+| **Server** | any user an owner grants it to | one "general-server-db" per user, scoped to one guild; owner can add collaborators | any channel, owner + collaborators | no | yes — events also create/edit/delete a real Discord server event |
+
+Bot owners can always reach every database, every tier, everywhere —
+including ones another user's revoked tier has "frozen" (fully
+inaccessible to anyone else until re-granted or `.a db transfer`red).
 
 ## Setup
 
@@ -108,8 +126,9 @@ below for which ones that currently is, and why not all of them qualify.
 
 Every command is reachable as a **prefix command** — `.a <name> [args]`
 (e.g. `.a info`, `.a fjamtrack shop`, `.a db list events`), typed as a
-plain message in any channel Alani can see (`db` is the one exception —
-restricted to a single channel and two users; see
+plain message in any channel Alani can see (`db`'s Main tier is the one
+exception — restricted to a single channel and two owners; every other
+tier works in any channel — see "Tiers" below and
 [src/features/db/README.md](src/features/db/README.md)). No registration
 needed, but Discord requires explicitly turning on the **Message Content**
 privileged intent for this bot (Discord Developer Portal -> your
@@ -148,6 +167,11 @@ voice-Alani posting as a bot or webhook would never reach `.a db`'s
 command parser (or pass its owner check, which needs a real user ID) —
 an HTTP endpoint is the actually-correct way to bridge two independent
 services, not a workaround.
+
+Deliberately Main-tier only — voice-Alani reaches orkus-info exclusively,
+not any Tier Personal/Server database (see "Tiers" above). There's no
+product reason for voice to reach anyone's personal or server database,
+and it has no concept of Discord users' own tiers to begin with.
 
 **Setup:**
 1. Generate any long random string for `VOICE_API_SECRET` — set it as an

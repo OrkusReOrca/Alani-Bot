@@ -1,14 +1,23 @@
 # orkus-info
 
-The default database behind `.a db` (see `src/features/db/`) —
-reminders and calendar events for now, more record types (email, etc.)
-later. SQLite, via Node's built-in `node:sqlite` (not an npm package —
-see `db.js` for why that matters).
+The **Main tier** database behind `.a db` (see `src/features/db/README.md`'s
+"Tiers" section) — the bot's original, single, fixed database: owner-only,
+one channel, the only one that syncs to Google Calendar. Tier Personal and
+Tier Server (general-user-db, general-server-db) are separate, unrelated
+databases with their own tiers/permissions — Main's access rule
+(command-box channel + `DISCORD_OWNER_0`/`DISCORD_OWNER_1` only) is its
+own rule, not something other databases inherit or are restricted by.
+This file/feature is deliberately kept independent from those two (no
+shared code) — reminders and calendar events for now, more record types
+(email, etc.) later. SQLite, via Node's built-in `node:sqlite` (not an npm
+package — see `db.js` for why that matters).
 
 ## Commands
 
-All go through `.a db` (defaults to this database, so `orkus-info` can be
-omitted — see `src/features/db/README.md`):
+All go through `.a db`, in the command-box channel, as a bot owner
+(`main`/`orkus-info` can be omitted when it's the only database you have
+access to there — see `src/features/db/README.md`'s "Database resolution"
+section for the exact rule):
 
 ```
 .a db add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]

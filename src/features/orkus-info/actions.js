@@ -14,9 +14,9 @@
 // either — only reminders tend to accumulate/churn enough for a large
 // growing number to actually matter.
 
-import { PermissionsBitField } from "discord.js";
 import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
+import { canSendInChannel } from "../../common/channelAccess.js";
 import { parseIct, fmtIct, fmtIctDate, ictDateString, startOfIctDay } from "./format.js";
 import { config } from "./config.js";
 import * as googleCalendar from "../../common/googleCalendar.js";
@@ -54,18 +54,6 @@ function stripTrailingModifiers(args) {
     }
   }
   return { rest, force, channelId };
-}
-
-// Checked before ever adding a reminder targeting a channel — per the
-// spec, a bad channel should reject the whole add ("ask to try again"),
-// not add it and hope for the best when it fires later.
-async function canSendInChannel(client, channel) {
-  if (!channel || typeof channel.isTextBased !== "function" || !channel.isTextBased()) return false;
-  if (channel.guild) {
-    const perms = channel.permissionsFor(client.user);
-    return Boolean(perms?.has(PermissionsBitField.Flags.SendMessages));
-  }
-  return true; // DM/group channels: fetch succeeding is good enough
 }
 
 // ---------- reminders ----------

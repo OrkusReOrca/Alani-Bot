@@ -30,6 +30,14 @@
 // personal hobby bridge; if that's ever a real concern, put a domain +
 // TLS in front (bot-hosting.net's "Domains" feature) rather than trusting
 // this endpoint bare.
+//
+// Deliberately hardcodes orkus-info/actions.js directly rather than going
+// through the tier/registry system added later (see
+// src/features/db/store.js and command.js) — voice-Alani is intentionally
+// Main-tier-only. It has no concept of a Discord user's own tiers/
+// databases, and there's no product reason for it to reach anyone's
+// general-user-db/general-server-db. Do not extend these routes to the
+// other database kinds.
 
 import http from "http";
 import { config } from "../../common/config.js";
