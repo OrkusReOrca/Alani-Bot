@@ -75,7 +75,42 @@ db.exec(`
     discord_event_id TEXT,
     location         TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type    TEXT NOT NULL,
+    actor_user_id TEXT NOT NULL,
+    database_id   INTEGER,
+    detail        TEXT,
+    channel_id    TEXT,
+    guild_id      TEXT,
+    created_at    TEXT NOT NULL
+  );
 `);
+
+// ---------- audit log ----------
+// Append-only history — "who did what, where, when" — for the two
+// tiered database kinds only (NOT Main/orkus-info, kept fully untouched
+// by this whole feature). Exists for two reasons: the admin `.a list db`
+// view (see command.js) can show accessible-user history, and it's the
+// groundwork for possible future cascade-revoking (e.g. tracing which
+// collaborators a since-removed server-db owner had added). `detail` is
+// a small JSON blob, shape depends on event_type — kept loose on purpose
+// rather than a rigid column-per-field schema, since new event types
+// will likely need different fields.
+
+export function logEvent(eventType, actorUserId, { databaseId = null, detail = null, channelId = null, guildId = null } = {}) {
+  db.prepare(
+    `INSERT INTO audit_log (event_type, actor_user_id, database_id, detail, channel_id, guild_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(eventType, actorUserId, databaseId, detail ? JSON.stringify(detail) : null, channelId, guildId, new Date().toISOString());
+}
+
+export function getAuditLog(databaseId) {
+  return db
+    .prepare(`SELECT * FROM audit_log WHERE database_id = ? ORDER BY created_at ASC`)
+    .all(databaseId)
+    .map((r) => ({ ...r, detail: r.detail ? JSON.parse(r.detail) : null }));
+}
 
 // ---------- tier grants ----------
 
@@ -83,7 +118,7 @@ export function hasGrant(userId, tier) {
   return Boolean(db.prepare(`SELECT 1 FROM grants WHERE user_id = ? AND tier = ?`).get(userId, tier));
 }
 
-export function grantTier(userId, tier, grantedBy) {
+export function grantTier(userId, tier, grantedBy, { channelId = null, guildId = null } = {}) {
   db.prepare(
     `INSERT INTO grants (user_id, tier, granted_at, granted_by) VALUES (?, ?, ?, ?)
      ON CONFLICT (user_id, tier) DO UPDATE SET granted_at = excluded.granted_at, granted_by = excluded.granted_by`
@@ -92,11 +127,15 @@ export function grantTier(userId, tier, grantedBy) {
   // database this user owns (not merely collaborates on) that got frozen
   // by a previous revoke comes back automatically.
   unfreezeOwnerDatabases(userId);
+  logEvent("grant", grantedBy, { detail: { tier, targetUserId: userId }, channelId, guildId });
 }
 
-export function revokeTier(userId, tier) {
+export function revokeTier(userId, tier, revokedBy, { channelId = null, guildId = null } = {}) {
   const result = db.prepare(`DELETE FROM grants WHERE user_id = ? AND tier = ?`).run(userId, tier);
-  if (result.changes > 0) freezeOwnerDatabases(userId);
+  if (result.changes > 0) {
+    freezeOwnerDatabases(userId);
+    logEvent("revoke", revokedBy, { detail: { tier, targetUserId: userId }, channelId, guildId });
+  }
   return result.changes > 0;
 }
 
@@ -128,12 +167,13 @@ export function countOwnedDatabases(userId, kind) {
   return db.prepare(`SELECT COUNT(*) AS n FROM databases WHERE owner_user_id = ? AND kind = ?`).get(userId, kind).n;
 }
 
-export function createDatabase({ kind, name, ownerUserId, guildId, primaryChannelId }) {
+export function createDatabase({ kind, name, ownerUserId, guildId, primaryChannelId, channelId = null }) {
   const info = db
     .prepare(
       `INSERT INTO databases (kind, name, owner_user_id, guild_id, primary_channel_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`
     )
     .run(kind, name, ownerUserId, guildId, primaryChannelId, new Date().toISOString());
+  logEvent("db_created", ownerUserId, { databaseId: info.lastInsertRowid, detail: { kind, name }, channelId, guildId });
   return getDatabaseById(info.lastInsertRowid);
 }
 
@@ -178,6 +218,17 @@ export function listAccessibleDatabases(userId, { includeAll = false } = {}) {
     .all(userId, userId);
 }
 
+// Every database (any kind, any status) recorded as created in a given
+// guild — used by ".a list db" run by a bot owner inside a non-command-box
+// guild channel. Includes frozen ones (same "owners can see everything"
+// rule as the global list) and general-user-db instances too, even though
+// those aren't actually restricted to that guild — guild_id there is
+// purely informational (which server the create command happened to be
+// run in), not an access boundary.
+export function listDatabasesInGuild(guildId) {
+  return db.prepare(`SELECT * FROM databases WHERE guild_id = ? ORDER BY kind, name`).all(guildId);
+}
+
 export function dropDatabase(id) {
   db.prepare(`DELETE FROM gen_reminders WHERE database_id = ?`).run(id);
   db.prepare(`DELETE FROM gen_events WHERE database_id = ?`).run(id);
@@ -193,20 +244,25 @@ function unfreezeOwnerDatabases(userId) {
   db.prepare(`UPDATE databases SET status = 'active' WHERE owner_user_id = ?`).run(userId);
 }
 
-export function transferOwnership(id, newOwnerUserId) {
+export function transferOwnership(id, newOwnerUserId, actorUserId, { channelId = null, guildId = null } = {}) {
   db.prepare(`UPDATE databases SET owner_user_id = ?, status = 'active' WHERE id = ?`).run(newOwnerUserId, id);
+  logEvent("transfer", actorUserId, { databaseId: id, detail: { newOwnerUserId }, channelId, guildId });
 }
 
 // ---------- collaborators (server-kind databases only) ----------
 
-export function addCollaborator(databaseId, userId) {
+export function addCollaborator(databaseId, userId, actorUserId, { channelId = null, guildId = null } = {}) {
   db.prepare(
     `INSERT OR IGNORE INTO collaborators (database_id, user_id, added_at) VALUES (?, ?, ?)`
   ).run(databaseId, userId, new Date().toISOString());
+  logEvent("collab_add", actorUserId, { databaseId, detail: { targetUserId: userId }, channelId, guildId });
 }
 
-export function removeCollaborator(databaseId, userId) {
+export function removeCollaborator(databaseId, userId, actorUserId, { channelId = null, guildId = null } = {}) {
   const result = db.prepare(`DELETE FROM collaborators WHERE database_id = ? AND user_id = ?`).run(databaseId, userId);
+  if (result.changes > 0) {
+    logEvent("collab_remove", actorUserId, { databaseId, detail: { targetUserId: userId }, channelId, guildId });
+  }
   return result.changes > 0;
 }
 

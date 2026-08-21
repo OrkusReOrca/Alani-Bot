@@ -96,6 +96,14 @@ requires; see that feature's own README), ignored everywhere else.
 Defaults to the database's own name if omitted on add; left unchanged if
 omitted on edit.
 
+**Dates**: 24-hour, Indochina/Bangkok time. Year, month, and the date
+itself can each be omitted independently and today's ICT value is
+assumed for whichever part is missing — `T19:00` alone means "today at
+19:00", `25T14:00` means "the 25th of the current month, this year, at
+14:00". Applies identically everywhere this parsing is used (every
+database, plus voice-Alani's own reminders/events, which go through the
+same `parseIct`).
+
 ## Database resolution
 
 `<database>` (a name, not a tier or kind) is optional. Checked in this
@@ -126,6 +134,45 @@ discover and use it in any channel, that blanket silence no longer makes
 sense — a user with no access anywhere gets a clear "you don't have
 access to any database here" instead of nothing. Main tier's own
 owner+command-box gate is unchanged either way.
+
+## Discovering databases: `.a list db`
+
+A separate, read-only, publicly-usable command (`listDbCommand.js`, NOT
+part of `.a db` itself — deliberately its own top-level command so it
+can never collide with `.a db list reminders/events`, which lists
+*records inside* an already-resolved database, a different thing
+entirely). Content depends on who's asking and where:
+
+- **Bot owner, in the command-box channel (or a DM)**: every database in
+  the bot, Main included.
+- **Bot owner, in any other guild channel**: just what was created in
+  *that* guild — its server-tier database(s), plus any personal database
+  that happened to be created while standing in that guild (informational
+  only; a personal database isn't actually restricted to where it was
+  created, `general-server-db`'s are the only kind that's guild-scoped
+  for real).
+- **Everyone else, anywhere**: only what they themselves own or
+  collaborate on — the same set `.a db` would auto-select from when no
+  name is given.
+
+For anyone (any tier, no access required) wanting the full command
+reference and an explanation of how the tiers work, see `.a info db` —
+`src/features/info/command.js`.
+
+## Audit history
+
+Every tiered database's creation, every tier grant/revoke, every
+collaborator add/remove, ownership transfer, and reminder/event creation
+gets appended to `store.js`'s `audit_log` table (`who`, `what`, which
+database, which channel/guild, when) — never deleted, even after the
+database itself is dropped. Not surfaced through any command yet; it
+exists as groundwork for the `.a list db` admin view showing history
+later, and for possible future cascade-revoking (e.g. tracing which
+collaborators a since-removed server-db owner had added). Deliberately
+scoped to the two tiered database kinds only — Main/orkus-info stays
+completely out of this too, consistent with the rest of this feature's
+"don't touch orkus-info" approach. Query it directly via
+`store.getAuditLog(databaseId)` if you need to look something up for now.
 
 ## Adding a new database kind
 

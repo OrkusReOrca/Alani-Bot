@@ -105,6 +105,11 @@ detail (exact commands, resolution rules, frozen/revoke semantics) is in
 | **Personal** | any user an owner grants it to | one private "general-user-db" per user | any channel, owner only | no | no |
 | **Server** | any user an owner grants it to | one "general-server-db" per user, scoped to one guild; owner can add collaborators | any channel, owner + collaborators | no | yes — events also create/edit/delete a real Discord server event |
 
+`.a list db` shows which database(s) you can see (everything, for a bot
+owner in the command-box channel; a specific guild's, for a bot owner
+elsewhere; just your own otherwise). `.a info db`, usable by anyone
+anywhere, gives the full command reference and explains the tiers.
+
 Bot owners can always reach every database, every tier, everywhere —
 including ones another user's revoked tier has "frozen" (fully
 inaccessible to anyone else until re-granted or `.a db transfer`red).

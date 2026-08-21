@@ -15,3 +15,9 @@ const OWNER_IDS = [required("DISCORD_OWNER_0"), required("DISCORD_OWNER_1")].fil
 export function isOwner(userId) {
   return OWNER_IDS.includes(userId);
 }
+
+// For display purposes only (e.g. ".a list db"'s Main-tier owner line) —
+// isOwner() above remains the actual access check everywhere else.
+export function getOwnerIds() {
+  return OWNER_IDS;
+}

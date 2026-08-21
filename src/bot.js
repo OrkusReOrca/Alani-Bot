@@ -39,6 +39,7 @@ import { setClient } from "./common/discordClient.js";
 import * as infoCommand from "./features/info/command.js";
 import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
 import * as dbCommand from "./features/db/command.js";
+import * as listDbCommand from "./features/db/listDbCommand.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
 import { startVoiceApi } from "./features/db/voiceApi.js";
@@ -48,6 +49,7 @@ const commands = new Map([
   [infoCommand.data.name, infoCommand],
   [fjamtrackCommand.data.name, fjamtrackCommand],
   [dbCommand.data.name, dbCommand],
+  [listDbCommand.data.name, listDbCommand],
 ]);
 
 // ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,

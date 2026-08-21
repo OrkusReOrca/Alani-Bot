@@ -25,7 +25,11 @@ function packUnits(units, joiner) {
 // single-line boundaries for messages with no blank lines at all (e.g. a
 // dense list, one entry per line); falls back to a hard character split as
 // a last resort for a single line that's still too long on its own.
-function chunkMessage(message) {
+// Exported (unlike this file's other internals) since prefix-command
+// handlers that reply via ctx.reply — not this file's own send* functions
+// — sometimes need to chunk a long reply themselves too; see
+// src/features/db/listDbCommand.js.
+export function chunkMessage(message) {
   if (message.length <= DISCORD_MAX_LEN) return [message];
 
   const blocks = message.split("\n\n");

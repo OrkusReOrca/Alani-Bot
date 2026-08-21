@@ -34,7 +34,7 @@ async function add(args, ctx, instance) {
   const [type, ...rest] = args;
   const actions = actionsFor(instance);
   if (type?.toLowerCase() === "reminder") return actions.addReminder(rest, ctx);
-  if (type?.toLowerCase() === "event") return actions.addEvent(rest);
+  if (type?.toLowerCase() === "event") return actions.addEvent(rest, ctx);
   return "Usage: `.a db add <reminder|event> ...`";
 }
 

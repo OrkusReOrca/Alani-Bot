@@ -14,28 +14,36 @@
 
 const ICT_OFFSET_MINUTES = 7 * 60;
 
-function currentIctYearMonth() {
+function currentIctDate() {
   const shifted = new Date(Date.now() + ICT_OFFSET_MINUTES * 60 * 1000);
-  return { year: shifted.getUTCFullYear(), month: String(shifted.getUTCMonth() + 1).padStart(2, "0") };
+  return {
+    year: shifted.getUTCFullYear(),
+    month: String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+    day: String(shifted.getUTCDate()).padStart(2, "0"),
+  };
 }
 
-// Expands a partial date into full "YYYY-MM-DD": "DD" alone assumes the
-// current ICT year AND month, "MM-DD" assumes the current ICT year only,
-// "YYYY-MM-DD" passes through unchanged (each component zero-padded
-// either way, so "26-8-5" and "2026-08-05" both work).
+// Expands a partial (or entirely omitted) date into full "YYYY-MM-DD":
+// "" (nothing at all — a bare "T19:00" time) assumes today's ICT date
+// wholesale, "DD" alone assumes the current ICT year AND month, "MM-DD"
+// assumes the current ICT year only, "YYYY-MM-DD" passes through
+// unchanged (each component zero-padded either way, so "26-8-5" and
+// "2026-08-05" both work).
 function expandPartialDate(datePart) {
+  const { year, month, day } = currentIctDate();
+  if (!datePart) return `${year}-${month}-${day}`;
   const parts = datePart.split("-").map((p) => p.padStart(2, "0"));
   if (parts.length >= 3) return parts.join("-");
-  const { year, month } = currentIctYearMonth();
   if (parts.length === 2) return `${year}-${parts.join("-")}`;
   return `${year}-${month}-${parts[0]}`;
 }
 
-// Parses a "[[YYYY-]MM-]DDTHH:MM"-style string (year and/or month
-// optional — see expandPartialDate) — or the bare date form,
-// "[[YYYY-]MM-]DD", treated as midnight, used for all-day events — as
-// ICT, unless it already carries an explicit offset or "Z", in which
-// case that's used as-is. Returns a real UTC Date, or null if unparseable.
+// Parses a "[[[YYYY-]MM-]DD]THH:MM"-style string (year, month, AND date
+// all independently optional — see expandPartialDate; a bare "T19:00"
+// means "today") — or the bare date form, "[[YYYY-]MM-]DD", treated as
+// midnight, used for all-day events — as ICT, unless it already carries
+// an explicit offset or "Z", in which case that's used as-is. Returns a
+// real UTC Date, or null if unparseable.
 export function parseIct(value) {
   if (!value) return null;
   const trimmed = value.trim();

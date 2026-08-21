@@ -17,7 +17,7 @@
 // anywhere); general-server-db passes closures that create/update/delete
 // a real Discord Scheduled Event (src/common/discordScheduledEvents.js).
 
-import storeDb, { getNextDisplayNumber } from "../features/db/store.js";
+import storeDb, { getNextDisplayNumber, logEvent } from "../features/db/store.js";
 import { getClient } from "./discordClient.js";
 import { canSendInChannel } from "./channelAccess.js";
 import { parseIct, fmtIct, fmtIctDate, startOfIctDay } from "../features/orkus-info/format.js";
@@ -62,7 +62,7 @@ function splitOnPipe(tokens) {
 export function createRecordActions({ databaseId, databaseName, onEventCreate = async () => ({}), onEventUpdate = async () => {}, onEventDelete = async () => {} }) {
   // ---------- reminders ----------
 
-  async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false }) {
+  async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false, ctx = null }) {
     if (channelId) {
       const client = getClient();
       let channel;
@@ -95,6 +95,12 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
         `INSERT INTO gen_reminders (database_id, text, text_normalized, remind_at, created_at, created_by, channel_id, display_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(databaseId, text, normalized, remindAt.toISOString(), new Date().toISOString(), createdBy, channelId, displayNumber);
+    logEvent("reminder_created", createdBy, {
+      databaseId,
+      detail: { text, remindAt: remindAt.toISOString() },
+      channelId: ctx?.channelId ?? null,
+      guildId: ctx?.guildId ?? null,
+    });
 
     const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
     return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination})`;
@@ -108,7 +114,7 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
     if (!remindAt || !text) {
       return "Usage: `.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> <text> [channel-id] [force]` (24hr time, Indochina/Bangkok timezone)";
     }
-    return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force });
+    return addReminderRecord({ text, remindAt, channelId, createdBy: ctx.userId, force, ctx });
   }
 
   function listReminders() {
@@ -156,7 +162,7 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
   const ADD_EVENT_USAGE =
     "Usage: `.a db add event <start> [end|allday] <title> [| <location>]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check; `| <location>` is optional, defaults to this database's name)";
 
-  async function addEvent(args) {
+  async function addEvent(args, ctx = null) {
     const { rest, force } = stripTrailingModifiers(args);
     const { main, location: pipedLocation } = splitOnPipe(rest);
     const [startRaw, second, ...others] = main;
@@ -208,6 +214,12 @@ export function createRecordActions({ databaseId, databaseName, onEventCreate = 
         `INSERT INTO gen_events (database_id, title, title_normalized, start_time, end_time, created_at, all_day, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(databaseId, title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString(), allDay ? 1 : 0, location);
+    logEvent("event_created", ctx?.userId ?? "unknown", {
+      databaseId,
+      detail: { title, start: startTime.toISOString(), end: endTime.toISOString() },
+      channelId: ctx?.channelId ?? null,
+      guildId: ctx?.guildId ?? null,
+    });
 
     try {
       const { discordEventId } = (await onEventCreate({ title, start: startTime, end: endTime, allDay, location })) ?? {};

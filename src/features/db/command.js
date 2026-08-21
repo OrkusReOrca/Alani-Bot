@@ -76,13 +76,14 @@ async function handleGrant(args, ctx, revoke) {
   if (!["personal", "server"].includes(tier) || !SNOWFLAKE_RE.test(userId ?? "")) {
     return `Usage: \`.a db ${revoke ? "revoke" : "grant"} <personal|server> <user-id>\``;
   }
+  const logCtx = { channelId: ctx.channelId, guildId: ctx.guildId };
   if (revoke) {
-    const had = store.revokeTier(userId, tier);
+    const had = store.revokeTier(userId, tier, ctx.userId, logCtx);
     return had
       ? `Revoked Tier ${tier === "personal" ? "Personal" : "Server"} from <@${userId}> — any database(s) they own are now frozen (inaccessible except to bot owners) until re-granted or transferred.`
       : `<@${userId}> didn't have Tier ${tier === "personal" ? "Personal" : "Server"}.`;
   }
-  store.grantTier(userId, tier, ctx.userId);
+  store.grantTier(userId, tier, ctx.userId, logCtx);
   return `Granted Tier ${tier === "personal" ? "Personal" : "Server"} to <@${userId}>.`;
 }
 
@@ -130,7 +131,18 @@ async function handleCreate(args, ctx) {
     return "Primary channel must be a channel ID or the literal word `dm`.";
   }
 
-  const instance = store.createDatabase({ kind, name, ownerUserId: ctx.userId, guildId: kind === "server" ? ctx.guildId : null, primaryChannelId });
+  // guildId is captured for BOTH kinds now (not just server-kind) — purely
+  // informational for a personal db (it isn't restricted to that guild the
+  // way a server db is), but needed so `.a list db` run inside a guild can
+  // show "user databases created here" alongside that guild's server dbs.
+  const instance = store.createDatabase({
+    kind,
+    name,
+    ownerUserId: ctx.userId,
+    guildId: ctx.guildId,
+    primaryChannelId,
+    channelId: ctx.channelId,
+  });
   return `Created ${tierArg} database "${instance.name}" — primary destination: ${primaryChannelId === "dm" ? "DM" : `<#${primaryChannelId}>`}. Use it via \`.a db ${instance.name} ...\`.`;
 }
 
@@ -157,11 +169,12 @@ async function handleCollab(args, ctx) {
   if (!isOwner(ctx.userId) && instance.owner_user_id !== ctx.userId) {
     return "Only that database's owner (or a bot owner) can manage its collaborators.";
   }
+  const logCtx = { channelId: ctx.channelId, guildId: ctx.guildId };
   if (action === "add") {
-    store.addCollaborator(instance.id, userId);
+    store.addCollaborator(instance.id, userId, ctx.userId, logCtx);
     return `Added <@${userId}> as a collaborator on "${instance.name}".`;
   }
-  const removed = store.removeCollaborator(instance.id, userId);
+  const removed = store.removeCollaborator(instance.id, userId, ctx.userId, logCtx);
   return removed ? `Removed <@${userId}> from "${instance.name}".` : `<@${userId}> wasn't a collaborator on "${instance.name}".`;
 }
 
@@ -171,7 +184,7 @@ async function handleTransfer(args, ctx) {
   if (!name || !SNOWFLAKE_RE.test(newOwnerId ?? "")) return "Usage: `.a db transfer <name> <new-owner-id>`";
   const instance = store.getDatabaseByName(name, ctx.userId, { includeAll: true });
   if (!instance) return `No database "${name}".`;
-  store.transferOwnership(instance.id, newOwnerId);
+  store.transferOwnership(instance.id, newOwnerId, ctx.userId, { channelId: ctx.channelId, guildId: ctx.guildId });
   return `"${instance.name}" is now owned by <@${newOwnerId}> (and un-frozen, if it was).`;
 }
 
