@@ -146,12 +146,16 @@ order:
    database names can never collide with these.
 2. `main` or `orkus-info` → Main tier.
 3. Otherwise, matched by name against databases the caller can currently
-   reach. **No match, or no name given at all**: if exactly one database
-   is reachable (counting Main only for an owner standing in the
-   command-box channel), that one is used automatically; zero or more
-   than one always requires being explicit rather than guessing —
-   e.g. `Multiple databases accessible: mystuff, teamdb — specify one:
-   .a db <name> <verb> ...`.
+   reach.
+4. **No match, or no name given at all**: for a bot owner standing in the
+   command-box channel specifically, this ALWAYS means Main — full stop,
+   even if that owner also happens to own some other tiered database
+   (e.g. for testing). The command-box channel is Main's home; explicit
+   naming (`.a db mystuff ...`) still reaches other databases from there.
+   Everywhere else, if exactly one database is reachable, that one is
+   used automatically; zero or more than one always requires being
+   explicit rather than guessing — e.g. `Multiple databases accessible:
+   mystuff, teamdb — specify one: .a db <name> <verb> ...`.
 
 Database names are **globally unique**, not scoped per-owner — two
 different users can't both create one named `"mystuff"`. This is what

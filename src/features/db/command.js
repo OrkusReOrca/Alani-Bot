@@ -242,7 +242,20 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  const candidateNames = [...ownCandidates.map((d) => d.name), ...(mainReachable ? ["main"] : [])];
+  // The command-box channel is Main's home turf — an owner typing there
+  // with no name (or a name that didn't match anything) always means
+  // Main, full stop, even if that same owner also happens to own some
+  // other tiered database (e.g. for testing). Explicit naming still
+  // reaches those other databases from this channel — this only changes
+  // what "no name given" defaults to. Outside the command box, Main
+  // isn't reachable implicitly at all, so the normal ownCandidates
+  // ambiguity logic below is what actually applies.
+  if (mainReachable) {
+    await dispatchMain(args, ctx);
+    return;
+  }
+
+  const candidateNames = ownCandidates.map((d) => d.name);
   if (candidateNames.length === 0) {
     await ctx.reply("You don't have access to any database here.");
     return;
@@ -254,11 +267,7 @@ export async function execute(ctx, args = []) {
 
   // Exactly one candidate and no name was given (or it just didn't match
   // anything) — auto-select it.
-  if (candidateNames[0] === "main") {
-    await dispatchMain(args, ctx);
-  } else {
-    await dispatchInstance(ownCandidates[0], args, ctx);
-  }
+  await dispatchInstance(ownCandidates[0], args, ctx);
 }
 
 async function dispatchMain(rest, ctx) {
