@@ -1,14 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_226",
-      "title": "yes, and?",
-      "artist": "Ariana Grande",
-      "image": "https://cdn.fortnite-api.com/tracks/08ca711cf5d30e25.jpg",
-      "price": 500,
-      "inDate": "2026-08-16T00:00:00Z",
-      "outDate": "2026-08-21T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
