@@ -10,26 +10,7 @@
 // Still no Google Calendar sync — that stays exclusive to the Main tier
 // (orkus-info). See root README's "Tiers" section.
 
-import { createRecordActions } from "../../common/recordActions.js";
-import { createScheduledEvent, updateScheduledEvent, deleteScheduledEvent } from "../../common/discordScheduledEvents.js";
-
-function actionsFor(instance) {
-  return createRecordActions({
-    databaseId: instance.id,
-    databaseName: instance.name,
-    guildId: instance.guild_id,
-    onEventCreate: async ({ title, start, end, location }) => {
-      const discordEventId = await createScheduledEvent(instance.guild_id, { name: title, start, end, location });
-      return { discordEventId };
-    },
-    onEventUpdate: async (discordEventId, { title, start, end, location }) => {
-      await updateScheduledEvent(instance.guild_id, discordEventId, { name: title, start, end, location });
-    },
-    onEventDelete: async (discordEventId) => {
-      await deleteScheduledEvent(instance.guild_id, discordEventId);
-    },
-  });
-}
+import { actionsForInstance as actionsFor } from "../../common/dbInstanceActions.js";
 
 async function add(args, ctx, instance) {
   const [type, ...rest] = args;

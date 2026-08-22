@@ -2,16 +2,23 @@
 // not always online, and with no way to reach orkus-info.db directly —
 // it lives only on THIS host's disk) to trigger things here that need a
 // live Discord connection or the database.
-//   POST /voice/reminder         { text, remindAt } -> add
-//   GET  /voice/reminders        -> list
-//   POST /voice/reminder/delete  { id } -> delete
-//   POST /voice/event            { title, start, end?, allDay? } -> add
+//   GET  /voice/databases        -> list every database (name, kind) —
+//                                  voice-Alani always authenticates as
+//                                  DISCORD_OWNER_0, so it can see
+//                                  everything, same as any bot owner
+//   POST /voice/reminder         { text, remindAt, database?, channelId? } -> add
+//                                  (database omitted = "main"; channelId
+//                                  omitted = DM, same as before)
+//   GET  /voice/reminders        -> list (Main tier only, unchanged)
+//   POST /voice/reminder/delete  { id } -> delete (Main tier only, unchanged)
+//   POST /voice/event            { title, start, end?, allDay?, database? } -> add
 //                                  (end omitted = 1hr duration, allDay
-//                                  true = all-day event; also syncs to
-//                                  Google Calendar, same as the chat
-//                                  command — see actions.js)
-//   GET  /voice/events           -> list
-//   POST /voice/event/delete     { id } -> delete
+//                                  true = all-day event; database omitted
+//                                  = "main", which also syncs to Google
+//                                  Calendar same as the chat command —
+//                                  other databases never sync there)
+//   GET  /voice/events           -> list (Main tier only, unchanged)
+//   POST /voice/event/delete     { id } -> delete (Main tier only, unchanged)
 //
 // Not routed through Discord itself, deliberately: this bot's own
 // messageCreate handler ignores messages from any bot account
@@ -31,19 +38,35 @@
 // TLS in front (bot-hosting.net's "Domains" feature) rather than trusting
 // this endpoint bare.
 //
-// Deliberately hardcodes orkus-info/actions.js directly rather than going
-// through the tier/registry system added later (see
-// src/features/db/store.js and command.js) — voice-Alani is intentionally
-// Main-tier-only. It has no concept of a Discord user's own tiers/
-// databases, and there's no product reason for it to reach anyone's
-// general-user-db/general-server-db. Do not extend these routes to the
-// other database kinds.
+// The add/database-listing routes CAN now reach any database (added for
+// voice-Alani's "console add" manual-entry UI — a click-driven form, not
+// LLM/spoken tool-calling) — resolved the same way command.js resolves
+// an explicit name, via store.js, falling back to orkus-info/actions.js
+// only for "main". The LLM-facing spoken tools (tools.py's set_reminder/
+// add_calendar_event) deliberately still only ever call this with no
+// database/channelId fields at all, so spoken reminders/events stay
+// exactly Main+DM, unchanged — this is a widening of what the BRIDGE can
+// do, not what voice conversation itself does. List/delete routes are
+// intentionally NOT widened (out of scope, Main tier only for now).
 
 import http from "http";
 import { config } from "../../common/config.js";
 import { getClient } from "../../common/discordClient.js";
 import orkusInfoActions, { addReminderRecord } from "../orkus-info/actions.js";
 import { parseIct, fmtIct } from "../orkus-info/format.js";
+import * as store from "./store.js";
+import { actionsForInstance } from "../../common/dbInstanceActions.js";
+
+// Resolves a database name to either the special "main" sentinel or a
+// real store.js instance row — shared by the reminder/event add routes
+// below. Always includeAll: true, since voice-Alani acts with bot-owner
+// privileges (matches config.ownerZeroId, which every route here already
+// assumes for Main's own DM-default behavior).
+function resolveDatabase(name) {
+  const normalized = (name || "main").toLowerCase();
+  if (normalized === "main" || normalized === "orkus-info") return { kind: "main" };
+  return store.getDatabaseByName(normalized, config.ownerZeroId, { includeAll: true });
+}
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -64,7 +87,7 @@ async function handleReminder(req, res) {
     return sendJson(res, 400, { error: "Invalid JSON body" });
   }
 
-  const { text, remindAt: remindAtRaw } = payload;
+  const { text, remindAt: remindAtRaw, database, channelId = null } = payload;
   const remindAt = parseIct(remindAtRaw);
   if (!text || !remindAt) {
     return sendJson(res, 400, { error: "text and remindAt (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required" });
@@ -74,18 +97,31 @@ async function handleReminder(req, res) {
     return sendJson(res, 500, { error: "DISCORD_OWNER_0 not configured on the bot — can't set a default DM target" });
   }
 
-  // Voice-added reminders always DM owner_0, never a channel — see the
-  // spec this was built against (root README's "Voice bridge" section).
-  const reply = await addReminderRecord({
-    text,
-    remindAt,
-    channelId: null,
-    createdBy: config.ownerZeroId,
-    force: false,
-  });
+  const resolved = resolveDatabase(database);
+  if (!resolved) {
+    return sendJson(res, 400, { error: `No database "${database}"` });
+  }
+
+  // Main tier: unchanged behavior — always DM owner_0, never a channel,
+  // unless the spoken/tool-calling path is used (which never sends
+  // channelId at all, so this only ever changes for the console-add UI's
+  // explicit channel field). Other databases: same addReminderRecord
+  // shape, just against that instance instead — see
+  // common/dbInstanceActions.js.
+  const reply =
+    resolved.kind === "main"
+      ? await addReminderRecord({ text, remindAt, channelId, createdBy: config.ownerZeroId, force: false })
+      : await actionsForInstance(resolved).addReminderRecord({
+          text,
+          remindAt,
+          channelId,
+          createdBy: config.ownerZeroId,
+          force: false,
+        });
 
   // Announce it in the command box too, so it's visible there was a
-  // voice-originated add, not just a silent DM later.
+  // voice-originated add, not just a silent DM later. Best-effort,
+  // regardless of which database this landed in.
   try {
     const channel = await getClient().channels.fetch(config.commandBoxChannelId);
     await channel.send(`Added reminder "${text}" at ${fmtIct(remindAt.toISOString())} by voice.`);
@@ -94,6 +130,12 @@ async function handleReminder(req, res) {
   }
 
   sendJson(res, 200, { message: reply });
+}
+
+async function handleListDatabases(req, res) {
+  const rows = store.listAccessibleDatabases(config.ownerZeroId, { includeAll: true });
+  const databases = [{ name: "main", kind: "main" }, ...rows.map((r) => ({ name: r.name, kind: r.kind }))];
+  sendJson(res, 200, { databases });
 }
 
 // Reuses the exact same dispatcher the chat command goes through
@@ -151,18 +193,23 @@ async function handleAddEvent(req, res) {
     return sendJson(res, 400, { error: "Invalid JSON body" });
   }
 
-  const { title, start, end, allDay } = payload;
+  const { title, start, end, allDay, database } = payload;
   if (!title || !parseIct(start)) {
     return sendJson(res, 400, { error: "title and start (YYYY-MM-DDTHH:MM, 24hr, Indochina Time) are required" });
   }
 
+  const resolved = resolveDatabase(database);
+  if (!resolved) {
+    return sendJson(res, 400, { error: `No database "${database}"` });
+  }
+
   const titleTokens = quoteTokens(title);
-  const args = allDay
-    ? ["event", start, "allday", ...titleTokens]
-    : end
-      ? ["event", start, end, ...titleTokens]
-      : ["event", start, ...titleTokens];
-  const message = await orkusInfoActions.add(args);
+  const eventArgs = allDay ? [start, "allday", ...titleTokens] : end ? [start, end, ...titleTokens] : [start, ...titleTokens];
+
+  const message =
+    resolved.kind === "main"
+      ? await orkusInfoActions.add(["event", ...eventArgs])
+      : await actionsForInstance(resolved).addEvent(eventArgs, { userId: config.ownerZeroId, guildId: resolved.guild_id });
   sendJson(res, 200, { message });
 }
 
@@ -198,6 +245,9 @@ export function startVoiceApi() {
     }
 
     try {
+      if (req.method === "GET" && req.url === "/voice/databases") {
+        return await handleListDatabases(req, res);
+      }
       if (req.method === "POST" && req.url === "/voice/reminder") {
         return await handleReminder(req, res);
       }

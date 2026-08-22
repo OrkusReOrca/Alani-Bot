@@ -11,15 +11,7 @@
 // since `instance` (and therefore databaseId) differs per call depending
 // on who's calling and which database they resolved to.
 
-import { createRecordActions } from "../../common/recordActions.js";
-
-function actionsFor(instance) {
-  // guildId here is purely informational (which guild this personal db
-  // happened to be created in, if any — see db/store.js) — used only as
-  // a best-effort fallback for resolving mentions by username; a
-  // personal database is never actually restricted to that guild.
-  return createRecordActions({ databaseId: instance.id, databaseName: instance.name, guildId: instance.guild_id });
-}
+import { actionsForInstance as actionsFor } from "../../common/dbInstanceActions.js";
 
 async function add(args, ctx, instance) {
   const [type, ...rest] = args;

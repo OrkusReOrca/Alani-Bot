@@ -173,10 +173,16 @@ command parser (or pass its owner check, which needs a real user ID) —
 an HTTP endpoint is the actually-correct way to bridge two independent
 services, not a workaround.
 
-Deliberately Main-tier only — voice-Alani reaches orkus-info exclusively,
-not any Tier Personal/Server database (see "Tiers" above). There's no
-product reason for voice to reach anyone's personal or server database,
-and it has no concept of Discord users' own tiers to begin with.
+The bridge itself can reach any database (`GET /voice/databases`, plus an
+optional `database` field on the add routes below) — voice-Alani always
+authenticates as `DISCORD_OWNER_0`, so it sees every database, same as
+any bot owner. What's still deliberately Main-only is voice
+*conversation* — the LLM's spoken tools (`set_reminder`,
+`add_calendar_event`) never pass a `database` field at all, so a spoken
+"remind me to..." always lands in Main, DMed, exactly as before. The
+wider reach exists specifically for voice-Alani's manual "console add"
+UI (a click-driven form, not the LLM), which lets you pick a database
+(and, for reminders, a channel) explicitly.
 
 **Setup:**
 1. Generate any long random string for `VOICE_API_SECRET` — set it as an
@@ -196,19 +202,26 @@ and it has no concept of Discord users' own tiers to begin with.
 **Endpoints** (all header `Authorization: Bearer <VOICE_API_SECRET>`,
 24hr Indochina/Bangkok time throughout, same convention `.a db` uses):
 
-- `POST /voice/reminder` `{"text", "remindAt"}` -> add. Always DMs
-  `DISCORD_OWNER_0` (never a channel — voice reminders don't take one)
-  and announces the add in the command-box channel, e.g. `Added
-  reminder "take out trash" at 15:00 2026/08/20 by voice.`
-- `GET /voice/reminders` -> list.
-- `POST /voice/reminder/delete` `{"id"}` -> delete.
-- `POST /voice/event` `{"title", "start", "end"?, "allDay"?}` -> add
-  (also syncs to Google Calendar, same as the chat command). `end`
-  omitted defaults to a 1-hour event; `allDay: true` makes it an all-day
-  event instead (`end` ignored). `start`/`end` also accept partial dates
-  (year and/or month omitted, assumed current), same as the chat command.
-- `GET /voice/events` -> list.
-- `POST /voice/event/delete` `{"id"}` -> delete.
+- `GET /voice/databases` -> `{"databases": [{"name","kind"}, ...]}` —
+  every database reachable (`"main"` always included, plus every Tier
+  Personal/Server one), `kind` one of `"main"|"user"|"server"`.
+- `POST /voice/reminder` `{"text", "remindAt", "database"?, "channelId"?}`
+  -> add. `database` omitted = `"main"`; `channelId` omitted = DMs
+  `DISCORD_OWNER_0` (unchanged default). Always announces the add in the
+  command-box channel regardless of which database it landed in, e.g.
+  `Added reminder "take out trash" at 15:00 2026/08/20 by voice.`
+- `GET /voice/reminders` -> list (Main tier only).
+- `POST /voice/reminder/delete` `{"id"}` -> delete (Main tier only).
+- `POST /voice/event` `{"title", "start", "end"?, "allDay"?, "database"?}`
+  -> add. `database` omitted = `"main"` (also syncs to Google Calendar,
+  same as the chat command — other databases never sync there; a
+  server-kind database's events mirror to a real Discord Scheduled Event
+  instead). `end` omitted defaults to a 1-hour event; `allDay: true`
+  makes it an all-day event instead (`end` ignored). `start`/`end` also
+  accept partial dates (year and/or month omitted, assumed current), same
+  as the chat command.
+- `GET /voice/events` -> list (Main tier only).
+- `POST /voice/event/delete` `{"id"}` -> delete (Main tier only).
 
 All of these reuse the exact same underlying logic the `.a db` chat
 command goes through — see
