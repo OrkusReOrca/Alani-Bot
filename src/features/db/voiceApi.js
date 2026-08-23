@@ -49,7 +49,6 @@
 // do, not what voice conversation itself does. List/delete routes are
 // intentionally NOT widened (out of scope, Main tier only for now).
 
-import http from "http";
 import { config } from "../../common/config.js";
 import { getClient } from "../../common/discordClient.js";
 import orkusInfoActions, { addReminderRecord } from "../orkus-info/actions.js";
@@ -233,48 +232,19 @@ async function handleDeleteEvent(req, res) {
   sendJson(res, 200, { message });
 }
 
-export function startVoiceApi() {
+// Registers every /voice/* route into the shared bridge server (see
+// common/bridgeServer.js) under VOICE_API_SECRET.
+export function registerVoiceRoutes(registerRoute) {
   if (!config.voiceApiSecret) {
     console.log("[voiceApi] VOICE_API_SECRET not set — voice bridge disabled");
     return;
   }
 
-  const server = http.createServer(async (req, res) => {
-    if (req.headers.authorization !== `Bearer ${config.voiceApiSecret}`) {
-      return sendJson(res, 401, { error: "Unauthorized" });
-    }
-
-    try {
-      if (req.method === "GET" && req.url === "/voice/databases") {
-        return await handleListDatabases(req, res);
-      }
-      if (req.method === "POST" && req.url === "/voice/reminder") {
-        return await handleReminder(req, res);
-      }
-      if (req.method === "GET" && req.url === "/voice/reminders") {
-        return await handleListReminders(req, res);
-      }
-      if (req.method === "POST" && req.url === "/voice/reminder/delete") {
-        return await handleDeleteReminder(req, res);
-      }
-      if (req.method === "POST" && req.url === "/voice/event") {
-        return await handleAddEvent(req, res);
-      }
-      if (req.method === "GET" && req.url === "/voice/events") {
-        return await handleListEvents(req, res);
-      }
-      if (req.method === "POST" && req.url === "/voice/event/delete") {
-        return await handleDeleteEvent(req, res);
-      }
-    } catch (err) {
-      console.error(`[voiceApi] error handling ${req.method} ${req.url}:`, err);
-      return sendJson(res, 500, { error: "Internal error" });
-    }
-
-    sendJson(res, 404, { error: "Not found" });
-  });
-
-  server.listen(config.voiceApiPort, () => {
-    console.log(`[voiceApi] listening on port ${config.voiceApiPort}`);
-  });
+  registerRoute("GET", "/voice/databases", config.voiceApiSecret, handleListDatabases);
+  registerRoute("POST", "/voice/reminder", config.voiceApiSecret, handleReminder);
+  registerRoute("GET", "/voice/reminders", config.voiceApiSecret, handleListReminders);
+  registerRoute("POST", "/voice/reminder/delete", config.voiceApiSecret, handleDeleteReminder);
+  registerRoute("POST", "/voice/event", config.voiceApiSecret, handleAddEvent);
+  registerRoute("GET", "/voice/events", config.voiceApiSecret, handleListEvents);
+  registerRoute("POST", "/voice/event/delete", config.voiceApiSecret, handleDeleteEvent);
 }

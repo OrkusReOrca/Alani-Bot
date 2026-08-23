@@ -161,12 +161,22 @@ dashboard, and set the start command to `npm start` (or `node src/bot.js`)
 does not, since it only needs to run once per command change, not on
 every boot/deploy.
 
+## Bridge server
+
+Both the voice bridge below and uni-tracker push (see its own section
+further down) share one HTTP server — `src/common/bridgeServer.js`,
+started as `startBridgeServer()` from `bot.js`'s `ClientReady` handler —
+since bot-hosting.net only exposes this deployment on a single port (see
+"Voice bridge" setup below for details on that port). Each route brings
+its own secret, checked independently, so a leaked secret for one route
+can't reach another's.
+
 ## Voice bridge
 
 Lets voice-Alani (a separate app, running locally on the user's PC — not
 this repo) trigger things here by voice — reminders for now, via
-`src/features/db/voiceApi.js`, a small authenticated HTTP endpoint the
-persistent bot also starts. Not routed through Discord itself: this bot's
+`src/features/db/voiceApi.js`, registering its routes into the shared
+bridge server above. Not routed through Discord itself: this bot's
 own `messageCreate` handler ignores messages from any bot account, so
 voice-Alani posting as a bot or webhook would never reach `.a db`'s
 command parser (or pass its owner check, which needs a real user ID) —
@@ -233,6 +243,36 @@ for the shared behavior (dedup, delivery, Google Calendar sync, etc.).
 in cleartext over the public internet on every call. Acceptable for a
 personal hobby bridge; if that's ever a real concern, put a domain + TLS
 in front (their "Domains" feature) rather than trusting this bare.
+
+## Uni-tracker push
+
+`src/features/uni-application-updater/pushApi.js`, registered into the
+shared bridge server above under its own secret (`UNI_TRACKER_PUSH_SECRET`,
+separate from `VOICE_API_SECRET` — a leaked one can only ever overwrite
+this one JSON file, nothing else).
+
+**Why this exists:** `data/uni-application-updater/programs.json` used to
+reach this host purely by being committed to GitHub, on the assumption
+bot-hosting.net would pick it up. It doesn't — this platform does not
+auto-pull/redeploy on a new push, only on a manual restart from its
+dashboard — so a fresh commit could sit indefinitely while the live bot
+kept reading whatever stale `programs.json` it last booted with. This
+route lets whatever refreshes that data (see the feature's own README —
+currently a scheduled cloud routine, `uni-admissions-status-refresh`)
+push it directly into the running process. Keep committing to git too —
+that stays useful as a version-history/backup trail — but this route is
+what actually makes an update live, without a restart.
+
+**Setup:** same pattern as the voice bridge — generate a long random
+string, set it as `UNI_TRACKER_PUSH_SECRET` here, and give the identical
+value to whatever calls this route.
+
+**Endpoint:** `POST /admin/uni-programs`, header
+`Authorization: Bearer <UNI_TRACKER_PUSH_SECRET>`, body: the full
+`programs.json` array (same shape documented in the feature's own
+README). Validated the same way `programs.js`'s loader already validates
+on read (every entry needs a valid `id` + `status`) before it's written —
+an invalid payload gets a 400 and never touches the file on disk.
 
 ## Adding a new feature
 

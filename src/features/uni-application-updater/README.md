@@ -27,8 +27,11 @@ cycle instead of reporting on a stale/irrelevant one.
   entry per program, with `status`, `openDate`, `closeDate`, `link`, `notes`.
   A scheduled cloud routine (`uni-admissions-status-refresh`, runs daily at
   8:30 AM Bangkok time, 30 min before the Discord post) researches each
-  program against official sources and updates this file. You can also edit
-  it by hand any time.
+  program against official sources and updates this file — committing to
+  git as a history/backup trail, and pushing it live to the bot host via
+  `POST /admin/uni-programs` (see the root README's "Uni-tracker push"
+  section) so the update actually takes effect without a manual restart.
+  You can also edit `programs.json` by hand any time.
 - `npm run start:uni-application-updater` reads `programs.json`, compares it
   against `data/uni-application-updater/state.json` (what was sent last
   time) to detect changes, then:
@@ -172,7 +175,11 @@ Leave dates as `null` (or omit) if unconfirmed — the message will print
 `uni-admissions-status-refresh` is a scheduled cloud routine (not part of
 this repo's code — managed at https://claude.ai/code/routines) that runs
 daily before the Discord post. It reads `applicant-profile.json` and
-`programs.json`, researches each program against official sources, and
-pushes an updated `programs.json`. It frequently lands on `"error"` for
-programs whose official domain is unreachable from its sandboxed network or
-whose current-cycle dates aren't published — that's expected, not a bug.
+`programs.json`, researches each program against official sources,
+commits an updated `programs.json` to git, and — as of 2026-08-23 —
+also pushes it live to the bot host via `POST /admin/uni-programs`
+(`UNI_TRACKER_PUSH_SECRET`), since a git commit alone never reached the
+running bot (bot-hosting.net doesn't auto-pull/redeploy). It frequently
+lands on `"error"` for programs whose official domain is unreachable from
+its sandboxed network or whose current-cycle dates aren't published —
+that's expected, not a bug.

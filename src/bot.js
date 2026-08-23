@@ -42,7 +42,7 @@ import * as dbCommand from "./features/db/command.js";
 import * as listDbCommand from "./features/db/listDbCommand.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
-import { startVoiceApi } from "./features/db/voiceApi.js";
+import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 
 const commands = new Map([
@@ -82,7 +82,7 @@ client.once(Events.ClientReady, (readyClient) => {
   // fetches) — starting it here rather than at module load.
   startReminderScheduler();
   startGenReminderScheduler();
-  startVoiceApi();
+  startBridgeServer();
   startDailyJobs();
 });
 
