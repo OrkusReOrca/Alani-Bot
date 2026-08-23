@@ -1,32 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_685",
-      "title": "EARFQUAKE",
-      "artist": "Tyler, The Creator",
-      "image": "https://cdn.fortnite-api.com/tracks/05417f360116136c.jpg",
-      "price": 3200,
-      "inDate": "2026-08-18T00:00:00Z",
-      "outDate": "2026-08-22T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_686",
-      "title": "Ring Ring Ring",
-      "artist": "Tyler, The Creator",
-      "image": "https://cdn.fortnite-api.com/tracks/bd89ead4a46d3917.jpg",
-      "price": 500,
-      "inDate": "2026-08-18T00:00:00Z",
-      "outDate": "2026-08-22T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_684",
-      "title": "Sticky",
-      "artist": "Tyler, The Creator",
-      "image": "https://cdn.fortnite-api.com/tracks/af27d8c779ca4428.jpg",
-      "price": 500,
-      "inDate": "2026-08-18T00:00:00Z",
-      "outDate": "2026-08-22T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
