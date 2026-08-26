@@ -1,41 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_102",
-      "title": "Dog Days Are Over",
-      "artist": "Florence + The Machine",
-      "image": "https://cdn.fortnite-api.com/tracks/d80f8561cc7e96c7.jpg",
-      "price": 1800,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_102",
-      "title": "Dog Days Are Over",
-      "artist": "Florence + The Machine",
-      "image": "https://cdn.fortnite-api.com/tracks/d80f8561cc7e96c7.jpg",
-      "price": 500,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_387",
-      "title": "Drop It Like It's Hot",
-      "artist": "Snoop Dogg ft. Pharrell",
-      "image": "https://cdn.fortnite-api.com/tracks/89b4571363a7b533.jpg",
-      "price": 500,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-30T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_387",
-      "title": "Drop It Like It's Hot",
-      "artist": "Snoop Dogg ft. Pharrell",
-      "image": "https://cdn.fortnite-api.com/tracks/89b4571363a7b533.jpg",
-      "price": 3500,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-30T23:59:59.999Z"
-    }
-  ],
+  "newTracks": [],
   "leftTracks": []
 }
