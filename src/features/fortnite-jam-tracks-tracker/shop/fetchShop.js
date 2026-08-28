@@ -12,12 +12,18 @@ export async function fetchJamTracks() {
   }
   const { data } = await res.json();
 
-  const jamTracks = [];
+  // Keyed by track id, not pushed to an array — the same track can be
+  // listed in more than one shop entry at once (e.g. sold on its own AND
+  // inside a bundle), which used to produce two identical 🟢+ lines in the
+  // update message for what's really one track appearing. First occurrence
+  // wins; duplicates carry the same title/artist/dates either way.
+  const jamTracks = new Map();
   for (const entry of data.entries ?? []) {
     if (!entry.tracks || entry.tracks.length === 0) continue;
 
     for (const track of entry.tracks) {
-      jamTracks.push({
+      if (jamTracks.has(track.id)) continue;
+      jamTracks.set(track.id, {
         id: track.id,
         title: track.title,
         artist: track.artist,
@@ -29,7 +35,7 @@ export async function fetchJamTracks() {
     }
   }
 
-  return jamTracks;
+  return [...jamTracks.values()];
 }
 
 export function formatDaysLeft(outDateIso) {

@@ -1,0 +1,45 @@
+name: Fortnite Jam Tracks Tracker (Shop) — Manual Refresh
+
+# workflow_dispatch only, no schedule: this is what ".a fjamtrack refresh"
+# (bot owners only — see src/features/fortnite-jam-tracks-tracker/shop/
+# command.js) fires via the GitHub API to force an immediate re-check +
+# re-post, without waiting on the scheduled -check.yml/-post.yml crons
+# (which can run significantly late — see the root README's "A note on
+# scheduled workflow timing"). Runs check then post in the same job, back
+# to back, so there's no need to dispatch two workflows and wait for the
+# first to finish before starting the second.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install canvas system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - run: npm install
+
+      - run: npm run check:fortnite-jam-tracks-tracker-shop
+
+      - run: npm run post:fortnite-jam-tracks-tracker-shop
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
+
+      - name: Commit updated state, cleared diff, and posted-grid record
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fortnite-jam-tracks-tracker/shop/state.json data/fortnite-jam-tracks-tracker/shop/pending-diff.json data/fortnite-jam-tracks-tracker/shop/last-grid.json
+          git diff --quiet --cached || git commit -m "chore(fortnite-jam-tracks-tracker): manual shop refresh [skip ci]"
+          git push

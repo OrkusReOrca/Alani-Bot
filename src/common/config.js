@@ -28,4 +28,11 @@ export const config = {
   // database syncs to is that database's own config (e.g. orkus-info's
   // own config.js), not this one.
   googleServiceAccountKey: required("GOOGLE_SERVICE_ACCOUNT_KEY"),
+  // Fine-grained GitHub PAT (Actions: write, Contents: read, this repo
+  // only) + "owner/repo" — lets an admin command fire a workflow_dispatch
+  // event (see src/common/githubActions.js). Currently only used by
+  // ".a fjamtrack refresh". If unset, that command just reports itself
+  // unconfigured — nothing else is affected.
+  githubToken: required("GITHUB_ACTIONS_TOKEN"),
+  githubRepo: required("GITHUB_REPO"),
 };

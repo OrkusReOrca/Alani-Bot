@@ -132,9 +132,37 @@ posted yet" until the next scheduled post (or a manual `workflow_dispatch`
 of `fortnite-jam-tracks-tracker-shop-grid.yml` or `-post.yml`) actually
 runs and commits `last-grid.json` for the first time.
 
+## On-demand: `.a fjamtrack refresh` (bot owners only)
+
+`DISCORD_OWNER_0`/`DISCORD_OWNER_1` only (same allowlist as `.a db` — see
+`src/common/auth.js`); anyone else gets "Unauthorized user, no
+permission". Fires `fortnite-jam-tracks-tracker-shop-refresh.yml` via the
+GitHub API (`src/common/githubActions.js`) instead of waiting on the
+scheduled cron below — this is the escape hatch for when that cron runs
+very late (GitHub's `schedule` trigger is best-effort; see the root
+README's "A note on scheduled workflow timing" — this has been observed
+running upwards of half a day late, not just the 45-90 minutes seen on
+round-minute crons generally).
+
+Needs `GITHUB_ACTIONS_TOKEN` + `GITHUB_REPO` in the bot's `.env` (see
+`.env.example` for how to generate the token) — without them, the command
+replies that it isn't configured rather than failing silently. Same
+`canvas` constraint as everything else in this file means the bot can't
+just re-run check+post in-process on its own host — the command only
+confirms GitHub accepted the trigger; the actual grid + update message
+land in the channel a minute or two later, once that workflow's runner
+actually finishes, same as the normal daily flow.
+
+Running this while the scheduled `-check.yml`/`-post.yml` are *also*
+still queued for the day (rather than having failed to run at all) is
+harmless — whichever runs second will just find nothing new to report
+(the first already updated `state.json`) and skip the text message, though
+the grid image itself will post again since that part always sends
+regardless of whether anything changed.
+
 ## Schedule
 
-Three workflows, all triggerable manually from the Actions tab
+Four workflows, all triggerable manually from the Actions tab
 (`workflow_dispatch`) in addition to their schedule — see the root
 README's "Daily jobs" section for why these run here and not in-process
 on the bot like some other daily jobs in this repo (short version:
@@ -146,9 +174,13 @@ policy blocks from building):
   Runs the full daily flow (grid image + update text message).
 - `fortnite-jam-tracks-tracker-shop-grid.yml` — **manual only**, no cron.
   Runs just `post-grid` above, for triggering the grid image by itself.
+- `fortnite-jam-tracks-tracker-shop-refresh.yml` — **manual only**, no
+  cron, triggered via the GitHub API rather than the Actions tab in
+  practice (see `.a fjamtrack refresh` above). Runs check then post back
+  to back, for forcing an immediate full re-check + re-post.
 
 Add `DISCORD_FORTNITE_CHANNEL_ID` as a repo secret alongside the existing
-`DISCORD_BOT_TOKEN` to activate all three.
+`DISCORD_BOT_TOKEN` to activate all four.
 
 ## First run
 

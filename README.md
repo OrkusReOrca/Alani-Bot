@@ -82,7 +82,10 @@ you can trigger on a schedule).
   - **[shop](src/features/fortnite-jam-tracks-tracker/shop/README.md)** —
     grid image of every Jam Track currently in the purchasable item shop
     (new ones outlined in green), plus a message for tracks that left. Also
-    available on demand via `.a fjamtrack shop`.
+    available on demand via `.a fjamtrack shop`; bot owners can also force
+    an immediate re-check + re-post with `.a fjamtrack refresh` (useful
+    when the scheduled GitHub Actions cron runs very late — see "A note on
+    scheduled workflow timing" below).
 - **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
 - **[db](src/features/db/README.md)** — `.a db ...`, structured data
@@ -329,3 +332,16 @@ tracks-tracker`'s shop check/post is still on real GitHub Actions cron
 becomes buildable on the bot host some other way. If you ever add a new
 GitHub-Actions-scheduled workflow, follow the same off-round-minute
 pattern regardless.
+
+In practice this lateness isn't capped at the 45-90 minutes seen on
+round-minute crons generally — it's been observed running upwards of half
+a day late on `:37`/`:12` too, on days GitHub's Actions queue is under
+heavier load. `.a fjamtrack refresh` (bot owners only — see
+[src/features/fortnite-jam-tracks-tracker/shop/README.md](src/features/fortnite-jam-tracks-tracker/shop/README.md#on-demand-a-fjamtrack-refresh-bot-owners-only))
+exists specifically as the manual override for this: it fires
+`fortnite-jam-tracks-tracker-shop-refresh.yml` via the GitHub API rather
+than waiting for the queued cron, using a fine-grained PAT
+(`GITHUB_ACTIONS_TOKEN` + `GITHUB_REPO` — see `.env.example`). This
+doesn't fix GitHub's scheduling delay itself (nothing running on GitHub
+Actions can), it just gives a way to route around it on demand instead of
+waiting it out.
