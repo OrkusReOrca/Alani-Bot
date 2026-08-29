@@ -1,41 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_875",
-      "title": "500lbs",
-      "artist": "Lil Tecca",
-      "image": "https://cdn.fortnite-api.com/tracks/a4c3ad34d03d67e2.jpg",
-      "price": 500,
-      "inDate": "2026-07-30T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_843",
-      "title": "Ransom",
-      "artist": "Lil Tecca",
-      "image": "https://cdn.fortnite-api.com/tracks/1e7e26d6f4c8d120.jpg",
-      "price": 500,
-      "inDate": "2026-07-30T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_842",
-      "title": "Dark Thoughts",
-      "artist": "Lil Tecca",
-      "image": "https://cdn.fortnite-api.com/tracks/7d3cfa4ea0da0451.jpg",
-      "price": 500,
-      "inDate": "2026-07-30T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_102",
-      "title": "Dog Days Are Over",
-      "artist": "Florence + The Machine",
-      "image": "https://cdn.fortnite-api.com/tracks/d80f8561cc7e96c7.jpg",
-      "price": 1800,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-28T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
