@@ -1,24 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_68",
-      "title": "The Hand That Feeds",
-      "artist": "Nine Inch Nails",
-      "image": "https://cdn.fortnite-api.com/tracks/34b3beb96007b99c.jpg",
-      "price": 1500,
-      "inDate": "2026-08-31T00:00:00Z",
-      "outDate": "2026-09-02T23:59:59.999Z"
-    }
-  ],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_387",
-      "title": "Drop It Like It's Hot",
-      "artist": "Snoop Dogg ft. Pharrell",
-      "image": "https://cdn.fortnite-api.com/tracks/89b4571363a7b533.jpg",
-      "price": 500,
-      "inDate": "2026-08-26T00:00:00Z",
-      "outDate": "2026-08-30T23:59:59.999Z"
-    }
-  ]
+  "newTracks": [],
+  "leftTracks": []
 }
