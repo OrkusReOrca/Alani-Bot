@@ -1,4 +1,51 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_353",
+      "title": "Bunny Bounce (Murda Beatz Remix)",
+      "artist": "Epic Games ft. Murda Beatz",
+      "image": "https://cdn.fortnite-api.com/tracks/ff65557166e35446.jpg",
+      "price": 500,
+      "inDate": "2026-09-05T00:00:00Z",
+      "outDate": "2026-09-11T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_860",
+      "title": "PARTY OF YOUR LIFETIME",
+      "artist": "On-lyne",
+      "image": "https://cdn.fortnite-api.com/tracks/51d22ab0596cf0e0.jpg",
+      "price": 500,
+      "inDate": "2026-09-05T00:00:00Z",
+      "outDate": "2026-09-08T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_351",
+      "title": "Spies! (Murda Beatz Remix)",
+      "artist": "Epic Games ft. Murda Beatz",
+      "image": "https://cdn.fortnite-api.com/tracks/cda453f078a93053.jpg",
+      "price": 500,
+      "inDate": "2026-09-05T00:00:00Z",
+      "outDate": "2026-09-11T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_352",
+      "title": "Limitless (Murda Beatz Remix)",
+      "artist": "Epic Games ft. Murda Beatz",
+      "image": "https://cdn.fortnite-api.com/tracks/368c508a83e0331e.jpg",
+      "price": 500,
+      "inDate": "2026-09-05T00:00:00Z",
+      "outDate": "2026-09-11T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_267",
+      "title": "Butter",
+      "artist": "BTS",
+      "image": "https://cdn.fortnite-api.com/tracks/0f31e3faa4121240.jpg",
+      "price": 1100,
+      "inDate": "2026-09-02T00:00:00Z",
+      "outDate": "2026-09-04T23:59:59.999Z"
+    }
+  ]
 }
