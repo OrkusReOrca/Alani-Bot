@@ -1,4 +1,24 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_264",
+      "title": "Bouncin' Back",
+      "artist": "Epic Games",
+      "image": "https://cdn.fortnite-api.com/tracks/f05e5e50183ce949.jpg",
+      "price": 500,
+      "inDate": "2026-09-07T00:00:00Z",
+      "outDate": "2026-09-09T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_621",
+      "title": "Eye of the Storm",
+      "artist": "Epic Games",
+      "image": "https://cdn.fortnite-api.com/tracks/4ab7bdb2bf1a8bcf.jpg",
+      "price": 1800,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-06T23:59:59.999Z"
+    }
+  ]
 }
