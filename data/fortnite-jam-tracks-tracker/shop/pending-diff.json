@@ -1,4 +1,41 @@
 {
   "newTracks": [],
-  "leftTracks": []
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_799",
+      "title": "Big Guy (from \"The SpongeBob Movie: Search for SquarePants”)",
+      "artist": "Ice Spice",
+      "image": "https://cdn.fortnite-api.com/tracks/4c6e659840dc25e9.jpg",
+      "price": 3400,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-07T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_423",
+      "title": "Oh Shhh...",
+      "artist": "Ice Spice ft. Travis Scott",
+      "image": "https://cdn.fortnite-api.com/tracks/ec327daa2f7db25a.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-07T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_710",
+      "title": "Sweet Victory",
+      "artist": "David Glen Eisley, Bob Kulick",
+      "image": "https://cdn.fortnite-api.com/tracks/728f3b4650c8eb00.jpg",
+      "price": 3000,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-07T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_424",
+      "title": "In Ha Mood",
+      "artist": "Ice Spice",
+      "image": "https://cdn.fortnite-api.com/tracks/5d9e69bea6689bce.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-07T23:59:59.999Z"
+    }
+  ]
 }
