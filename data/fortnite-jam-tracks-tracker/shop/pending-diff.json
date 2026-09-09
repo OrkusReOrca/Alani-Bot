@@ -1,4 +1,14 @@
 {
   "newTracks": [],
-  "leftTracks": []
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_860",
+      "title": "PARTY OF YOUR LIFETIME",
+      "artist": "On-lyne",
+      "image": "https://cdn.fortnite-api.com/tracks/51d22ab0596cf0e0.jpg",
+      "price": 500,
+      "inDate": "2026-09-05T00:00:00Z",
+      "outDate": "2026-09-08T23:59:59.999Z"
+    }
+  ]
 }

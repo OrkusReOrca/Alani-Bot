@@ -15,7 +15,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/7cc8eab7dec7c4b2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_296": {
     "id": "sid_placeholder_296",
@@ -24,7 +24,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/e07fa254070f4bb7.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_299": {
     "id": "sid_placeholder_299",
@@ -33,7 +33,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/a94837d0a0d422c0.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_70": {
     "id": "sid_placeholder_70",
@@ -42,7 +42,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/e84a64be9c6fe04d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_200": {
     "id": "sid_placeholder_200",
@@ -51,7 +51,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/00b76967b09b168a.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_266": {
     "id": "sid_placeholder_266",
@@ -60,7 +60,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/704eb43e26ce733f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_249": {
+    "id": "sid_placeholder_249",
+    "title": "Give Me Everything",
+    "artist": "Pitbull ft. Ne-Yo, Afrojack & Nayer",
+    "image": "https://cdn.fortnite-api.com/tracks/b7b816cd06f8864a.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_264": {
     "id": "sid_placeholder_264",
@@ -71,15 +80,6 @@
     "inDate": "2026-09-07T00:00:00Z",
     "outDate": "2026-09-09T23:59:59.999Z"
   },
-  "sid_placeholder_249": {
-    "id": "sid_placeholder_249",
-    "title": "Give Me Everything",
-    "artist": "Pitbull ft. Ne-Yo, Afrojack & Nayer",
-    "image": "https://cdn.fortnite-api.com/tracks/b7b816cd06f8864a.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
   "sid_placeholder_419": {
     "id": "sid_placeholder_419",
     "title": "All Eyez On Me",
@@ -87,7 +87,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/47768b546bc25500.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_281": {
     "id": "sid_placeholder_281",
@@ -96,16 +96,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/574cd95dc38c9dc2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
-  "sid_placeholder_496": {
-    "id": "sid_placeholder_496",
-    "title": "Ain't It Fun",
-    "artist": "Paramore",
-    "image": "https://cdn.fortnite-api.com/tracks/e00f743c051bef87.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_40": {
     "id": "sid_placeholder_40",
@@ -114,7 +105,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/0a6942046c2ce0ed.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_496": {
+    "id": "sid_placeholder_496",
+    "title": "Ain't It Fun",
+    "artist": "Paramore",
+    "image": "https://cdn.fortnite-api.com/tracks/e00f743c051bef87.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_784": {
     "id": "sid_placeholder_784",
@@ -123,7 +123,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/63ddf0b3763d468f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_742": {
     "id": "sid_placeholder_742",
@@ -132,7 +132,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/0b90a13fbea7525a.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_765": {
     "id": "sid_placeholder_765",
@@ -141,7 +141,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d0b1f705cc774175.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_174": {
     "id": "sid_placeholder_174",
@@ -150,7 +150,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/ca5fa47e7d017a43.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_417": {
     "id": "sid_placeholder_417",
@@ -159,7 +159,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/7d2f9f7bc6453ca5.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_783": {
     "id": "sid_placeholder_783",
@@ -177,7 +177,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/934545a543b738aa.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_259": {
     "id": "sid_placeholder_259",
@@ -186,7 +186,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/88349d77bf143912.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_688": {
     "id": "sid_placeholder_688",
@@ -204,7 +204,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/efd4f456f4ccf8c1.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_508": {
     "id": "sid_placeholder_508",
@@ -213,7 +213,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/5722b472c905edc5.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_202": {
     "id": "sid_placeholder_202",
@@ -222,7 +222,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/3ae9af1ce8c4f5cf.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_284": {
     "id": "sid_placeholder_284",
@@ -231,7 +231,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/5186b81441521673.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_679": {
     "id": "sid_placeholder_679",
@@ -249,7 +249,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d4ebaa8cd8687d0a.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_80": {
     "id": "sid_placeholder_80",
@@ -258,7 +258,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/cae52be0b08263c6.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_451": {
     "id": "sid_placeholder_451",
@@ -267,7 +267,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/b6f5949f4d4e9d8c.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_100": {
     "id": "sid_placeholder_100",
@@ -276,25 +276,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/4f60cc46b4b7ef2f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
-  "sid_placeholder_860": {
-    "id": "sid_placeholder_860",
-    "title": "PARTY OF YOUR LIFETIME",
-    "artist": "On-lyne",
-    "image": "https://cdn.fortnite-api.com/tracks/51d22ab0596cf0e0.jpg",
-    "price": 500,
-    "inDate": "2026-09-05T00:00:00Z",
-    "outDate": "2026-09-08T23:59:59.999Z"
-  },
-  "sid_placeholder_334": {
-    "id": "sid_placeholder_334",
-    "title": "The Spins",
-    "artist": "Mac Miller, Empire of the Sun",
-    "image": "https://cdn.fortnite-api.com/tracks/f28ca3415c1bf2ba.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_53": {
     "id": "sid_placeholder_53",
@@ -303,7 +285,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/a1ce941a9da0468d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_334": {
+    "id": "sid_placeholder_334",
+    "title": "The Spins",
+    "artist": "Mac Miller, Empire of the Sun",
+    "image": "https://cdn.fortnite-api.com/tracks/f28ca3415c1bf2ba.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_298": {
     "id": "sid_placeholder_298",
@@ -312,7 +303,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/1275ee566e69ded2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_25": {
     "id": "sid_placeholder_25",
@@ -321,7 +312,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/eee2650b94524edd.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-21T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_391": {
     "id": "sid_placeholder_391",
@@ -330,7 +321,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/319fe95a9b3cc988.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_353": {
     "id": "sid_placeholder_353",
@@ -348,7 +339,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/8ed8c16a59eae7a2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_686": {
     "id": "sid_placeholder_686",
@@ -357,7 +348,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/bd89ead4a46d3917.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_283": {
     "id": "sid_placeholder_283",
@@ -366,7 +357,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/08946d5fab0f06d8.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_382": {
     "id": "sid_placeholder_382",
@@ -375,7 +366,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/a8e60d4a29e98a9e.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_265": {
     "id": "sid_placeholder_265",
@@ -384,16 +375,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/e8a930d473f2e2d5.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
-  "sid_placeholder_11": {
-    "id": "sid_placeholder_11",
-    "title": "Carry on Wayward Son",
-    "artist": "Kansas",
-    "image": "https://cdn.fortnite-api.com/tracks/7636eb5b1a4a26f5.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_184": {
     "id": "sid_placeholder_184",
@@ -402,7 +384,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/773dca9c3a04615b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_11": {
+    "id": "sid_placeholder_11",
+    "title": "Carry on Wayward Son",
+    "artist": "Kansas",
+    "image": "https://cdn.fortnite-api.com/tracks/7636eb5b1a4a26f5.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_722": {
     "id": "sid_placeholder_722",
@@ -411,7 +402,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/13fe6fb52796cf68.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_248": {
     "id": "sid_placeholder_248",
@@ -420,7 +411,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/f1d80f94e3fc6f35.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_684": {
     "id": "sid_placeholder_684",
@@ -447,7 +438,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/66b3b06be84ca83b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_351": {
     "id": "sid_placeholder_351",
@@ -465,7 +456,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/fcd77d457a64ebfa.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_93": {
     "id": "sid_placeholder_93",
@@ -474,7 +465,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d543cc293b4b49f3.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_340": {
     "id": "sid_placeholder_340",
@@ -483,16 +474,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/dd6bae817c1802f0.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
-  "sid_placeholder_110": {
-    "id": "sid_placeholder_110",
-    "title": "i",
-    "artist": "Kendrick Lamar",
-    "image": "https://cdn.fortnite-api.com/tracks/ba560eb4705de810.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_795": {
     "id": "sid_placeholder_795",
@@ -501,7 +483,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/7b1fe5c2b22fcd6f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_110": {
+    "id": "sid_placeholder_110",
+    "title": "i",
+    "artist": "Kendrick Lamar",
+    "image": "https://cdn.fortnite-api.com/tracks/ba560eb4705de810.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_495": {
     "id": "sid_placeholder_495",
@@ -510,7 +501,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/3ff91b250ed6f375.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_113": {
     "id": "sid_placeholder_113",
@@ -519,7 +510,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/040026b4b1cf6da5.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_786": {
     "id": "sid_placeholder_786",
@@ -528,7 +519,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/b0d9ee3ff27d096f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_823": {
     "id": "sid_placeholder_823",
@@ -537,7 +528,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/80426f8c53d189ad.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_506": {
     "id": "sid_placeholder_506",
@@ -546,7 +537,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/e64ccf953c0716c3.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_490": {
     "id": "sid_placeholder_490",
@@ -555,7 +546,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/13489a9230e00df4.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_69": {
     "id": "sid_placeholder_69",
@@ -564,7 +555,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/17b77f24b35ac41b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_272": {
     "id": "sid_placeholder_272",
@@ -573,16 +564,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/6cd87c0dbc01e6ba.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
-  },
-  "sid_placeholder_237": {
-    "id": "sid_placeholder_237",
-    "title": "Nothing Else Matters",
-    "artist": "Metallica",
-    "image": "https://cdn.fortnite-api.com/tracks/ec70a816344ac34f.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_744": {
     "id": "sid_placeholder_744",
@@ -591,7 +573,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/78348bd22c5ff36d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_171": {
     "id": "sid_placeholder_171",
@@ -600,7 +582,16 @@
     "image": "https://cdn.fortnite-api.com/tracks/f60e3c74435dcb40.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_237": {
+    "id": "sid_placeholder_237",
+    "title": "Nothing Else Matters",
+    "artist": "Metallica",
+    "image": "https://cdn.fortnite-api.com/tracks/ec70a816344ac34f.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_236": {
     "id": "sid_placeholder_236",
@@ -609,7 +600,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/37efcd8ff0a4a3e2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_775": {
     "id": "sid_placeholder_775",
@@ -618,7 +609,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/fbf1d5dfae364862.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_594": {
     "id": "sid_placeholder_594",
@@ -627,7 +618,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/ad6fa2ab41e8a472.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_269": {
     "id": "sid_placeholder_269",
@@ -636,7 +627,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/babced788621c114.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_352": {
     "id": "sid_placeholder_352",
@@ -654,7 +645,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/c13194793c0c8e2f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_82": {
     "id": "sid_placeholder_82",
@@ -663,7 +654,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/22078f6b27e59bbf.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_430": {
     "id": "sid_placeholder_430",
@@ -672,7 +663,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/b50ea9c72098d1c9.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_587": {
     "id": "sid_placeholder_587",
@@ -681,7 +672,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/57b15f2e0707c240.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_31": {
     "id": "sid_placeholder_31",
@@ -699,7 +690,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/a5f6d54147dc792b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_796": {
     "id": "sid_placeholder_796",
@@ -708,7 +699,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/94e6d97d1ba58fa8.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_56": {
     "id": "sid_placeholder_56",
@@ -717,7 +708,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/76dc7062d16d5896.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_538": {
     "id": "sid_placeholder_538",
@@ -726,7 +717,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d665ead99ec1be53.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_291": {
     "id": "sid_placeholder_291",
@@ -735,7 +726,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/1f97277b25c402e9.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_10": {
     "id": "sid_placeholder_10",
@@ -744,7 +735,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/312d8fd7df9aa082.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_546": {
     "id": "sid_placeholder_546",
@@ -753,7 +744,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/6fb1bf99553edddf.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_240": {
     "id": "sid_placeholder_240",
@@ -762,7 +753,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/0320823aebb2bc34.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_229": {
     "id": "sid_placeholder_229",
@@ -780,7 +771,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/0b68c47c88f02a8d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_426": {
     "id": "sid_placeholder_426",
@@ -798,7 +789,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d1676a9af3505b2b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_78": {
     "id": "sid_placeholder_78",
@@ -807,7 +798,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/c87588fd0a3ff8a9.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_696": {
     "id": "sid_placeholder_696",
@@ -834,7 +825,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/f30929d190a848ab.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_62": {
     "id": "sid_placeholder_62",
@@ -843,7 +834,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/37880d8289f6156c.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_482": {
     "id": "sid_placeholder_482",
@@ -852,7 +843,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/fee2ca6a7cb5b07b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_286": {
     "id": "sid_placeholder_286",
@@ -861,7 +852,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/adea29b0b3499fef.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_271": {
     "id": "sid_placeholder_271",
@@ -870,7 +861,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/f50f70fa74b94855.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_793": {
     "id": "sid_placeholder_793",
@@ -888,7 +879,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/652d5e69481b9f0e.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_169": {
     "id": "sid_placeholder_169",
@@ -897,7 +888,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/1f250caa906bf8e2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_706": {
     "id": "sid_placeholder_706",
@@ -906,7 +897,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/2be51782d70b2693.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_203": {
     "id": "sid_placeholder_203",
@@ -915,7 +906,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/72b07a1b6dfe73e8.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_342": {
     "id": "sid_placeholder_342",
@@ -924,7 +915,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d20236d3779167fb.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_270": {
     "id": "sid_placeholder_270",
@@ -933,7 +924,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/5417a77cd02edd44.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_90": {
     "id": "sid_placeholder_90",
@@ -942,7 +933,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/18550066baae87f2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_488": {
     "id": "sid_placeholder_488",
@@ -951,7 +942,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/440ec0fb3b4c37b6.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_743": {
     "id": "sid_placeholder_743",
@@ -987,7 +978,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/7848337dad20d097.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_805": {
     "id": "sid_placeholder_805",
@@ -1005,7 +996,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/a6ec613ec235c596.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_779": {
     "id": "sid_placeholder_779",
@@ -1014,7 +1005,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/b4832b2be2da935d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_260": {
     "id": "sid_placeholder_260",
@@ -1023,7 +1014,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/307670a5071b9dde.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_228": {
     "id": "sid_placeholder_228",
@@ -1032,7 +1023,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/7da332ea75e0053a.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_140": {
     "id": "sid_placeholder_140",
@@ -1041,7 +1032,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/9ec79ae4a9f1439b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_528": {
     "id": "sid_placeholder_528",
@@ -1050,7 +1041,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/b73db0b766e19c98.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_09": {
     "id": "sid_placeholder_09",
@@ -1059,7 +1050,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/3678021d7024f882.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_168": {
     "id": "sid_placeholder_168",
@@ -1068,7 +1059,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/d62c58352770f48f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_218": {
     "id": "sid_placeholder_218",
@@ -1077,7 +1068,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/f9ab906f8b71a1a2.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-17T23:59:59.999Z"
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_811": {
     "id": "sid_placeholder_811",
