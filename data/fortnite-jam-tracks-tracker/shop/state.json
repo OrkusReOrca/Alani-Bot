@@ -71,15 +71,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_264": {
-    "id": "sid_placeholder_264",
-    "title": "Bouncin' Back",
-    "artist": "Epic Games",
-    "image": "https://cdn.fortnite-api.com/tracks/f05e5e50183ce949.jpg",
-    "price": 500,
-    "inDate": "2026-09-07T00:00:00Z",
-    "outDate": "2026-09-09T23:59:59.999Z"
-  },
   "sid_placeholder_419": {
     "id": "sid_placeholder_419",
     "title": "All Eyez On Me",
@@ -179,6 +170,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_543": {
+    "id": "sid_placeholder_543",
+    "title": "Show Em (What We Can Do)",
+    "artist": "Epic Games",
+    "image": "https://cdn.fortnite-api.com/tracks/d605a9e94fa104ea.jpg",
+    "price": 1800,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-13T23:59:59.999Z"
+  },
   "sid_placeholder_259": {
     "id": "sid_placeholder_259",
     "title": "Hollaback Girl",
@@ -242,6 +242,15 @@
     "inDate": "2026-09-04T00:00:00Z",
     "outDate": "2026-09-10T23:59:59.999Z"
   },
+  "sid_placeholder_462": {
+    "id": "sid_placeholder_462",
+    "title": "M@GICAL☆CURE! LOVE SHOT!",
+    "artist": "SAWTOWNE ft. Hatsune Miku",
+    "image": "https://cdn.fortnite-api.com/tracks/907d65e6c42faa34.jpg",
+    "price": 500,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-13T23:59:59.999Z"
+  },
   "sid_placeholder_432": {
     "id": "sid_placeholder_432",
     "title": "Everybody (Backstreet's Back)",
@@ -251,6 +260,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_483": {
+    "id": "sid_placeholder_483",
+    "title": "World Is Mine",
+    "artist": "ryo (supercell) ft. Hatsune Miku",
+    "image": "https://cdn.fortnite-api.com/tracks/5813dea3e706e349.jpg",
+    "price": 500,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-13T23:59:59.999Z"
+  },
   "sid_placeholder_80": {
     "id": "sid_placeholder_80",
     "title": "Just Dance",
@@ -259,6 +277,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_481": {
+    "id": "sid_placeholder_481",
+    "title": "Miku",
+    "artist": "Anamanaguchi, Hatsune Miku",
+    "image": "https://cdn.fortnite-api.com/tracks/72ee20dc6f11e845.jpg",
+    "price": 500,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-13T23:59:59.999Z"
   },
   "sid_placeholder_451": {
     "id": "sid_placeholder_451",
@@ -377,20 +404,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_184": {
-    "id": "sid_placeholder_184",
-    "title": "XO Tour Llif3",
-    "artist": "Lil Uzi Vert",
-    "image": "https://cdn.fortnite-api.com/tracks/773dca9c3a04615b.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_11": {
     "id": "sid_placeholder_11",
     "title": "Carry on Wayward Son",
     "artist": "Kansas",
     "image": "https://cdn.fortnite-api.com/tracks/7636eb5b1a4a26f5.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_184": {
+    "id": "sid_placeholder_184",
+    "title": "XO Tour Llif3",
+    "artist": "Lil Uzi Vert",
+    "image": "https://cdn.fortnite-api.com/tracks/773dca9c3a04615b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -431,15 +458,6 @@
     "inDate": "2026-09-08T00:00:00Z",
     "outDate": "2026-09-12T23:59:59.999Z"
   },
-  "sid_placeholder_455": {
-    "id": "sid_placeholder_455",
-    "title": "IDOL",
-    "artist": "YOASOBI",
-    "image": "https://cdn.fortnite-api.com/tracks/66b3b06be84ca83b.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_351": {
     "id": "sid_placeholder_351",
     "title": "Spies! (Murda Beatz Remix)",
@@ -448,6 +466,15 @@
     "price": 500,
     "inDate": "2026-09-05T00:00:00Z",
     "outDate": "2026-09-11T23:59:59.999Z"
+  },
+  "sid_placeholder_455": {
+    "id": "sid_placeholder_455",
+    "title": "IDOL",
+    "artist": "YOASOBI",
+    "image": "https://cdn.fortnite-api.com/tracks/66b3b06be84ca83b.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_697": {
     "id": "sid_placeholder_697",
@@ -476,20 +503,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_795": {
-    "id": "sid_placeholder_795",
-    "title": "I'll Believe in Anything",
-    "artist": "Wolf Parade",
-    "image": "https://cdn.fortnite-api.com/tracks/7b1fe5c2b22fcd6f.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_110": {
     "id": "sid_placeholder_110",
     "title": "i",
     "artist": "Kendrick Lamar",
     "image": "https://cdn.fortnite-api.com/tracks/ba560eb4705de810.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_795": {
+    "id": "sid_placeholder_795",
+    "title": "I'll Believe in Anything",
+    "artist": "Wolf Parade",
+    "image": "https://cdn.fortnite-api.com/tracks/7b1fe5c2b22fcd6f.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -530,6 +557,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_541": {
+    "id": "sid_placeholder_541",
+    "title": "Decade",
+    "artist": "Dixie Flatline ft. Hatsune Miku",
+    "image": "https://cdn.fortnite-api.com/tracks/10e32c187517e51c.jpg",
+    "price": 500,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-13T23:59:59.999Z"
+  },
   "sid_placeholder_506": {
     "id": "sid_placeholder_506",
     "title": "Pumped Up Kicks",
@@ -566,15 +602,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_744": {
-    "id": "sid_placeholder_744",
-    "title": "Just Pretend",
-    "artist": "Bad Omens",
-    "image": "https://cdn.fortnite-api.com/tracks/78348bd22c5ff36d.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_171": {
     "id": "sid_placeholder_171",
     "title": "Happier Than Ever - Edit",
@@ -589,6 +616,15 @@
     "title": "Nothing Else Matters",
     "artist": "Metallica",
     "image": "https://cdn.fortnite-api.com/tracks/ec70a816344ac34f.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_744": {
+    "id": "sid_placeholder_744",
+    "title": "Just Pretend",
+    "artist": "Bad Omens",
+    "image": "https://cdn.fortnite-api.com/tracks/78348bd22c5ff36d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -737,6 +773,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_482": {
+    "id": "sid_placeholder_482",
+    "title": "Daisy 2.0",
+    "artist": "Ashnikko ft. Hatsune Miku",
+    "image": "https://cdn.fortnite-api.com/tracks/fee2ca6a7cb5b07b.jpg",
+    "price": 500,
+    "inDate": "2026-09-10T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
   "sid_placeholder_546": {
     "id": "sid_placeholder_546",
     "title": "Through the Fire and Flames",
@@ -809,15 +854,6 @@
     "inDate": "2026-09-04T00:00:00Z",
     "outDate": "2026-09-10T23:59:59.999Z"
   },
-  "sid_placeholder_06": {
-    "id": "sid_placeholder_06",
-    "title": "The Hills",
-    "artist": "The Weeknd",
-    "image": "https://cdn.fortnite-api.com/tracks/1db9ecb6ed66e683.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_388": {
     "id": "sid_placeholder_388",
     "title": "Sugar, We're Goin Down",
@@ -827,20 +863,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_06": {
+    "id": "sid_placeholder_06",
+    "title": "The Hills",
+    "artist": "The Weeknd",
+    "image": "https://cdn.fortnite-api.com/tracks/1db9ecb6ed66e683.jpg",
+    "price": 500,
+    "inDate": "2026-09-04T00:00:00Z",
+    "outDate": "2026-09-10T23:59:59.999Z"
+  },
   "sid_placeholder_62": {
     "id": "sid_placeholder_62",
     "title": "Closer",
     "artist": "The Chainsmokers ft. Halsey",
     "image": "https://cdn.fortnite-api.com/tracks/37880d8289f6156c.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_482": {
-    "id": "sid_placeholder_482",
-    "title": "Daisy 2.0",
-    "artist": "Ashnikko ft. Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/fee2ca6a7cb5b07b.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
