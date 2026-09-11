@@ -1,4 +1,294 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_206",
+      "title": "Toxicity",
+      "artist": "System Of A Down",
+      "image": "https://cdn.fortnite-api.com/tracks/9454f718a0154273.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_193",
+      "title": "Get Low",
+      "artist": "Lil Jon & The East Side Boyz ft. Ying Yang Twins",
+      "image": "https://cdn.fortnite-api.com/tracks/f90c4a59e59660f3.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_753",
+      "title": "So Far So Fake",
+      "artist": "Pierce The Veil",
+      "image": "https://cdn.fortnite-api.com/tracks/a5bbe5c57b8b8b73.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_825",
+      "title": "Big Feeling",
+      "artist": "BKtherula",
+      "image": "https://cdn.fortnite-api.com/tracks/af934cc867c3b53a.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_725",
+      "title": "No One Noticed",
+      "artist": "The Marías",
+      "image": "https://cdn.fortnite-api.com/tracks/dada5bed8c8f0645.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_29",
+      "title": "Cradles",
+      "artist": "Sub Urban",
+      "image": "https://cdn.fortnite-api.com/tracks/e8757c6d1872b6d2.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_789",
+      "title": "I'm So ATL",
+      "artist": "Bankroll Ni",
+      "image": "https://cdn.fortnite-api.com/tracks/5fd87f8af8748490.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_28",
+      "title": "Come & Go",
+      "artist": "Juice WRLD w/ Marshmello",
+      "image": "https://cdn.fortnite-api.com/tracks/fdeedd9dcef81110.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_732",
+      "title": "Mary on a Cross",
+      "artist": "Ghost",
+      "image": "https://cdn.fortnite-api.com/tracks/180fc2449fde9e36.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_05",
+      "title": "Save Your Tears",
+      "artist": "The Weeknd",
+      "image": "https://cdn.fortnite-api.com/tracks/b60cb33fbc0f919b.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_307",
+      "title": "Espresso",
+      "artist": "Sabrina Carpenter",
+      "image": "https://cdn.fortnite-api.com/tracks/3e0d7465fdb7170b.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_119",
+      "title": "Barbie Girl",
+      "artist": "Aqua",
+      "image": "https://cdn.fortnite-api.com/tracks/202a7938c71285e6.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_21",
+      "title": "All The Stars",
+      "artist": "Kendrick Lamar ft. SZA",
+      "image": "https://cdn.fortnite-api.com/tracks/9355953c94d6dc99.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_879",
+      "title": "El Sonidito",
+      "artist": "Hechizeros Band",
+      "image": "https://cdn.fortnite-api.com/tracks/3a55dd21fd1d7a0f.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_54",
+      "title": "Believer",
+      "artist": "Imagine Dragons",
+      "image": "https://cdn.fortnite-api.com/tracks/d03dcee0701748bc.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_142",
+      "title": "X Gon' Give It To Ya",
+      "artist": "DMX",
+      "image": "https://cdn.fortnite-api.com/tracks/3509e861ec569adc.jpg",
+      "price": 500,
+      "inDate": "2026-09-11T00:00:00Z",
+      "outDate": "2026-09-17T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_934",
+      "title": "Boston",
+      "artist": "STELLA LEFTY",
+      "image": "https://cdn.fortnite-api.com/tracks/09ea7e48ae57affe.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_783",
+      "title": "Young Black & Rich",
+      "artist": "Melly Mike",
+      "image": "https://cdn.fortnite-api.com/tracks/fefead98b1c5659f.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_688",
+      "title": "OIIA OIIA (Spinning Cat)",
+      "artist": "W&W",
+      "image": "https://cdn.fortnite-api.com/tracks/86b1f6f8fba1ea34.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_679",
+      "title": "In My Room",
+      "artist": "Julia Wolf",
+      "image": "https://cdn.fortnite-api.com/tracks/7d4c27be9bd889c7.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_684",
+      "title": "Sticky",
+      "artist": "Tyler, The Creator",
+      "image": "https://cdn.fortnite-api.com/tracks/af27d8c779ca4428.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_31",
+      "title": "Feel Good Inc",
+      "artist": "Gorillaz",
+      "image": "https://cdn.fortnite-api.com/tracks/394d7211243e301c.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_229",
+      "title": "Master of Puppets",
+      "artist": "Metallica",
+      "image": "https://cdn.fortnite-api.com/tracks/dce28c1e57fa536b.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_426",
+      "title": "Lean Wit Me",
+      "artist": "Juice WRLD",
+      "image": "https://cdn.fortnite-api.com/tracks/0590fff6e874f0a5.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_696",
+      "title": "Rockstar",
+      "artist": "LISA",
+      "image": "https://cdn.fortnite-api.com/tracks/04a094918afe52c3.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_06",
+      "title": "The Hills",
+      "artist": "The Weeknd",
+      "image": "https://cdn.fortnite-api.com/tracks/1db9ecb6ed66e683.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_793",
+      "title": "Century",
+      "artist": "EsDeeKid",
+      "image": "https://cdn.fortnite-api.com/tracks/4b86e47d8b5756d1.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_743",
+      "title": "BAILE INoLVIDABLE",
+      "artist": "Bad Bunny",
+      "image": "https://cdn.fortnite-api.com/tracks/cdb9388593199a00.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_835",
+      "title": "I miss you, I'm sorry",
+      "artist": "Gracie Abrams",
+      "image": "https://cdn.fortnite-api.com/tracks/049619930ada4c2c.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_878",
+      "title": "Can You Feel My Heart",
+      "artist": "Bring Me The Horizon",
+      "image": "https://cdn.fortnite-api.com/tracks/72c0f35af2f03f7b.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_805",
+      "title": "Dracula",
+      "artist": "Tame Impala",
+      "image": "https://cdn.fortnite-api.com/tracks/7f7bf57e2f35a55b.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_811",
+      "title": "DAISIES",
+      "artist": "Justin Bieber",
+      "image": "https://cdn.fortnite-api.com/tracks/1f3195ef651330b6.jpg",
+      "price": 500,
+      "inDate": "2026-09-04T00:00:00Z",
+      "outDate": "2026-09-10T23:59:59.999Z"
+    }
+  ]
 }

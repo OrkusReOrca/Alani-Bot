@@ -1,13 +1,4 @@
 {
-  "sid_placeholder_934": {
-    "id": "sid_placeholder_934",
-    "title": "Boston",
-    "artist": "STELLA LEFTY",
-    "image": "https://cdn.fortnite-api.com/tracks/09ea7e48ae57affe.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_36": {
     "id": "sid_placeholder_36",
     "title": "Seven Nation Army",
@@ -44,6 +35,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_206": {
+    "id": "sid_placeholder_206",
+    "title": "Toxicity",
+    "artist": "System Of A Down",
+    "image": "https://cdn.fortnite-api.com/tracks/9454f718a0154273.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_200": {
     "id": "sid_placeholder_200",
     "title": "Heathens",
@@ -52,6 +52,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_193": {
+    "id": "sid_placeholder_193",
+    "title": "Get Low",
+    "artist": "Lil Jon & The East Side Boyz ft. Ying Yang Twins",
+    "image": "https://cdn.fortnite-api.com/tracks/f90c4a59e59660f3.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_266": {
     "id": "sid_placeholder_266",
@@ -116,6 +125,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_753": {
+    "id": "sid_placeholder_753",
+    "title": "So Far So Fake",
+    "artist": "Pierce The Veil",
+    "image": "https://cdn.fortnite-api.com/tracks/a5bbe5c57b8b8b73.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_742": {
     "id": "sid_placeholder_742",
     "title": "Never Meant",
@@ -152,15 +170,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_783": {
-    "id": "sid_placeholder_783",
-    "title": "Young Black & Rich",
-    "artist": "Melly Mike",
-    "image": "https://cdn.fortnite-api.com/tracks/fefead98b1c5659f.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_708": {
     "id": "sid_placeholder_708",
     "title": "Sky",
@@ -188,14 +197,14 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_688": {
-    "id": "sid_placeholder_688",
-    "title": "OIIA OIIA (Spinning Cat)",
-    "artist": "W&W",
-    "image": "https://cdn.fortnite-api.com/tracks/86b1f6f8fba1ea34.jpg",
+  "sid_placeholder_825": {
+    "id": "sid_placeholder_825",
+    "title": "Big Feeling",
+    "artist": "BKtherula",
+    "image": "https://cdn.fortnite-api.com/tracks/af934cc867c3b53a.jpg",
     "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_445": {
     "id": "sid_placeholder_445",
@@ -233,14 +242,14 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_679": {
-    "id": "sid_placeholder_679",
-    "title": "In My Room",
-    "artist": "Julia Wolf",
-    "image": "https://cdn.fortnite-api.com/tracks/7d4c27be9bd889c7.jpg",
+  "sid_placeholder_432": {
+    "id": "sid_placeholder_432",
+    "title": "Everybody (Backstreet's Back)",
+    "artist": "Backstreet Boys",
+    "image": "https://cdn.fortnite-api.com/tracks/d4ebaa8cd8687d0a.jpg",
     "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
   },
   "sid_placeholder_462": {
     "id": "sid_placeholder_462",
@@ -251,15 +260,6 @@
     "inDate": "2026-09-10T00:00:00Z",
     "outDate": "2026-09-13T23:59:59.999Z"
   },
-  "sid_placeholder_432": {
-    "id": "sid_placeholder_432",
-    "title": "Everybody (Backstreet's Back)",
-    "artist": "Backstreet Boys",
-    "image": "https://cdn.fortnite-api.com/tracks/d4ebaa8cd8687d0a.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_483": {
     "id": "sid_placeholder_483",
     "title": "World Is Mine",
@@ -268,6 +268,15 @@
     "price": 500,
     "inDate": "2026-09-10T00:00:00Z",
     "outDate": "2026-09-13T23:59:59.999Z"
+  },
+  "sid_placeholder_725": {
+    "id": "sid_placeholder_725",
+    "title": "No One Noticed",
+    "artist": "The Marías",
+    "image": "https://cdn.fortnite-api.com/tracks/dada5bed8c8f0645.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_80": {
     "id": "sid_placeholder_80",
@@ -305,20 +314,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_53": {
-    "id": "sid_placeholder_53",
-    "title": "Starships",
-    "artist": "Nicki Minaj",
-    "image": "https://cdn.fortnite-api.com/tracks/a1ce941a9da0468d.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_334": {
     "id": "sid_placeholder_334",
     "title": "The Spins",
     "artist": "Mac Miller, Empire of the Sun",
     "image": "https://cdn.fortnite-api.com/tracks/f28ca3415c1bf2ba.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_53": {
+    "id": "sid_placeholder_53",
+    "title": "Starships",
+    "artist": "Nicki Minaj",
+    "image": "https://cdn.fortnite-api.com/tracks/a1ce941a9da0468d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -377,6 +386,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_29": {
+    "id": "sid_placeholder_29",
+    "title": "Cradles",
+    "artist": "Sub Urban",
+    "image": "https://cdn.fortnite-api.com/tracks/e8757c6d1872b6d2.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_283": {
     "id": "sid_placeholder_283",
     "title": "Hey Ya!",
@@ -404,20 +422,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_11": {
-    "id": "sid_placeholder_11",
-    "title": "Carry on Wayward Son",
-    "artist": "Kansas",
-    "image": "https://cdn.fortnite-api.com/tracks/7636eb5b1a4a26f5.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_184": {
     "id": "sid_placeholder_184",
     "title": "XO Tour Llif3",
     "artist": "Lil Uzi Vert",
     "image": "https://cdn.fortnite-api.com/tracks/773dca9c3a04615b.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_11": {
+    "id": "sid_placeholder_11",
+    "title": "Carry on Wayward Son",
+    "artist": "Kansas",
+    "image": "https://cdn.fortnite-api.com/tracks/7636eb5b1a4a26f5.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -439,15 +457,6 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_684": {
-    "id": "sid_placeholder_684",
-    "title": "Sticky",
-    "artist": "Tyler, The Creator",
-    "image": "https://cdn.fortnite-api.com/tracks/af27d8c779ca4428.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
   },
   "sid_placeholder_537": {
     "id": "sid_placeholder_537",
@@ -485,6 +494,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_789": {
+    "id": "sid_placeholder_789",
+    "title": "I'm So ATL",
+    "artist": "Bankroll Ni",
+    "image": "https://cdn.fortnite-api.com/tracks/5fd87f8af8748490.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_93": {
     "id": "sid_placeholder_93",
     "title": "Blinding Lights",
@@ -503,20 +521,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_110": {
-    "id": "sid_placeholder_110",
-    "title": "i",
-    "artist": "Kendrick Lamar",
-    "image": "https://cdn.fortnite-api.com/tracks/ba560eb4705de810.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_795": {
     "id": "sid_placeholder_795",
     "title": "I'll Believe in Anything",
     "artist": "Wolf Parade",
     "image": "https://cdn.fortnite-api.com/tracks/7b1fe5c2b22fcd6f.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_110": {
+    "id": "sid_placeholder_110",
+    "title": "i",
+    "artist": "Kendrick Lamar",
+    "image": "https://cdn.fortnite-api.com/tracks/ba560eb4705de810.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -602,6 +620,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_744": {
+    "id": "sid_placeholder_744",
+    "title": "Just Pretend",
+    "artist": "Bad Omens",
+    "image": "https://cdn.fortnite-api.com/tracks/78348bd22c5ff36d.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
   "sid_placeholder_171": {
     "id": "sid_placeholder_171",
     "title": "Happier Than Ever - Edit",
@@ -611,20 +638,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_28": {
+    "id": "sid_placeholder_28",
+    "title": "Come & Go",
+    "artist": "Juice WRLD w/ Marshmello",
+    "image": "https://cdn.fortnite-api.com/tracks/fdeedd9dcef81110.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_237": {
     "id": "sid_placeholder_237",
     "title": "Nothing Else Matters",
     "artist": "Metallica",
     "image": "https://cdn.fortnite-api.com/tracks/ec70a816344ac34f.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_744": {
-    "id": "sid_placeholder_744",
-    "title": "Just Pretend",
-    "artist": "Bad Omens",
-    "image": "https://cdn.fortnite-api.com/tracks/78348bd22c5ff36d.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -674,6 +701,15 @@
     "inDate": "2026-09-05T00:00:00Z",
     "outDate": "2026-09-11T23:59:59.999Z"
   },
+  "sid_placeholder_732": {
+    "id": "sid_placeholder_732",
+    "title": "Mary on a Cross",
+    "artist": "Ghost",
+    "image": "https://cdn.fortnite-api.com/tracks/180fc2449fde9e36.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_261": {
     "id": "sid_placeholder_261",
     "title": "The Final Countdown",
@@ -710,15 +746,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_31": {
-    "id": "sid_placeholder_31",
-    "title": "Feel Good Inc",
-    "artist": "Gorillaz",
-    "image": "https://cdn.fortnite-api.com/tracks/394d7211243e301c.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_497": {
     "id": "sid_placeholder_497",
     "title": "Still Into You",
@@ -736,6 +763,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_05": {
+    "id": "sid_placeholder_05",
+    "title": "Save Your Tears",
+    "artist": "The Weeknd",
+    "image": "https://cdn.fortnite-api.com/tracks/b60cb33fbc0f919b.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_56": {
     "id": "sid_placeholder_56",
@@ -755,20 +791,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_291": {
-    "id": "sid_placeholder_291",
-    "title": "Black Beatles",
-    "artist": "Rae Sremmurd ft. Gucci Mane",
-    "image": "https://cdn.fortnite-api.com/tracks/1f97277b25c402e9.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_10": {
     "id": "sid_placeholder_10",
     "title": "Party Rock Anthem",
     "artist": "LMFAO ft. Lauren Bennett & GoonRock",
     "image": "https://cdn.fortnite-api.com/tracks/312d8fd7df9aa082.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_291": {
+    "id": "sid_placeholder_291",
+    "title": "Black Beatles",
+    "artist": "Rae Sremmurd ft. Gucci Mane",
+    "image": "https://cdn.fortnite-api.com/tracks/1f97277b25c402e9.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -780,7 +816,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/fee2ca6a7cb5b07b.jpg",
     "price": 500,
     "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
+    "outDate": "2026-09-13T23:59:59.999Z"
   },
   "sid_placeholder_546": {
     "id": "sid_placeholder_546",
@@ -800,15 +836,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_229": {
-    "id": "sid_placeholder_229",
-    "title": "Master of Puppets",
-    "artist": "Metallica",
-    "image": "https://cdn.fortnite-api.com/tracks/dce28c1e57fa536b.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_724": {
     "id": "sid_placeholder_724",
     "title": "mirai",
@@ -817,15 +844,6 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_426": {
-    "id": "sid_placeholder_426",
-    "title": "Lean Wit Me",
-    "artist": "Juice WRLD",
-    "image": "https://cdn.fortnite-api.com/tracks/0590fff6e874f0a5.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
   },
   "sid_placeholder_24": {
     "id": "sid_placeholder_24",
@@ -845,15 +863,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_696": {
-    "id": "sid_placeholder_696",
-    "title": "Rockstar",
-    "artist": "LISA",
-    "image": "https://cdn.fortnite-api.com/tracks/04a094918afe52c3.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_388": {
     "id": "sid_placeholder_388",
     "title": "Sugar, We're Goin Down",
@@ -862,15 +871,6 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_06": {
-    "id": "sid_placeholder_06",
-    "title": "The Hills",
-    "artist": "The Weeknd",
-    "image": "https://cdn.fortnite-api.com/tracks/1db9ecb6ed66e683.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
   },
   "sid_placeholder_62": {
     "id": "sid_placeholder_62",
@@ -899,15 +899,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_793": {
-    "id": "sid_placeholder_793",
-    "title": "Century",
-    "artist": "EsDeeKid",
-    "image": "https://cdn.fortnite-api.com/tracks/4b86e47d8b5756d1.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_428": {
     "id": "sid_placeholder_428",
     "title": "Armed And Dangerous",
@@ -935,6 +926,24 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_307": {
+    "id": "sid_placeholder_307",
+    "title": "Espresso",
+    "artist": "Sabrina Carpenter",
+    "image": "https://cdn.fortnite-api.com/tracks/3e0d7465fdb7170b.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
+  "sid_placeholder_119": {
+    "id": "sid_placeholder_119",
+    "title": "Barbie Girl",
+    "artist": "Aqua",
+    "image": "https://cdn.fortnite-api.com/tracks/202a7938c71285e6.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_203": {
     "id": "sid_placeholder_203",
     "title": "Better Now",
@@ -943,6 +952,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_21": {
+    "id": "sid_placeholder_21",
+    "title": "All The Stars",
+    "artist": "Kendrick Lamar ft. SZA",
+    "image": "https://cdn.fortnite-api.com/tracks/9355953c94d6dc99.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_342": {
     "id": "sid_placeholder_342",
@@ -980,33 +998,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_743": {
-    "id": "sid_placeholder_743",
-    "title": "BAILE INoLVIDABLE",
-    "artist": "Bad Bunny",
-    "image": "https://cdn.fortnite-api.com/tracks/cdb9388593199a00.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
-  "sid_placeholder_835": {
-    "id": "sid_placeholder_835",
-    "title": "I miss you, I'm sorry",
-    "artist": "Gracie Abrams",
-    "image": "https://cdn.fortnite-api.com/tracks/049619930ada4c2c.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
-  "sid_placeholder_878": {
-    "id": "sid_placeholder_878",
-    "title": "Can You Feel My Heart",
-    "artist": "Bring Me The Horizon",
-    "image": "https://cdn.fortnite-api.com/tracks/72c0f35af2f03f7b.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_650": {
     "id": "sid_placeholder_650",
     "title": "Rocket Man",
@@ -1016,15 +1007,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_805": {
-    "id": "sid_placeholder_805",
-    "title": "Dracula",
-    "artist": "Tame Impala",
-    "image": "https://cdn.fortnite-api.com/tracks/7f7bf57e2f35a55b.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
-  },
   "sid_placeholder_301": {
     "id": "sid_placeholder_301",
     "title": "Nightmare",
@@ -1033,6 +1015,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_879": {
+    "id": "sid_placeholder_879",
+    "title": "El Sonidito",
+    "artist": "Hechizeros Band",
+    "image": "https://cdn.fortnite-api.com/tracks/3a55dd21fd1d7a0f.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
   },
   "sid_placeholder_779": {
     "id": "sid_placeholder_779",
@@ -1088,6 +1079,24 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_54": {
+    "id": "sid_placeholder_54",
+    "title": "Believer",
+    "artist": "Imagine Dragons",
+    "image": "https://cdn.fortnite-api.com/tracks/d03dcee0701748bc.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
+  "sid_placeholder_142": {
+    "id": "sid_placeholder_142",
+    "title": "X Gon' Give It To Ya",
+    "artist": "DMX",
+    "image": "https://cdn.fortnite-api.com/tracks/3509e861ec569adc.jpg",
+    "price": 500,
+    "inDate": "2026-09-11T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_168": {
     "id": "sid_placeholder_168",
     "title": "Kiss Me More",
@@ -1105,14 +1114,5 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_811": {
-    "id": "sid_placeholder_811",
-    "title": "DAISIES",
-    "artist": "Justin Bieber",
-    "image": "https://cdn.fortnite-api.com/tracks/1f3195ef651330b6.jpg",
-    "price": 500,
-    "inDate": "2026-09-04T00:00:00Z",
-    "outDate": "2026-09-10T23:59:59.999Z"
   }
 }
