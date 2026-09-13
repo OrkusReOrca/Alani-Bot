@@ -1,32 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_870",
-      "title": "Lollipop",
-      "artist": "Lil Wayne ft. Static Major",
-      "image": "https://cdn.fortnite-api.com/tracks/410c67b18086382f.jpg",
-      "price": 500,
-      "inDate": "2026-09-13T00:00:00Z",
-      "outDate": "2026-09-22T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_871",
-      "title": "A Milli (2023 Remix)",
-      "artist": "Lil Wayne",
-      "image": "https://cdn.fortnite-api.com/tracks/7d5cdefaea1b0fd5.jpg",
-      "price": 3600,
-      "inDate": "2026-09-13T00:00:00Z",
-      "outDate": "2026-09-22T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_872",
-      "title": "6 Foot 7 Foot",
-      "artist": "Lil Wayne ft. Cory Gunz",
-      "image": "https://cdn.fortnite-api.com/tracks/c330d756478a5b65.jpg",
-      "price": 3600,
-      "inDate": "2026-09-13T00:00:00Z",
-      "outDate": "2026-09-22T23:59:59.999Z"
-    }
-  ],
+  "newTracks": [],
   "leftTracks": []
 }
