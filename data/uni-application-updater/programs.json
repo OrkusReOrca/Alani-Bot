@@ -93,7 +93,7 @@
     "closeDate": "2027-03-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
     "bestGuess": null,
-    "notes": "Re-verified 2026-09-13 via WebSearch (direct fetch still blocked): EEE regular admissions exercise for the Aug 2027 intake confirmed again as 1 Oct 2026-31 Mar 2027, shared with SPML; early-admission applicants are auto-carried forward into this round. The wrong-cycle Jan 2027 intake window (1 Jul-31 Aug 2026) has already closed. Not yet open as of today (2026-09-13, about 2.5 weeks before the 1 Oct 2026 opening)."
+    "notes": "Re-verified 2026-09-14 via WebSearch (direct fetch still blocked): EEE regular admissions exercise for the Aug 2027 intake confirmed again as 1 Oct 2026-31 Mar 2027, shared with SPML. New detail this run: per NTU's Coursework Programmes Admission Guide, EEE is sitting out the PGC Early Admissions exercise entirely for the Aug 2027 intake (except Joint Education Collaboration Programme applicants) -- any earlier Early Admissions submission is auto-carried into the first batch of the regular exercise. The wrong-cycle Jan 2027 intake window (1 Jul-31 Aug 2026) has already closed. Not yet open as of today (2026-09-14)."
   },
   {
     "id": "ntu-spml",
@@ -105,7 +105,7 @@
     "closeDate": "2027-03-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
     "bestGuess": null,
-    "notes": "Same shared EEE admissions cycle as CCA, re-verified 2026-09-13. Aug 2027 intake regular admissions: 1 Oct 2026-31 Mar 2027, not yet open."
+    "notes": "Same shared EEE admissions cycle as CCA, re-verified 2026-09-14. Aug 2027 intake regular admissions: 1 Oct 2026-31 Mar 2027, not yet open. EEE is sitting out PGC Early Admissions for this intake (except JECP applicants); any prior Early Admissions submission carries forward into the regular exercise's first batch."
   },
   {
     "id": "nus-mcomp-ai",
