@@ -35,20 +35,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_587": {
-    "id": "sid_placeholder_587",
-    "title": "Dream On",
-    "artist": "Aerosmith",
-    "image": "https://cdn.fortnite-api.com/tracks/57b15f2e0707c240.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_25": {
     "id": "sid_placeholder_25",
     "title": "Buddy Holly",
     "artist": "Weezer",
     "image": "https://cdn.fortnite-api.com/tracks/eee2650b94524edd.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_587": {
+    "id": "sid_placeholder_587",
+    "title": "Dream On",
+    "artist": "Aerosmith",
+    "image": "https://cdn.fortnite-api.com/tracks/57b15f2e0707c240.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -197,15 +197,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_543": {
-    "id": "sid_placeholder_543",
-    "title": "Show Em (What We Can Do)",
-    "artist": "Epic Games",
-    "image": "https://cdn.fortnite-api.com/tracks/d605a9e94fa104ea.jpg",
-    "price": 1800,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
-  },
   "sid_placeholder_62": {
     "id": "sid_placeholder_62",
     "title": "Closer",
@@ -233,15 +224,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_870": {
-    "id": "sid_placeholder_870",
-    "title": "Lollipop",
-    "artist": "Lil Wayne ft. Static Major",
-    "image": "https://cdn.fortnite-api.com/tracks/410c67b18086382f.jpg",
-    "price": 500,
-    "inDate": "2026-09-13T00:00:00Z",
-    "outDate": "2026-09-22T23:59:59.999Z"
-  },
   "sid_placeholder_744": {
     "id": "sid_placeholder_744",
     "title": "Just Pretend",
@@ -250,6 +232,15 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_870": {
+    "id": "sid_placeholder_870",
+    "title": "Lollipop",
+    "artist": "Lil Wayne ft. Static Major",
+    "image": "https://cdn.fortnite-api.com/tracks/410c67b18086382f.jpg",
+    "price": 500,
+    "inDate": "2026-09-13T00:00:00Z",
+    "outDate": "2026-09-22T23:59:59.999Z"
   },
   "sid_placeholder_528": {
     "id": "sid_placeholder_528",
@@ -287,24 +278,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_462": {
-    "id": "sid_placeholder_462",
-    "title": "M@GICAL☆CURE! LOVE SHOT!",
-    "artist": "SAWTOWNE ft. Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/907d65e6c42faa34.jpg",
-    "price": 500,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
-  },
-  "sid_placeholder_483": {
-    "id": "sid_placeholder_483",
-    "title": "World Is Mine",
-    "artist": "ryo (supercell) ft. Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/5813dea3e706e349.jpg",
-    "price": 500,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
-  },
   "sid_placeholder_725": {
     "id": "sid_placeholder_725",
     "title": "No One Noticed",
@@ -322,15 +295,6 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_481": {
-    "id": "sid_placeholder_481",
-    "title": "Miku",
-    "artist": "Anamanaguchi, Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/72ee20dc6f11e845.jpg",
-    "price": 500,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
   },
   "sid_placeholder_342": {
     "id": "sid_placeholder_342",
@@ -548,6 +512,15 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
+  "sid_placeholder_846": {
+    "id": "sid_placeholder_846",
+    "title": "Good Morning U.S.A. (Main Title Theme)",
+    "artist": "American Dad! Cast",
+    "image": "https://cdn.fortnite-api.com/tracks/6560bc5b1619cf20.jpg",
+    "price": 500,
+    "inDate": "2026-09-14T00:00:00Z",
+    "outDate": "2026-09-17T23:59:59.999Z"
+  },
   "sid_placeholder_789": {
     "id": "sid_placeholder_789",
     "title": "I'm So ATL",
@@ -584,15 +557,6 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_541": {
-    "id": "sid_placeholder_541",
-    "title": "Decade",
-    "artist": "Dixie Flatline ft. Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/10e32c187517e51c.jpg",
-    "price": 500,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
-  },
   "sid_placeholder_686": {
     "id": "sid_placeholder_686",
     "title": "Ring Ring Ring",
@@ -611,20 +575,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_283": {
-    "id": "sid_placeholder_283",
-    "title": "Hey Ya!",
-    "artist": "Outkast",
-    "image": "https://cdn.fortnite-api.com/tracks/08946d5fab0f06d8.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_203": {
     "id": "sid_placeholder_203",
     "title": "Better Now",
     "artist": "Post Malone",
     "image": "https://cdn.fortnite-api.com/tracks/72b07a1b6dfe73e8.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_283": {
+    "id": "sid_placeholder_283",
+    "title": "Hey Ya!",
+    "artist": "Outkast",
+    "image": "https://cdn.fortnite-api.com/tracks/08946d5fab0f06d8.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
@@ -826,15 +790,6 @@
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
-  },
-  "sid_placeholder_482": {
-    "id": "sid_placeholder_482",
-    "title": "Daisy 2.0",
-    "artist": "Ashnikko ft. Hatsune Miku",
-    "image": "https://cdn.fortnite-api.com/tracks/fee2ca6a7cb5b07b.jpg",
-    "price": 500,
-    "inDate": "2026-09-10T00:00:00Z",
-    "outDate": "2026-09-13T23:59:59.999Z"
   },
   "sid_placeholder_240": {
     "id": "sid_placeholder_240",
@@ -1088,20 +1043,20 @@
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
   },
-  "sid_placeholder_796": {
-    "id": "sid_placeholder_796",
-    "title": "Snow on The Bluff",
-    "artist": "Evening Elephants",
-    "image": "https://cdn.fortnite-api.com/tracks/94e6d97d1ba58fa8.jpg",
-    "price": 500,
-    "inDate": "2026-09-01T00:00:00Z",
-    "outDate": "2026-09-30T23:59:59.999Z"
-  },
   "sid_placeholder_53": {
     "id": "sid_placeholder_53",
     "title": "Starships",
     "artist": "Nicki Minaj",
     "image": "https://cdn.fortnite-api.com/tracks/a1ce941a9da0468d.jpg",
+    "price": 500,
+    "inDate": "2026-09-01T00:00:00Z",
+    "outDate": "2026-09-30T23:59:59.999Z"
+  },
+  "sid_placeholder_796": {
+    "id": "sid_placeholder_796",
+    "title": "Snow on The Bluff",
+    "artist": "Evening Elephants",
+    "image": "https://cdn.fortnite-api.com/tracks/94e6d97d1ba58fa8.jpg",
     "price": 500,
     "inDate": "2026-09-01T00:00:00Z",
     "outDate": "2026-09-30T23:59:59.999Z"
