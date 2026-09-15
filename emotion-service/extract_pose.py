@@ -6,13 +6,15 @@ copied exactly from that file's _THR dict.
 Adaptation note (same reasoning as extract_au.py): the original read
 precomputed pose_features.json (from PyFeat's img2pose + L2CS-Net, run
 once offline for the whole dataset). This extracts head pose live via
-py-feat's own img2pose-backed facepose output (a real, selectable py-feat
-detector — same model the original used), converting its degrees to
-radians so the thresholds below apply unchanged. py-feat's gaze support
-is less certain to be present/consistently named across versions — this
-degrades gracefully to "not available" (matching the original code's own
-handling of missing pose data) rather than guessing at a column name that
-might not exist, which would silently feed nonsense into the prompt.
+the shared py-feat detector (detector.py, face_model="img2pose" — the
+same model the original used), converting its degrees to radians so the
+thresholds below apply unchanged. Gaze comes from py-feat's default
+gaze_model ("l2cs", the same L2CS-Net the original used) on that same
+detection pass — its exact output column names weren't confirmed ahead
+of time, so this tries a couple of plausible candidates and degrades
+gracefully to "not available" (matching the original code's own handling
+of missing pose data) rather than guessing at a name that turns out
+wrong, which would silently feed nonsense into the prompt.
 """
 
 import math
@@ -29,30 +31,16 @@ _THR = {
     "head_move_high": 0.349,
 }
 
-_detector = None
-
-
-def _get_detector():
-    global _detector
-    if _detector is None:
-        from feat import Detector
-
-        _detector = Detector(facepose_model="img2pose")
-    return _detector
-
-
 def _deg_to_rad(v):
     return v * math.pi / 180.0 if v is not None else None
 
 
-def extract_pose_features(frame_paths):
-    """Returns a dict with whatever of head_pitch_mean/std, head_yaw_mean/std,
+def extract_pose_features(result):
+    """Takes the shared py-feat Fex dataframe (see detector.py), returns
+    a dict with whatever of head_pitch_mean/std, head_yaw_mean/std,
     head_roll_mean/std, head_movement_range, gaze_x_mean/std, gaze_y_mean/std
     could actually be extracted (radians) — missing keys mean "not available",
     same as the original's missing-pose-file case."""
-    detector = _get_detector()
-    result = detector.detect_image(frame_paths)
-
     out = {}
     for col, key in (("Pitch", "head_pitch"), ("Yaw", "head_yaw"), ("Roll", "head_roll")):
         if col not in result.columns:

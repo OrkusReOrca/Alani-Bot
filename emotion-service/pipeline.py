@@ -18,6 +18,7 @@ import drive
 import video
 import store
 import prompt
+import detector
 from extract_au import extract_au_values, format_au_string
 from extract_voice import extract_voice_features, format_voice_string
 from extract_transcript import extract_transcript
@@ -71,8 +72,21 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
         frame_paths = video.extract_frames(working_path, work_dir)
         first_frame_path = frame_paths[0] if frame_paths else None
 
-        if "AU" in extract_set and "au_string" not in cache:
-            cache["au_string"] = format_au_string(extract_au_values(frame_paths))
+        # One shared py-feat pass covers both AU and eye/head-pose (see
+        # detector.py) — only actually run if at least one of them is
+        # still needed, so a run that only wants T/VO never pays for it.
+        needs_au = "AU" in extract_set and "au_string" not in cache
+        needs_pose = ("ET" in extract_set or "HT" in extract_set) and (
+            "eye_string" not in cache or "head_string" not in cache
+        )
+        if needs_au or needs_pose:
+            detection = detector.detect_frames(frame_paths)
+            if needs_au:
+                cache["au_string"] = format_au_string(extract_au_values(detection))
+            if needs_pose:
+                pose_feat = extract_pose_features(detection)
+                cache.setdefault("eye_string", format_eye_string(pose_feat))
+                cache.setdefault("head_string", format_head_string(pose_feat))
 
         needs_audio = ("T" in extract_set and "transcript" not in cache) or (
             "VO" in extract_set and "voice_string" not in cache
@@ -83,10 +97,6 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
             cache["transcript"] = extract_transcript(audio_path)
         if "VO" in extract_set and "voice_string" not in cache:
             cache["voice_string"] = format_voice_string(extract_voice_features(audio_path))
-        if ("ET" in extract_set or "HT" in extract_set) and ("eye_string" not in cache or "head_string" not in cache):
-            pose_feat = extract_pose_features(frame_paths)
-            cache.setdefault("eye_string", format_eye_string(pose_feat))
-            cache.setdefault("head_string", format_head_string(pose_feat))
 
         store.save_clip_cache(file_id, cache)
 

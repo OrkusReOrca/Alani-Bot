@@ -2,18 +2,24 @@
 part_flex_flex_au_formatter.py, specifically format_au_string()'s output
 shape and wording ("AU06 Cheek Raiser: 4.19 (present)", "; "-joined).
 
-One real adaptation from the original: that code aggregated AU values
-from a precomputed OpenFace-produced CSV (columns "AUxx_r"/"AUxx_c",
-already extracted offline for the whole 2107-clip dataset ahead of time).
-This service extracts AUs live, per clip, from the same sampled frames
-used for the VLM prompt, via py-feat's own Detector — OpenFace itself is
-a heavy C++ binary with no simple pip install, which is exactly the kind
-of native-build risk this project has been avoiding on bot-hosting.net
-throughout. py-feat doesn't expose OpenFace's separate binary "present"
-flag, so presence here is threshold-based (mean intensity >= 1.0) instead
-of the original's majority-of-frames vote — same effective meaning
-("clearly active over the clip"), same threshold value the original code
-used as its OWN fallback when a presence column was missing.
+Two real adaptations from the original:
+
+1. That code aggregated AU values from a precomputed OpenFace-produced
+   CSV (columns "AUxx_r"/"AUxx_c", already extracted offline for the
+   whole 2107-clip dataset ahead of time). This service extracts AUs
+   live, per clip, via py-feat's Detectorv1 (see detector.py) — OpenFace
+   itself is a heavy C++ binary with no simple pip install, exactly the
+   kind of native-build risk this project has been avoiding on
+   bot-hosting.net throughout.
+
+2. py-feat's default AU model ("xgb") outputs continuous values on a
+   0-1 scale, not OpenFace's original 0-5 intensity scale that
+   methodology.txt and every threshold/wording in this pipeline assumes.
+   Rather than rewrite the whole prompt vocabulary around a different
+   scale, values are linearly rescaled ×5 here (0-1 -> 0-5) before
+   formatting, and the "present" threshold stays 1.0 on that same
+   rescaled 0-5 scale — an honest, documented adaptation, not a silent
+   mismatch.
 """
 
 _AU_NAMES = {
@@ -24,33 +30,22 @@ _AU_NAMES = {
     "AU20": "Lip Stretcher", "AU23": "Lip Tightener", "AU25": "Lips Part",
     "AU26": "Jaw Drop", "AU28": "Lip Suck", "AU45": "Blink",
 }
-_PRESENT_THRESHOLD = 1.0
-
-_detector = None
-
-
-def _get_detector():
-    global _detector
-    if _detector is None:
-        from feat import Detector
-
-        _detector = Detector()
-    return _detector
+_PRESENT_THRESHOLD = 1.0  # on the rescaled 0-5 display scale
+_RAW_TO_DISPLAY_SCALE = 5.0  # py-feat's xgb au_model outputs 0-1; rescale to 0-5
 
 
-def extract_au_values(frame_paths):
-    """Runs py-feat over the given frames, returns {'AU06': 4.19, ...}
-    (mean intensity across frames, only for AUs in _AU_NAMES, missing/NaN
-    treated as 0.0 — same as the original treating NaN as absent)."""
-    detector = _get_detector()
-    result = detector.detect_image(frame_paths)
-
+def extract_au_values(result):
+    """Takes the shared py-feat Fex dataframe (see detector.py), returns
+    {'AU06': 4.19, ...} — mean intensity across frames, rescaled to 0-5,
+    only for AUs in _AU_NAMES, missing/NaN treated as 0.0 (same as the
+    original treating NaN as absent)."""
     values = {}
     for au in _AU_NAMES:
         if au not in result.columns:
             continue
         series = result[au].dropna()
-        values[au] = float(series.mean()) if len(series) else 0.0
+        raw_mean = float(series.mean()) if len(series) else 0.0
+        values[au] = raw_mean * _RAW_TO_DISPLAY_SCALE
     return values
 
 
