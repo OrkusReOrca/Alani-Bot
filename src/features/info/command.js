@@ -26,6 +26,10 @@ const COMMANDS = [
     private: false,
   },
   { text: "**.a list db** — which database(s) you can see and use.", private: false },
+  {
+    text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips. Owner-only, one dedicated channel. See `.a info emo`.",
+    private: true,
+  },
 ];
 
 const FEATURES = [
@@ -42,6 +46,10 @@ const FEATURES = [
     private: false,
   },
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
+  {
+    text: "**Emotion detection** — a Qwen3-VL-8B-Instruct VLM pipeline (from a JAIST research thesis) predicting emotional state from video-call clips uploaded to Google Drive. See `.a info emo`.",
+    private: true,
+  },
 ];
 
 // `.a info db` — the full picture of the reminders/events database
@@ -101,12 +109,60 @@ const DB_INFO = [
   "`<name>` can be left off once you only have one database to pick from.",
 ].join("\n");
 
+// `.a info emo` — same "one connected explanation, gated to the private
+// server" treatment as DB_INFO's public counterpart, except this one
+// actually IS gated (unlike the db tier system, this feature is a
+// personal research demo, not something meant to be discoverable by
+// anyone Alani shares a server with) — see execute()'s privacy check
+// below. Source of truth for the exact command shape is
+// src/features/emotion-detect/README.md; keep this in sync with it.
+const EMO_INFO = [
+  "**Emotion detection — how it works**",
+  "",
+  "Reproduces a JAIST research thesis's VLM emotion-recognition pipeline " +
+    "(Qwen3-VL-8B-Instruct via OpenRouter, four-class circumplex model) " +
+    "against video-call clips sitting in a Google Drive folder. Owner-only, " +
+    "and only responds in its one dedicated channel — silent everywhere else.",
+  "",
+  "```",
+  ".a emo <run1|runany|runall> m<modality dot-list|all> <d|s>",
+  "```",
+  "",
+  "**Run mode** (which clip(s) to process):",
+  "- `run1` — exactly one pending clip (any clip not already prefixed `DONE_`)",
+  "- `runany` — every pending clip found, however many there are",
+  "- `runall` — force-reprocess **every** clip, `DONE_` or not",
+  "",
+  "**Modality list** — a dot-separated subset of `AU` (facial action units), " +
+    "`T` (speech transcript), `VO` (voice acoustics), `ET` (eye gaze), `HT` " +
+    "(head pose), e.g. `mAU.T.VO`, or `mall` for all five. This is what " +
+    "actually goes into the VLM's prompt for this run.",
+  "",
+  "**Cache mode**:",
+  "- `d` (default) — extract & cache **all 5** modalities for each clip " +
+    "regardless of the modality list, so a later run with a different list " +
+    "is instant (already on disk)",
+  "- `s` (specified-only) — only extract what's in the modality list this time",
+  "",
+  "Example: `.a emo runany mAU.T d` — process every pending clip using " +
+    "AU + transcript in the prompt, caching all five for later.",
+  "",
+  "**What happens**: an immediate ack, then a result message per finished " +
+    "clip (prediction + the clip's first frame attached) as it's ready, " +
+    "then a short summary once the whole run is done. Videos longer than " +
+    "2 minutes are silently truncated to the first 2:00 before anything " +
+    "else happens. A clip that fails is left unprefixed so the next " +
+    "`run1`/`runany` retries it automatically.",
+].join("\n");
+
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
 // need to know which one triggered it. See bot.js's
 // interactionCreate/messageCreate handlers for how each one adapts to
 // this shape.
 export async function execute(ctx, args = []) {
+  const showPrivate = ctx.guildId === PRIVATE_SERVER_ID;
+
   if (args[0]?.toLowerCase() === "db") {
     // Chunked (not a single ctx.reply()) since this has grown past
     // Discord's 2000-char single-message limit — safe to call ctx.reply()
@@ -119,7 +175,22 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  const showPrivate = ctx.guildId === PRIVATE_SERVER_ID;
+  if (args[0]?.toLowerCase() === "emo") {
+    // Unlike `.a info db`, this one IS gated — see EMO_INFO's own
+    // comment on why. Outside the private server this just falls through
+    // to the regular info reply below (private COMMANDS/FEATURES entries
+    // already hidden there too), rather than confirming the topic exists
+    // at all with a distinct "not available" message.
+    if (!showPrivate) {
+      await execute(ctx, []);
+      return;
+    }
+    for (const chunk of chunkMessage(EMO_INFO)) {
+      await ctx.reply(chunk);
+    }
+    return;
+  }
+
   const commands = COMMANDS.filter((c) => showPrivate || !c.private).map((c) => c.text);
   const features = FEATURES.filter((f) => showPrivate || !f.private).map((f) => f.text);
 
