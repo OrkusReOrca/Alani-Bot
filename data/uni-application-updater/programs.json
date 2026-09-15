@@ -9,7 +9,7 @@
     "closeDate": null,
     "link": "https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99293/page.htm",
     "bestGuess": null,
-    "notes": "Official sigs.tsinghua.edu.cn unreachable (sandbox-wide egress block, re-confirmed 2026-09-13, both www/non-www). WebSearch (English + Chinese) surfaces only the prior Aug 2026 intake cycle (announced 2025-09-16, closes 2026-05-31) and a separate domestic PhD/推免 doctoral-track announcement (unrelated program) -- no Aug 2027/Jan 2028 cycle announcement found for this English-taught master's program."
+    "notes": "Official sigs.tsinghua.edu.cn unreachable (sandbox-wide egress block, re-confirmed 2026-09-15). WebSearch (English + Chinese) still surfaces only the prior Aug 2026 intake cycle (announced 2025-09-16, closed 2026-05-31) and a separate domestic PhD/推免 doctoral-track 2027 announcement (unrelated program, closed 2026-07-28) -- no Aug 2027/Jan 2028 cycle announcement found yet for this English-taught master's program. Last year's equivalent \"2026 Admissions Now Open\" notice was published 2025-09-16, so a 2027 equivalent may appear within days; nothing found yet as of today."
   },
   {
     "id": "tsinghua-sigs-aix",
@@ -21,7 +21,7 @@
     "closeDate": null,
     "link": "https://www.sigs.tsinghua.edu.cn/en/2024/1230/c7587a99311/page.htm",
     "bestGuess": null,
-    "notes": "Official sigs.tsinghua.edu.cn unreachable (sandbox-wide egress block, re-confirmed 2026-09-13). WebSearch (English + Chinese) surfaces only generic program description and admission-requirement snippets -- no round dates found for this program in any cycle, prior or current."
+    "notes": "Official sigs.tsinghua.edu.cn unreachable (sandbox-wide egress block, re-confirmed 2026-09-15). WebSearch (English + Chinese) still surfaces only the prior admission cycle (Nov 15 2024-May 31 2025, i.e. Aug 2025 intake) and generic program description -- no round dates found for an Aug 2027/Jan 2028 cycle. No SIGS-wide \"2027 Admissions Now Open\" notice found yet (last year's equivalent notice published 2025-09-16)."
   },
   {
     "id": "tsinghua-main-adv-computing",
@@ -32,8 +32,8 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://ac.cs.tsinghua.edu.cn/application.html",
-    "bestGuess": null,
-    "notes": "Official page unreachable (sandbox-wide egress block, re-confirmed 2026-09-13). Third-party consultancy sites (China Admissions, CUCAS, Mastersportal) again claim a Feb 28 2027 deadline for a stated 'Sept 2027' start, but the same China Admissions source internally dates that same round's stages as closing Dec 15 2025 / Jan 1-Feb 27 2026 -- consistent with the Sept 2026 intake, not Sept 2027, suggesting the '2027' label is a templated/mislabeled reuse rather than a real signal, so not used as a bestGuess. No official Tsinghua source confirms any 2027-cycle date. No Jan 2028 intake option found (Tsinghua appears Sept-intake only)."
+    "bestGuess": "Multiple secondary sources (China Admissions, CUCAS, Mastersportal) consistently list a Feb 28, 2027 application deadline for a stated Sept 2027 start, repeated again in a fresh search today -- but one of these sources' own internal round-stage dates (Dec 15 2025-Feb 27 2026) suggest this may be a mislabeled/templated reuse of the Sept 2026 cycle rather than confirmed Sept 2027 data. Treat as plausible but unconfirmed.",
+    "notes": "Official page unreachable (sandbox-wide egress block, re-confirmed 2026-09-15). No official Tsinghua source confirms any 2027-cycle date; the recurring third-party 'Feb 28 2027 / Sept 2027' claim is not corroborated by an official page and has a known internal date inconsistency (see bestGuess). No Jan 2028 intake option found (Tsinghua appears Sept-intake only)."
   },
   {
     "id": "tsinghua-main-automation",
@@ -45,7 +45,7 @@
     "closeDate": null,
     "link": "https://yz.tsinghua.edu.cn/en/info/1014/1107.htm",
     "bestGuess": null,
-    "notes": "Official page unreachable (sandbox-wide egress block, re-confirmed 2026-09-13). WebSearch surfaces only a 2026-cycle admissions notice (year of the round unconfirmed) and general Tsinghua-wide statements that 2027 catalogs/calendars are still being released gradually, typical Sept-Feb application window. No dated, program-specific Sept 2027/Jan 2028 round found."
+    "notes": "Official page unreachable (sandbox-wide egress block, re-confirmed 2026-09-15). WebSearch still surfaces only general Tsinghua-wide statements that international graduate applications typically run mid-Oct to early March, with 2027 department-specific catalogs 'released gradually' and not yet published. No dated, program-specific Sept 2027/Jan 2028 round found."
   },
   {
     "id": "ntu-msai",
@@ -57,7 +57,7 @@
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-artificial-intelligence",
     "bestGuess": "NTU's general Coursework Programmes Admission Guide (site-wide, not MSAI-specific) indicates most PG coursework portals open 1 Nov 2026, with individual programme deadlines between 31 Jan and 31 Mar 2027, feeding the Aug 2027 intake -- a general-guide signal, not an MSAI-confirmed date.",
-    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-13). No MSAI-specific dated Aug 2027 announcement found."
+    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-15). WebSearch surfaces only a wrong-cycle Jan-intake deadline reference; no MSAI-specific dated Aug 2027 announcement found."
   },
   {
     "id": "ntu-msds",
@@ -69,7 +69,7 @@
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-science-in-data-science-(msds)",
     "bestGuess": "Same general NTU coursework-guide pattern as MSAI (portal opens ~1 Nov 2026, deadlines 31 Jan-31 Mar 2027) -- not MSDS-specific confirmation.",
-    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-13). Only general program/fee info (AY2026-27 references) found, no dated Aug 2027 window."
+    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-15). Only general program/ranking info (AY2026-27 references) found, no dated Aug 2027 window."
   },
   {
     "id": "ntu-mcaai",
@@ -81,7 +81,7 @@
     "closeDate": null,
     "link": "https://www.ntu.edu.sg/education/graduate-programme/master-of-computing-in-applied-ai-(mcaai)",
     "bestGuess": null,
-    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-13). Only re-confirmed the already-known, wrong-cycle Jan 2027 window (5 May-19 Jun 2026, now closed); no Aug 2027-dated round found, official or secondary."
+    "notes": "ntu.edu.sg fully egress-blocked again (re-confirmed 2026-09-15). Re-confirmed only the already-known, wrong-cycle Jan 2027 window (5 May-19 Jun 2026, now closed); no Aug 2027-dated round found, official or secondary."
   },
   {
     "id": "ntu-cca",
@@ -93,7 +93,7 @@
     "closeDate": "2027-03-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
     "bestGuess": null,
-    "notes": "Re-verified 2026-09-14 via WebSearch (direct fetch still blocked): EEE regular admissions exercise for the Aug 2027 intake confirmed again as 1 Oct 2026-31 Mar 2027, shared with SPML. New detail this run: per NTU's Coursework Programmes Admission Guide, EEE is sitting out the PGC Early Admissions exercise entirely for the Aug 2027 intake (except Joint Education Collaboration Programme applicants) -- any earlier Early Admissions submission is auto-carried into the first batch of the regular exercise. The wrong-cycle Jan 2027 intake window (1 Jul-31 Aug 2026) has already closed. Not yet open as of today (2026-09-14)."
+    "notes": "Re-verified 2026-09-15 via WebSearch (direct fetch still blocked): EEE regular admissions exercise for the Aug 2027 intake reconfirmed again as 1 Oct 2026-31 Mar 2027, shared with SPML. EEE is sitting out the PGC Early Admissions exercise for the Aug 2027 intake (except Joint Education Collaboration Programme applicants) -- any earlier Early Admissions submission is auto-carried into the first batch of the regular exercise. Not yet open as of today (2026-09-15)."
   },
   {
     "id": "ntu-spml",
@@ -105,7 +105,7 @@
     "closeDate": "2027-03-31",
     "link": "https://www.ntu.edu.sg/eee/admissions/programmes/graduate-programmes/msc",
     "bestGuess": null,
-    "notes": "Same shared EEE admissions cycle as CCA, re-verified 2026-09-14. Aug 2027 intake regular admissions: 1 Oct 2026-31 Mar 2027, not yet open. EEE is sitting out PGC Early Admissions for this intake (except JECP applicants); any prior Early Admissions submission carries forward into the regular exercise's first batch."
+    "notes": "Same shared EEE admissions cycle as CCA, re-verified 2026-09-15. Aug 2027 intake regular admissions: 1 Oct 2026-31 Mar 2027, not yet open. EEE is sitting out PGC Early Admissions for this intake (except JECP applicants); any prior Early Admissions submission carries forward into the regular exercise's first batch."
   },
   {
     "id": "nus-mcomp-ai",
@@ -117,7 +117,7 @@
     "closeDate": null,
     "link": "https://www.comp.nus.edu.sg/programmes/pg/mcomp-ai/application/",
     "bestGuess": null,
-    "notes": "comp.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-13). Confirmed the program moved to a single August-only intake starting AY2025 (per 'FirstIntakeAug2025'/'LastIntakeJan2025' source titles); general MComp pattern is applications 1 Oct (year prior)-31 Jan (intake year), but no source explicitly dates an Aug 2027 round -- pattern extrapolation only, not treated as a bestGuess signal."
+    "notes": "comp.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-15). Program moved to single August-only intake starting AY2025. General MComp pattern is applications 1 Oct (year prior)-31 Jan (intake year), and today's WebSearch again only offered this as its own extrapolation rather than quoting a dated Aug 2027 source -- per policy, mechanical date extrapolation is not used as a bestGuess signal."
   },
   {
     "id": "nus-msaii",
@@ -128,8 +128,8 @@
     "openDate": null,
     "closeDate": null,
     "link": "https://scale.nus.edu.sg/programmes/graduate/msc-(artificial-intelligence-innovation)",
-    "bestGuess": "A WebSearch synthesis of indexed scale.nus.edu.sg content explicitly names 'Artificial Intelligence & Innovation' among NUS SCALE programmes with an August 2027 intake and a Nov 2026-Jan 2027 application window -- more specific than prior findings (which only had other, differently-named specializations dated for 2027), but still just a search-engine synthesis of cached snippets rather than a directly verified page, so treat as plausible but unconfirmed.",
-    "notes": "scale.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-13). One intake per academic year confirmed generally for this program."
+    "bestGuess": "A WebSearch synthesis of indexed scale.nus.edu.sg content names 'Artificial Intelligence & Innovation' among NUS SCALE programmes with an August 2027 intake and a Nov 2026-Jan 2027 application window. Still just a search-engine synthesis of cached snippets, not a directly verified page -- treat as plausible but unconfirmed.",
+    "notes": "scale.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-15). Today's search also surfaced a differently-dated 'Nov 2025-Jan 2026' window labeled as the '2027 intake', which is internally inconsistent (that window would actually fit an Aug 2026 intake) -- an example of the wrong-cycle mislabeling risk called out in the sourcing policy. Given the conflicting year labels across sources, status stays error and the more specific/directly-named bestGuess above is retained with this caveat."
   },
   {
     "id": "nus-robotics",
@@ -141,7 +141,7 @@
     "closeDate": null,
     "link": "https://cde.nus.edu.sg/me/graduate/msc-robotics/",
     "bestGuess": null,
-    "notes": "cde.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-13). Reconfirmed the program runs two intakes/year (Aug and Jan) -- relevant to this applicant's Jan 2028 fallback -- with admission outcomes released Nov-Apr for Aug intakes and Oct for Jan intakes, but no application open/close dates for either the Aug 2027 or Jan 2028 round were found. Not extrapolated from prior cycles per policy."
+    "notes": "cde.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-15). Reconfirmed the program runs two intakes/year (Aug and Jan) -- relevant to this applicant's Jan 2028 fallback -- with admission outcomes released Nov-Apr for Aug intakes and Oct for Jan intakes, but no application open/close dates for either the Aug 2027 or Jan 2028 round were found. Not extrapolated from prior cycles per policy."
   },
   {
     "id": "nus-dsml",
@@ -153,6 +153,6 @@
     "closeDate": "2027-01-31",
     "link": "https://www.math.nus.edu.sg/cdsml/ms-dsml/dsml-prospective-students/",
     "bestGuess": null,
-    "notes": "math.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-13). Re-verified via WebSearch: both rounds still explicitly labeled for the August 2027 intake -- Early Admission Round (16 May-15 Jul 2026, now closed) outcomes due by 30 Sep 2026 (not yet reached as of today); Regular Admission Round (1 Oct 2026-31 Jan 2027) not yet open. No date shifts detected."
+    "notes": "math.nus.edu.sg unreachable (egress-blocked, re-confirmed 2026-09-15). Re-verified via WebSearch: a source today explicitly states 'Applications for the Regular Admission Cycle will open from 1 October 2026 to 31 January 2027 for the August 2027 intake', directly matching these dates (Early Admission Round 16 May-15 Jul 2026 already closed, outcomes due by 30 Sep 2026). A separately found poster titled 'August 2026 intake' with a May-Jul 2025 window is the prior year's cycle, not this one -- ruled out as wrong-cycle noise. No date shifts detected."
   }
 ]
