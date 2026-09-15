@@ -1,3 +1,15 @@
+# py-feat pulls in torch/torchvision as a hard dependency. Left to
+# resolve against plain PyPI, Linux "torch" bundles the entire NVIDIA
+# CUDA toolkit (nvidia-cudnn-cu13, nvidia-nccl-cu13, triton, etc. — over
+# a GB combined) as dependencies, none of which this CPU-only
+# bot-hosting.net slot can use or has disk for (this is exactly what
+# filled the disk mid-install). Pointing pip at PyTorch's own CPU-only
+# wheel index avoids downloading any of that — same package, same
+# version, none of the CUDA weight.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch
+torchvision
 py-feat
 opensmile
 faster-whisper
