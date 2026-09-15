@@ -1,0 +1,7 @@
+# Root-level redirect so bot-hosting.net's Python egg (which only ever
+# looks for "requirements.txt" at the repo root, same as its Node egg
+# only looks for "package.json" there) actually finds and installs
+# emotion-service's dependencies. The real, single-source-of-truth list
+# stays in emotion-service/requirements.txt — this just points pip at it,
+# resolved relative to this file's own location (the repo root).
+-r emotion-service/requirements.txt
