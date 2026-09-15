@@ -35,7 +35,7 @@ def _get_service():
         raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_KEY not configured")
     info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_KEY)
     creds = service_account.Credentials.from_service_account_info(info, scopes=_SCOPES)
-    _service = build("drive", "v3", credentials=creds, cacheDiscovery=False)
+    _service = build("drive", "v3", credentials=creds, cache_discovery=False)
     return _service
 
 
