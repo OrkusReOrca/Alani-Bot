@@ -26,6 +26,17 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+// Every current route sends small JSON (a handful of KB at most, now that
+// the emotion callback's first-frame image is shrunk before it's ever
+// base64'd into a request body — see video.make_thumbnail()'s own
+// comment for why that matters). This is a blunt, central backstop, not
+// a replacement for keeping payloads small at the source: a several-MB
+// request landing all at once, unread, in a container capped at 1GB RAM
+// is a plausible way to OOM-crash the whole bot outright — rejecting it
+// before ever buffering it into memory is cheap insurance against that,
+// for this route and any future one.
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
 export function startBridgeServer() {
   registerVoiceRoutes(registerRoute);
   registerUniTrackerPushRoute(registerRoute);
@@ -36,6 +47,10 @@ export function startBridgeServer() {
     if (!route) return sendJson(res, 404, { error: "Not found" });
     if (!route.secret || req.headers.authorization !== `Bearer ${route.secret}`) {
       return sendJson(res, 401, { error: "Unauthorized" });
+    }
+    const contentLength = Number(req.headers["content-length"]);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return sendJson(res, 413, { error: `Body too large (max ${MAX_BODY_BYTES} bytes)` });
     }
 
     try {

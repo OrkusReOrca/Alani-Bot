@@ -40,7 +40,12 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
         extract_set = ALL_MODALITIES if cache_mode == "d" else modalities
 
         frame_paths = video.extract_frames(working_path, work_dir)
-        first_frame_path = frame_paths[0] if frame_paths else None
+        # The VLM's own frames stay full-resolution (frame_paths, below) —
+        # only the copy that gets persisted/sent to Discord is shrunk. See
+        # video.make_thumbnail()'s own docstring for why this matters.
+        first_frame_thumb = None
+        if frame_paths:
+            first_frame_thumb = video.make_thumbnail(frame_paths[0], os.path.join(work_dir, "thumb.jpg"))
 
         # One shared py-feat pass covers both AU and eye/head-pose (see
         # detector.py) — only actually run if at least one of them is
@@ -103,10 +108,10 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
         # Persisted out of work_dir before it gets deleted below — this is
         # what makes ".a emo resend" possible later without recomputing
         # anything (see store.py's own docstring on this).
-        store.save_first_frame(file_id, first_frame_path)
+        store.save_first_frame(file_id, first_frame_thumb)
 
         drive.mark_done(file_id, filename)
-        callback.post_result(filename, True, prediction=f"{result_label} ({short})", first_frame_path=first_frame_path)
+        callback.post_result(filename, True, prediction=f"{result_label} ({short})", first_frame_path=first_frame_thumb)
         return True
     except Exception as e:
         traceback.print_exc()

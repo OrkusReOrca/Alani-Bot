@@ -82,6 +82,27 @@ def extract_frames(path, work_dir):
     return frame_paths
 
 
+def make_thumbnail(src_path, dest_path, max_dim=1024, quality=80):
+    """Downscaled, recompressed copy of one frame — specifically for the
+    Discord attachment / persisted-for-resend copy, NOT the frames sent to
+    OpenRouter (those stay at full extracted resolution; shrinking those
+    would risk losing exactly the facial detail the VLM needs). A phone/
+    iPad-recorded frame at full resolution, base64-encoded into a JSON
+    callback body, was very likely enough to OOM-crash the Node bot's
+    deliberately small (1GB) container in practice — this exists so that
+    never has a reason to happen again, independent of whatever the exact
+    root cause turns out to be."""
+    img = cv2.imread(src_path)
+    if img is None:
+        return None
+    h, w = img.shape[:2]
+    scale = min(1.0, max_dim / max(h, w))
+    if scale < 1.0:
+        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    cv2.imwrite(dest_path, img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return dest_path
+
+
 def extract_audio(path, work_dir):
     """Mono 16kHz WAV — what both faster-whisper and openSMILE expect."""
     audio_path = os.path.join(work_dir, "audio.wav")
