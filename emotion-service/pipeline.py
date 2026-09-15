@@ -5,20 +5,17 @@ diagram. Runs on a background thread (started by main.py) so the
 triggering POST /run can return immediately.
 """
 
-import base64
 import os
 import shutil
 import tempfile
 import traceback
 
-import requests
-
-import config
 import drive
 import video
 import store
 import prompt
 import detector
+import callback
 from extract_au import extract_au_values, format_au_string
 from extract_voice import extract_voice_features, format_voice_string
 from extract_transcript import extract_transcript
@@ -26,33 +23,6 @@ from extract_pose import extract_pose_features, format_eye_string, format_head_s
 from openrouter_client import classify
 
 ALL_MODALITIES = ["AU", "T", "VO", "ET", "HT"]
-
-
-def _post(path, payload):
-    if not config.ALANI_BOT_URL or not config.SHARED_SECRET:
-        print(f"[pipeline] ALANI_BOT_URL/EMOTION_SERVICE_SECRET not set — skipping callback to {path}")
-        return
-    try:
-        requests.post(
-            f"{config.ALANI_BOT_URL.rstrip('/')}{path}",
-            headers={"Authorization": f"Bearer {config.SHARED_SECRET}", "Content-Type": "application/json"},
-            json=payload,
-            timeout=30,
-        )
-    except Exception as e:
-        print(f"[pipeline] callback to {path} failed: {e}")
-
-
-def _post_result(clip_name, success, prediction=None, error=None, first_frame_path=None):
-    payload = {"clipName": clip_name, "success": success}
-    if success:
-        payload["prediction"] = prediction
-        if first_frame_path and os.path.exists(first_frame_path):
-            with open(first_frame_path, "rb") as f:
-                payload["firstFrameBase64"] = base64.b64encode(f.read()).decode("ascii")
-    else:
-        payload["error"] = error
-    _post("/emotion/result", payload)
 
 
 def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
@@ -130,9 +100,13 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
             modalities=modalities, cache_mode=cache_mode, status="ok",
             prediction=result_label, valence_raw=valence_raw, arousal_raw=arousal_raw,
         )
+        # Persisted out of work_dir before it gets deleted below — this is
+        # what makes ".a emo resend" possible later without recomputing
+        # anything (see store.py's own docstring on this).
+        store.save_first_frame(file_id, first_frame_path)
 
         drive.mark_done(file_id, filename)
-        _post_result(filename, True, prediction=f"{result_label} ({short})", first_frame_path=first_frame_path)
+        callback.post_result(filename, True, prediction=f"{result_label} ({short})", first_frame_path=first_frame_path)
         return True
     except Exception as e:
         traceback.print_exc()
@@ -142,7 +116,7 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode):
         )
         # Deliberately NOT renamed on failure — left as-is so the next
         # run1/runany retries it automatically, per the confirmed behavior.
-        _post_result(filename, False, error=str(e))
+        callback.post_result(filename, False, error=str(e))
         return False
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -165,4 +139,4 @@ def run(run_mode, modalities, cache_mode, invoked_by):
         else:
             failed += 1
 
-    _post("/emotion/batch-done", {"total": len(clips), "succeeded": succeeded, "failed": failed})
+    callback.post("/emotion/batch-done", {"total": len(clips), "succeeded": succeeded, "failed": failed})

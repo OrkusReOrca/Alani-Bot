@@ -31,9 +31,28 @@ Env vars (see each one's own comment in `config.py` for detail):
 | `EMOTION_DATA_DIR` | Where the per-clip cache JSONs + the status/history CSV live on disk. Defaults to `./data`. |
 | `EMOTION_WHISPER_MODEL` / `EMOTION_WHISPER_COMPUTE_TYPE` | faster-whisper model size/precision — defaults to `small`/`int8` (same tier voice-Alani already runs proven on CPU). The original thesis pipeline used a much larger Thai-finetuned model on an HPC GPU node; bump this if transcript quality matters more than speed for a given demo. |
 
-**Startup file for the bot-hosting.net slot:** `emotion-service/main.py`
-(exact working-directory/subfolder behavior needs a one-time check once
-the slot exists — see the root plan's own note on this).
+**Startup file for the bot-hosting.net slot:** `emotion-service/main.py`.
+The panel's Startup File field defaults to just `main.py` (looked for at
+the repo root) — set it explicitly to `emotion-service/main.py`, same as
+Alani-Bot's own Node slot uses `src/bot.js`, not `index.js`. `requirements.txt`
+at the repo root is a one-line redirect (`-r emotion-service/requirements.txt`)
+for the same reason — bot-hosting.net's Python egg only ever checks for it
+at the repo root.
+
+## Routes
+
+Two, both under `POST`, both requiring `Authorization: Bearer
+<EMOTION_SERVICE_SECRET>`:
+
+- **`/run`** `{runMode, modalities, cacheMode, invokedBy}` — starts a
+  real run (`pipeline.py`): lists clips from Drive, preprocesses, calls
+  OpenRouter, reports each result back to Alani-Bot. Returns `202`
+  immediately; the actual work happens on a background thread.
+- **`/resend`** `{target, invokedBy}` — re-posts already-computed results
+  with no recompute at all (`resend.py`), reading straight from
+  `store.py`'s own records. `target` is `"all"`, `"recent"` (last 24h),
+  or a filename. See `../src/features/emotion-detect/README.md`'s own
+  "Resend" section for why this exists.
 
 ## Why no OpenFace, and no local model weights
 

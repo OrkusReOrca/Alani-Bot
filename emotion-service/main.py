@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import config
 import pipeline
+import resend
 
 VALID_RUN_MODES = {"run1", "runany", "runall"}
 VALID_MODALITIES = {"AU", "T", "VO", "ET", "HT"}
@@ -34,7 +35,7 @@ class Handler(BaseHTTPRequestHandler):
         if not config.SHARED_SECRET or not self._authorized():
             return self._send_json(401, {"error": "Unauthorized"})
 
-        if self.path != "/run":
+        if self.path not in ("/run", "/resend"):
             return self._send_json(404, {"error": "Not found"})
 
         length = int(self.headers.get("Content-Length", 0))
@@ -42,6 +43,14 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send_json(400, {"error": "Invalid JSON body"})
+
+        if self.path == "/resend":
+            target = payload.get("target")
+            invoked_by = payload.get("invokedBy", "")
+            if not isinstance(target, str) or not target.strip():
+                return self._send_json(400, {"error": "target must be 'all', 'recent', or a filename"})
+            threading.Thread(target=resend.run, args=(target, invoked_by), daemon=True).start()
+            return self._send_json(202, {"message": "Resend started."})
 
         run_mode = payload.get("runMode")
         modalities = payload.get("modalities")

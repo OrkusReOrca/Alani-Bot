@@ -15,7 +15,8 @@ goes into Alani-Bot's SQLite.
 import csv
 import json
 import os
-from datetime import datetime, timezone
+import shutil
+from datetime import datetime, timedelta, timezone
 
 import config
 
@@ -40,6 +41,29 @@ def _paths():
 def _clip_json_path(file_id):
     clips_dir, _ = _paths()
     return os.path.join(clips_dir, f"{file_id}.json")
+
+
+def _first_frame_path(file_id):
+    clips_dir, _ = _paths()
+    return os.path.join(clips_dir, f"{file_id}.jpg")
+
+
+def save_first_frame(file_id, src_path):
+    """Copies the clip's first frame out of its (temporary, deleted right
+    after processing) work directory into durable per-clip storage, so
+    "resend" can reattach it later without redoing any extraction. No-op
+    if there's no frame to save (e.g. extraction failed before any frame
+    existed)."""
+    if not src_path or not os.path.exists(src_path):
+        return
+    shutil.copyfile(src_path, _first_frame_path(file_id))
+
+
+def load_first_frame(file_id):
+    """Returns the persisted first-frame path, or None if this clip was
+    never successfully processed (or predates this feature)."""
+    path = _first_frame_path(file_id)
+    return path if os.path.exists(path) else None
 
 
 def load_clip_cache(file_id):
@@ -80,3 +104,62 @@ def append_log_row(*, file_id, filename, invoked_by, run_mode, modalities, cache
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
+
+
+def _read_all_rows():
+    _, csv_path = _paths()
+    if not os.path.exists(csv_path):
+        return []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def latest_status_per_clip():
+    """Every clip this deployment has ever touched, collapsed to its most
+    recent row (by file_id) — the CSV is append-only, so this is what
+    "current status of clip X" actually means. Used by the resend
+    command's own selection logic below."""
+    latest = {}
+    for row in _read_all_rows():
+        file_id = row.get("file_id")
+        if not file_id:
+            continue
+        # Rows are appended in chronological order, so the last one seen
+        # per file_id is the latest — no need to compare timestamps.
+        latest[file_id] = row
+    return latest
+
+
+def find_resend_targets(target):
+    """Resolves the resend command's target selector against the latest
+    successful (status == "ok") row per clip:
+      - "all"    -> every successful clip ever processed
+      - "recent" -> successful clips from the last 24 hours
+      - anything else -> treated as a filename (matched against either
+        the name stored at process time, or that name with DONE_
+        prefixed — since Drive renames the file after success, but the
+        CSV keeps whatever name was current when it was logged)
+    """
+    successful = [row for row in latest_status_per_clip().values() if row.get("status") == "ok"]
+
+    if target == "all":
+        return successful
+
+    if target == "recent":
+        cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+        out = []
+        for row in successful:
+            try:
+                ts = datetime.fromisoformat(row["timestamp"])
+            except (KeyError, ValueError):
+                continue
+            if ts >= cutoff:
+                out.append(row)
+        return out
+
+    target_lower = target.lower()
+    return [
+        row
+        for row in successful
+        if row.get("filename", "").lower() in (target_lower, f"done_{target_lower}")
+    ]

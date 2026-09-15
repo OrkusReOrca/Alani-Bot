@@ -6,7 +6,8 @@ of this repo's own runtime** — see the root README's "Emotion detection
 bridge" section for the full architecture) against video clips sitting in
 a Google Drive folder, reproducing the VLM emotion-recognition pipeline
 from the user's JAIST thesis (Qwen3-VL-8B-Instruct, circumplex model:
-PA/NA/ND/PD).
+PA/NA/ND/PD). `.a emo resend <all|recent|<filename>>` re-sends
+already-computed results with no recompute at all — see "Resend" below.
 
 Owner-only (`DISCORD_OWNER_0`/`DISCORD_OWNER_1`, same allowlist as `.a
 db`), and only responds inside the one dedicated channel
@@ -58,6 +59,25 @@ many clips. Instead:
 
 A failed clip is left without any prefix (not `DONE_`, not anything
 else), so the next `run1`/`runany` automatically retries it.
+
+## Resend
+
+`.a emo resend <all|recent|<filename>>` — re-posts already-computed
+results straight from Alani Emotion's own records (its cached prediction
++ persisted first frame), with **no Drive listing, no preprocessing, and
+no OpenRouter calls at all**. Exists for a real failure mode: a run can
+finish successfully (clip renamed to `DONE_...`, prediction computed and
+cached) while the final callback that actually delivers it to Discord
+gets lost to a transient network blip between the two containers.
+Recomputing the whole pipeline just to redeliver something that's already
+sitting on disk would be wasteful — `resend` just re-reads and re-sends.
+
+- `all` — every clip ever successfully processed
+- `recent` — successful clips from the last 24 hours
+- anything else is treated as a filename (matches either the name as it
+  was when logged, or that name with `DONE_` prefixed, since Drive
+  renames the file after success but the record keeps whatever name was
+  current at the time)
 
 ## Storage
 

@@ -153,6 +153,17 @@ const EMO_INFO = [
     "2 minutes are silently truncated to the first 2:00 before anything " +
     "else happens. A clip that fails is left unprefixed so the next " +
     "`run1`/`runany` retries it automatically.",
+  "",
+  "**Resend (no recompute)**:",
+  "```",
+  ".a emo resend <all|recent|<filename>>",
+  "```",
+  "Re-posts an already-computed result straight from Alani Emotion's own " +
+    "records — no Drive listing, no preprocessing, no OpenRouter calls. " +
+    "For when a run finished successfully (clip already renamed `DONE_...`) " +
+    "but the final Discord delivery got lost to a network blip. `all` = " +
+    "every clip ever processed successfully, `recent` = the last 24 hours, " +
+    "anything else = a filename (matches with or without the `DONE_` prefix).",
 ].join("\n");
 
 // ctx: { reply, guildId, ... } — a uniform interface over both a
