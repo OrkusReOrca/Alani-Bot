@@ -40,6 +40,7 @@ import * as infoCommand from "./features/info/command.js";
 import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
 import * as dbCommand from "./features/db/command.js";
 import * as listDbCommand from "./features/db/listDbCommand.js";
+import * as emotionCommand from "./features/emotion-detect/command.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
 import { startBridgeServer } from "./common/bridgeServer.js";
@@ -50,6 +51,7 @@ const commands = new Map([
   [fjamtrackCommand.data.name, fjamtrackCommand],
   [dbCommand.data.name, dbCommand],
   [listDbCommand.data.name, listDbCommand],
+  [emotionCommand.data.name, emotionCommand],
 ]);
 
 // ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,

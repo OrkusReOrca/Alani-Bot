@@ -1,0 +1,69 @@
+# Emotion Detection
+
+`.a emo <run1|runany|runall> m<modality dot-list|all> <d|s>` — triggers a
+run of the "Alani Emotion" pipeline (a **separate Python service, not part
+of this repo's own runtime** — see the root README's "Emotion detection
+bridge" section for the full architecture) against video clips sitting in
+a Google Drive folder, reproducing the VLM emotion-recognition pipeline
+from the user's JAIST thesis (Qwen3-VL-8B-Instruct, circumplex model:
+PA/NA/ND/PD).
+
+Owner-only (`DISCORD_OWNER_0`/`DISCORD_OWNER_1`, same allowlist as `.a
+db`), and only responds inside the one dedicated channel
+(`DISCORD_EMOTION_CHANNEL`) — silent everywhere else, since this is a
+slow, resource-heavy command (real video preprocessing + two VLM calls
+per clip), not something meant to be discoverable broadly.
+
+## Command shape
+
+- **Run mode** (first arg):
+  - `run1` — process exactly one pending clip (any clip in the Input
+    folder not already prefixed `DONE_`)
+  - `runany` — process every pending clip found, however many there are
+  - `runall` — force-reprocess **every** clip in the folder, `DONE_` or
+    not (a full manual re-run)
+- **Modality list** (second arg): `m` followed by a dot-separated subset
+  of `AU` (Action Units), `T` (speech transcript), `VO` (voice
+  acoustics), `ET` (eye gaze), `HT` (head pose) — e.g. `mAU.T.VO` — or
+  `mall` for all five. This is what actually goes into the VLM prompt for
+  this run.
+- **Cache mode** (third arg):
+  - `d` (default) — extract and cache **all 5** modalities for this
+    clip regardless of what's in the modality list, so a later run
+    requesting a different subset is instant (already on disk).
+  - `s` (specified-only) — only extract what's in the modality list this
+    time, skipping the rest.
+
+Example: `.a emo runany mAU.T d` — process every pending clip using only
+AU + transcript in the prompt, but cache all five modalities for later.
+
+## What actually happens
+
+This command only ever **starts** a run — it never waits for results
+inline, since preprocessing (PyFeat, openSMILE, faster-whisper) plus two
+sequential VLM calls per clip can easily take longer than any single
+Discord command should block on, especially for `runany`/`runall` across
+many clips. Instead:
+
+1. This command posts an immediate ack, then fires a `POST /run` to the
+   Alani Emotion service and returns.
+2. Alani Emotion processes clips one at a time in the background. For
+   each finished clip, it calls back into **this repo's own** bridge
+   route, `POST /emotion/result` (see `emotionApi.js`) — prediction,
+   clip name, and the video's first frame — which is what actually posts
+   the result message (with the frame attached) to Discord. Alani-Bot is
+   always the one that talks to Discord; Alani Emotion never does.
+3. Once the whole batch is done, `POST /emotion/batch-done` posts a short
+   summary (`N/M succeeded`).
+
+A failed clip is left without any prefix (not `DONE_`, not anything
+else), so the next `run1`/`runany` automatically retries it.
+
+## Storage
+
+All persistent state for this feature — the per-clip cached-modality
+JSON, the OpenRouter responses, and the single CSV that doubles as both
+"current status of every clip" (latest row per clip) and "history of
+every call" (the full row history) — lives entirely on the Alani
+Emotion service's own disk, not in this repo's SQLite. See that
+service's own docs for the exact schema.

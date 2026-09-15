@@ -1,0 +1,8 @@
+py-feat
+opensmile
+faster-whisper
+imageio-ffmpeg
+opencv-python-headless
+google-api-python-client
+google-auth
+requests

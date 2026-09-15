@@ -49,6 +49,14 @@ data/
 
 .github/workflows/
   <feature-name>-*.yml           this feature's scheduled trigger(s)
+
+emotion-service/
+  (Python, separate bot-hosting.net deployment)  the "Alani Emotion" half of
+                                  the ".a emo" feature — see its own README
+                                  and src/features/emotion-detect/README.md.
+                                  Lives at the repo root, not under src/,
+                                  since it's a wholly separate runtime/
+                                  deployment, not more Node code.
 ```
 
 Each feature gets its own subfolder under `src/features/`, its own `data/`
@@ -95,6 +103,12 @@ you can trigger on a schedule).
   owner-granted regular users create and manage their own private or
   guild-scoped database. See "Tiers" below. SQLite-backed throughout, with
   duplicate and overlap detection.
+- **[emotion-detect](src/features/emotion-detect/README.md)** — `.a emo
+  <run1|runany|runall> m<modalities> <d|s>`, owner-only, one dedicated
+  channel. Triggers "Alani Emotion" (a separate Python service — see
+  "Emotion detection bridge" below) to run video clips from Google Drive
+  through the JAIST thesis's VLM emotion-recognition pipeline and post
+  results back here.
 
 ## Tiers
 
@@ -276,6 +290,31 @@ value to whatever calls this route.
 README). Validated the same way `programs.js`'s loader already validates
 on read (every entry needs a valid `id` + `status`) before it's written —
 an invalid payload gets a 400 and never touches the file on disk.
+
+## Emotion detection bridge
+
+`src/features/emotion-detect/emotionApi.js`, registered into the shared
+bridge server above under its own secret (`EMOTION_SERVICE_SECRET`).
+Unlike every other bridge route here, this one is talked to by a
+**separate Python service** ("Alani Emotion") running as its own
+bot-hosting.net deployment, not by voice-Alani or a cloud routine — see
+`src/features/emotion-detect/README.md` for the full `.a emo` command
+and the run-lifecycle this bridge is part of.
+
+Same secret authenticates both directions, since both sides are the same
+trust boundary: Alani-Bot calls Alani Emotion's `POST /run` to start a
+run (using `EMOTION_SERVICE_URL` + `EMOTION_SERVICE_SECRET`), and Alani
+Emotion calls back into this bot's own routes below as each clip
+finishes.
+
+**Endpoints** (header `Authorization: Bearer <EMOTION_SERVICE_SECRET>`):
+
+- `POST /emotion/result` `{clipName, success, prediction?, error?,
+  firstFrameBase64?}` — posts one result message to
+  `DISCORD_EMOTION_CHANNEL`, with the clip's first frame attached on
+  success.
+- `POST /emotion/batch-done` `{total, succeeded, failed}` — posts a short
+  summary once a whole `run1`/`runany`/`runall` invocation finishes.
 
 ## Adding a new feature
 

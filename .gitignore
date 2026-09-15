@@ -9,3 +9,15 @@ node_modules/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Python (emotion-service/)
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Alani Emotion's own persistent state (per-clip cache JSON + the status/
+# history CSV) — lives on that deployment's own disk, same reasoning as
+# the SQLite files above: it changes constantly and doesn't need git
+# history.
+emotion-service/data/

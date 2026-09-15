@@ -13,6 +13,7 @@ import http from "http";
 import { config } from "./config.js";
 import { registerVoiceRoutes } from "../features/db/voiceApi.js";
 import { registerUniTrackerPushRoute } from "../features/uni-application-updater/pushApi.js";
+import { registerEmotionRoutes } from "../features/emotion-detect/emotionApi.js";
 
 const routes = [];
 
@@ -28,6 +29,7 @@ function sendJson(res, status, body) {
 export function startBridgeServer() {
   registerVoiceRoutes(registerRoute);
   registerUniTrackerPushRoute(registerRoute);
+  registerEmotionRoutes(registerRoute);
 
   const server = http.createServer(async (req, res) => {
     const route = routes.find((r) => r.method === req.method && r.path === req.url);
