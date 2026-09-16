@@ -1,14 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_631",
-      "title": "Go Go Power Rangers",
-      "artist": "Ron Wasserman",
-      "image": "https://cdn.fortnite-api.com/tracks/c98631aa76978bbe.jpg",
-      "price": 500,
-      "inDate": "2026-09-12T00:00:00Z",
-      "outDate": "2026-09-15T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
