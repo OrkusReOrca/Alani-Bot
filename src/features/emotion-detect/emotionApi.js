@@ -12,7 +12,7 @@
 
 import { config as botConfig } from "../../common/config.js";
 import { config } from "./config.js";
-import { sendViaBotChannel, sendFileViaBotChannel } from "../../common/discordApi.js";
+import { sendViaBotChannel, sendFileViaBotChannel, chunkMessage } from "../../common/discordApi.js";
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -33,7 +33,7 @@ async function handleResult(req, res) {
     return sendJson(res, 400, { error: "Invalid JSON body" });
   }
 
-  const { clipName, success, prediction, error, firstFrameBase64 } = payload;
+  const { clipName, success, prediction, error, firstFrameBase64, valencePrompt, arousalPrompt } = payload;
   if (!clipName) return sendJson(res, 400, { error: "clipName is required" });
 
   const text = success
@@ -51,6 +51,22 @@ async function handleResult(req, res) {
       );
     } else {
       await sendViaBotChannel(botConfig.botToken, config.channelId, text);
+    }
+
+    // "more info" mode only — the full ValAro prompt text as a follow-up,
+    // separate from the result message above since it can easily exceed
+    // Discord's 2000-char single-message limit on its own (chunkMessage
+    // handles that; sendFileViaBotChannel's own `content` param does not).
+    if (success && (valencePrompt || arousalPrompt)) {
+      const promptBlock = [
+        valencePrompt ? `**Valence prompt:**\n\`\`\`\n${valencePrompt}\n\`\`\`` : null,
+        arousalPrompt ? `**Arousal prompt:**\n\`\`\`\n${arousalPrompt}\n\`\`\`` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      for (const chunk of chunkMessage(promptBlock)) {
+        await sendViaBotChannel(botConfig.botToken, config.channelId, chunk);
+      }
     }
   } catch (err) {
     console.error("[emotionApi] failed to post result:", err);

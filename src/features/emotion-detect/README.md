@@ -1,13 +1,14 @@
 # Emotion Detection
 
-`.a emo <run1|runany|runall> m<modality dot-list|all> <d|s>` — triggers a
-run of the "Alani Emotion" pipeline (a **separate Python service, not part
-of this repo's own runtime** — see the root README's "Emotion detection
-bridge" section for the full architecture) against video clips sitting in
-a Google Drive folder, reproducing the VLM emotion-recognition pipeline
-from the user's JAIST thesis (Qwen3-VL-8B-Instruct, circumplex model:
-PA/NA/ND/PD). `.a emo resend <all|recent|<filename>>` re-sends
-already-computed results with no recompute at all — see "Resend" below.
+`.a emo <run1|runany|runall> m<modality dot-list|all> <d|s> [mif]` —
+triggers a run of the "Alani Emotion" pipeline (a **separate Python
+service, not part of this repo's own runtime** — see the root README's
+"Emotion detection bridge" section for the full architecture) against
+video clips sitting in a Google Drive folder, reproducing the VLM
+emotion-recognition pipeline from the user's JAIST thesis
+(Qwen3-VL-8B-Instruct, circumplex model: PA/NA/ND/PD). `.a emo resend
+<all|recent|<filename>>` re-sends already-computed results with no
+recompute at all — see "Resend" below.
 
 Owner-only (`DISCORD_OWNER_0`/`DISCORD_OWNER_1`, same allowlist as `.a
 db`), and only responds inside the one dedicated channel
@@ -35,24 +36,36 @@ per clip), not something meant to be discoverable broadly.
   - `s` (specified-only) — only extract what's in the modality list this
     time, skipping the rest.
 
+- **More info** (fourth arg, optional): `mif` — when present, each
+  result comes with the full ValAro prompt text (both the valence and
+  arousal steps, exactly as sent to the VLM) as a follow-up message, and
+  the attached image is py-feat's own annotated frame (face box,
+  landmarks, an AU intensity bar chart, head pose) instead of the plain
+  first frame. Left off (the default) keeps today's lighter result.
+
 Example: `.a emo runany mAU.T d` — process every pending clip using only
 AU + transcript in the prompt, but cache all five modalities for later.
+`.a emo runany mAU.T d mif` — the same, with the extra detail per result.
 
 ## What actually happens
 
-This command only ever **starts** a run — it never waits for results
-inline, since preprocessing (PyFeat, openSMILE, faster-whisper) plus two
-sequential VLM calls per clip can easily take longer than any single
-Discord command should block on, especially for `runany`/`runall` across
-many clips. Instead:
+This command resolves the actual clip list up front (a fast Drive
+listing) so the ack message can name exactly what's queued, then hands
+off the slow part. It never waits for the real results inline, since
+preprocessing (PyFeat, openSMILE, faster-whisper) plus two sequential VLM
+calls per clip can easily take longer than any single Discord command
+should block on, especially for `runany`/`runall` across many clips:
 
-1. This command posts an immediate ack, then fires a `POST /run` to the
-   Alani Emotion service and returns.
+1. This command calls Alani Emotion's `POST /run`, which resolves and
+   returns the clip list synchronously, then starts the actual
+   processing on a background thread. The ack reply then names those
+   clips (`"3 clip(s): a.mov, b.mov, c.mov"`, or "no pending clips found").
 2. Alani Emotion processes clips one at a time in the background. For
    each finished clip, it calls back into **this repo's own** bridge
    route, `POST /emotion/result` (see `emotionApi.js`) — prediction,
-   clip name, and the video's first frame — which is what actually posts
-   the result message (with the frame attached) to Discord. Alani-Bot is
+   clip name, and the video's first frame (or, in `mif` mode, the
+   annotated frame plus both full prompt texts as a follow-up message) —
+   which is what actually posts the result to Discord. Alani-Bot is
    always the one that talks to Discord; Alani Emotion never does.
 3. Once the whole batch is done, `POST /emotion/batch-done` posts a short
    summary (`N/M succeeded`).
@@ -78,6 +91,10 @@ sitting on disk would be wasteful — `resend` just re-reads and re-sends.
   was when logged, or that name with `DONE_` prefixed, since Drive
   renames the file after success but the record keeps whatever name was
   current at the time)
+
+If the original run used `mif`, resend replays that too (the full prompt
+text was cached alongside everything else) — otherwise it just re-sends
+the plain result, same as that run produced.
 
 ## Storage
 

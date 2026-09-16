@@ -44,10 +44,15 @@ at the repo root.
 Two, both under `POST`, both requiring `Authorization: Bearer
 <EMOTION_SERVICE_SECRET>`:
 
-- **`/run`** `{runMode, modalities, cacheMode, invokedBy}` — starts a
-  real run (`pipeline.py`): lists clips from Drive, preprocesses, calls
-  OpenRouter, reports each result back to Alani-Bot. Returns `202`
-  immediately; the actual work happens on a background thread.
+- **`/run`** `{runMode, modalities, cacheMode, moreInfo, invokedBy}` —
+  resolves the clip list from Drive **synchronously** (`pipeline.
+  resolve_clips`) and returns it as `clipNames` in the `202` response, so
+  Alani-Bot's ack can name what's actually queued, then starts the real
+  work (`pipeline.run_clips` — preprocess, call OpenRouter, report each
+  result back) on a background thread. `moreInfo: true` makes each
+  result include the full ValAro prompt text and swaps the attached image
+  for py-feat's own annotated frame (`visualize.py`) instead of the plain
+  thumbnail.
 - **`/resend`** `{target, invokedBy}` — re-posts already-computed results
   with no recompute at all (`resend.py`), reading straight from
   `store.py`'s own records. `target` is `"all"`, `"recent"` (last 24h),

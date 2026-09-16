@@ -42,13 +42,22 @@ def post(path, payload, retries=1):
     return False
 
 
-def post_result(clip_name, success, prediction=None, error=None, first_frame_path=None):
+def post_result(
+    clip_name, success, prediction=None, error=None, first_frame_path=None,
+    valence_prompt=None, arousal_prompt=None,
+):
     payload = {"clipName": clip_name, "success": success}
     if success:
         payload["prediction"] = prediction
         if first_frame_path and os.path.exists(first_frame_path):
             with open(first_frame_path, "rb") as f:
                 payload["firstFrameBase64"] = base64.b64encode(f.read()).decode("ascii")
+        # "more info" mode only — the full prompt text sent to the VLM
+        # for this prediction, for transparency into what it actually saw.
+        if valence_prompt:
+            payload["valencePrompt"] = valence_prompt
+        if arousal_prompt:
+            payload["arousalPrompt"] = arousal_prompt
     else:
         payload["error"] = error
     return post("/emotion/result", payload)

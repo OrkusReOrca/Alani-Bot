@@ -1,4 +1,4 @@
-// ".a emo <run1|runany|runall> m<AU|T|VO|ET|HT dot-list|all> <d|s>"
+// ".a emo <run1|runany|runall> m<AU|T|VO|ET|HT dot-list|all> <d|s> [mif]"
 // ".a emo resend <all|recent|<filename>>"
 //
 //   run1    — process exactly one pending (not "DONE_"-prefixed) clip
@@ -11,6 +11,11 @@
 //   d/s     — d: extract & cache ALL 5 modalities regardless of the m-list
 //             (so a later run with a different m-list is instant, already
 //             cached); s: only extract what's in the m-list this time.
+//   mif     — optional, "more info": each result also gets the full VLM
+//             prompt text (both ValAro steps) as a follow-up message, and
+//             the attached image is py-feat's own annotated frame (face
+//             box, landmarks, AU bars, head pose) instead of the plain
+//             first frame. Left off = today's normal, lighter result.
 //
 // Owner-only (same DISCORD_OWNER_0/1 allowlist as ".a db"), and only usable
 // in the one dedicated channel (DISCORD_EMOTION_CHANNEL) — this is a
@@ -47,12 +52,18 @@ const RESEND_TARGETS = ["all", "recent"]; // plus any literal filename
 
 function usage() {
   return [
-    "Usage: `.a emo <run1|runany|runall> m<AU|T|VO|ET|HT dot-list|all> <d|s>`",
+    "Usage: `.a emo <run1|runany|runall> m<AU|T|VO|ET|HT dot-list|all> <d|s> [mif]`",
     "e.g. `.a emo runany mAU.T d` — process every pending clip using AU+transcript, caching all 5 modalities for later.",
+    "Add `mif` at the end for more info per result (full prompt text + annotated frame).",
     "`.a emo resend <all|recent|<filename>>` — re-send already-computed results (no recompute, no OpenRouter calls).",
   ].join("\n");
 }
 
+// Shared by both /run and /resend — returns the parsed JSON response body
+// on success, or null (having already replied with the error) on failure.
+// /run's own response includes clipNames, which callers use to make the
+// ack message name the clips actually about to run, rather than a vague
+// "started" with no idea what's queued.
 async function startService(path, body, ctx) {
   try {
     const res = await fetch(`${config.serviceUrl.replace(/\/$/, "")}${path}`, {
@@ -60,12 +71,19 @@ async function startService(path, body, ctx) {
       headers: { Authorization: `Bearer ${config.serviceSecret}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const responseBody = await res.text().catch(() => "");
     if (!res.ok) {
-      const responseBody = await res.text().catch(() => "");
       await ctx.reply(`Couldn't start it: ${res.status} ${res.statusText}${responseBody ? ` — ${responseBody}` : ""}`);
+      return null;
+    }
+    try {
+      return JSON.parse(responseBody);
+    } catch {
+      return {};
     }
   } catch (err) {
     await ctx.reply(`Couldn't reach the emotion service: ${err.message}`);
+    return null;
   }
 }
 
@@ -111,19 +129,35 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  const [runModeArg, modalityArg, cacheModeArg] = args;
+  const [runModeArg, modalityArg, cacheModeArg, moreInfoArg] = args;
   const runMode = RUN_MODES.includes(runModeArg) ? runModeArg : null;
   const modalities = parseModalities(modalityArg);
   const cacheMode = CACHE_MODES.includes(cacheModeArg) ? cacheModeArg : null;
+  // The 4th arg is optional and, when present, must be exactly "mif" —
+  // anything else there is a typo worth rejecting rather than silently
+  // ignoring.
+  const moreInfoValid = moreInfoArg === undefined || moreInfoArg.toLowerCase() === "mif";
+  const moreInfo = moreInfoArg?.toLowerCase() === "mif";
 
-  if (!runMode || !modalities || !cacheMode) {
+  if (!runMode || !modalities || !cacheMode || !moreInfoValid) {
     await ctx.reply(usage());
     return;
   }
 
+  // Called BEFORE the ack (unlike resend's own flow) specifically so the
+  // ack can name the clips it resolved — resolving is fast (just a Drive
+  // listing; see pipeline.resolve_clips), the actual slow work only
+  // starts once this responds.
+  const response = await startService("/run", { runMode, modalities, cacheMode, moreInfo, invokedBy: ctx.userId }, ctx);
+  if (!response) return; // startService already replied with the error
+
+  const clipNames = response.clipNames ?? [];
   const cacheModeLabel = cacheMode === "d" ? "caching all 5 modalities" : "extracting only the requested modalities";
+  const moreInfoLabel = moreInfo ? ", with full prompt + annotated frame per result" : "";
+  const clipsLabel =
+    clipNames.length === 0 ? "no pending clips found" : `${clipNames.length} clip(s): ${clipNames.join(", ")}`;
   await ctx.reply(
-    `Starting \`${runMode}\` — using ${modalities.join("+")} (${cacheModeLabel}). Results will post here as each clip finishes.`
+    `Starting \`${runMode}\` — using ${modalities.join("+")} (${cacheModeLabel}${moreInfoLabel}). ${clipsLabel}.` +
+      (clipNames.length > 0 ? " Results will post here as each clip finishes." : "")
   );
-  await startService("/run", { runMode, modalities, cacheMode, invokedBy: ctx.userId }, ctx);
 }

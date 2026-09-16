@@ -1,9 +1,13 @@
 """Alani Emotion's HTTP entrypoint — deliberately stdlib http.server, no
 framework dependency, mirroring the minimalism of Alani-Bot's own
-common/bridgeServer.js. One route: POST /run, which validates the shared
-secret + request shape, kicks off pipeline.run() on a background thread
-(so this returns immediately — see pipeline.py's own docstring for why),
-and responds 202.
+common/bridgeServer.js.
+
+POST /run validates the request, resolves the actual clip list
+SYNCHRONOUSLY (fast — just a Drive listing) so the response can tell
+Alani-Bot exactly which clips are about to run (for the Discord ack
+message), then kicks off the real work (pipeline.run_clips — slow:
+downloads, preprocessing, OpenRouter calls) on a background thread so
+this still returns quickly overall.
 """
 
 import json
@@ -55,6 +59,7 @@ class Handler(BaseHTTPRequestHandler):
         run_mode = payload.get("runMode")
         modalities = payload.get("modalities")
         cache_mode = payload.get("cacheMode")
+        more_info = bool(payload.get("moreInfo"))
         invoked_by = payload.get("invokedBy", "")
 
         if run_mode not in VALID_RUN_MODES:
@@ -64,10 +69,17 @@ class Handler(BaseHTTPRequestHandler):
         if cache_mode not in VALID_CACHE_MODES:
             return self._send_json(400, {"error": f"cacheMode must be one of {sorted(VALID_CACHE_MODES)}"})
 
+        try:
+            clips = pipeline.resolve_clips(run_mode)
+        except Exception as e:
+            return self._send_json(502, {"error": f"Couldn't list Drive: {e}"})
+
         threading.Thread(
-            target=pipeline.run, args=(run_mode, modalities, cache_mode, invoked_by), daemon=True
+            target=pipeline.run_clips,
+            args=(clips, modalities, cache_mode, invoked_by, run_mode, more_info),
+            daemon=True,
         ).start()
-        self._send_json(202, {"message": "Run started."})
+        self._send_json(202, {"message": "Run started.", "clipNames": [c["name"] for c in clips]})
 
     def log_message(self, fmt, *args):
         print(f"[emotion-service] {self.address_string()} - {fmt % args}")

@@ -125,7 +125,7 @@ const EMO_INFO = [
     "and only responds in its one dedicated channel — silent everywhere else.",
   "",
   "```",
-  ".a emo <run1|runany|runall> m<modality dot-list|all> <d|s>",
+  ".a emo <run1|runany|runall> m<modality dot-list|all> <d|s> [mif]",
   "```",
   "",
   "**Run mode** (which clip(s) to process):",
@@ -144,10 +144,17 @@ const EMO_INFO = [
     "is instant (already on disk)",
   "- `s` (specified-only) — only extract what's in the modality list this time",
   "",
+  "**More info** (optional 4th arg): `mif` — each result also gets the " +
+    "full prompt text (both ValAro steps) as a follow-up message, and the " +
+    "attached image is py-feat's own annotated frame (face box, landmarks, " +
+    "AU bars, head pose) instead of the plain first frame. Left off = " +
+    "today's lighter result.",
+  "",
   "Example: `.a emo runany mAU.T d` — process every pending clip using " +
     "AU + transcript in the prompt, caching all five for later.",
   "",
-  "**What happens**: an immediate ack, then a result message per finished " +
+  "**What happens**: the ack names the actual clip(s) resolved (a fast " +
+    "Drive listing happens up front), then a result message per finished " +
     "clip (prediction + the clip's first frame attached) as it's ready, " +
     "then a short summary once the whole run is done. Videos longer than " +
     "2 minutes are silently truncated to the first 2:00 before anything " +

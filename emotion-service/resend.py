@@ -25,7 +25,15 @@ def run(target, invoked_by):
         short = prompt.SHORT_CODE.get(prediction, prediction)
         label = f"{prediction} ({short})" if prediction else "(no prediction on record)"
         first_frame_path = store.load_first_frame(file_id)
-        if callback.post_result(filename, True, prediction=label, first_frame_path=first_frame_path):
+        # Only present if that run used "more info" mode (see pipeline.py)
+        # — resend just replays whatever was actually cached, it doesn't
+        # reconstruct a prompt that was never saved.
+        cache = store.load_clip_cache(file_id)
+        if callback.post_result(
+            filename, True, prediction=label, first_frame_path=first_frame_path,
+            valence_prompt=cache.get("last_valence_prompt"),
+            arousal_prompt=cache.get("last_arousal_prompt"),
+        ):
             sent += 1
 
     callback.post("/emotion/batch-done", {"total": len(rows), "succeeded": sent, "failed": len(rows) - sent})
