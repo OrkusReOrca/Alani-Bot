@@ -49,8 +49,10 @@ Two, both under `POST`, both requiring `Authorization: Bearer
   resolve_clips`) and returns it as `clipNames` in the `202` response, so
   Alani-Bot's ack can name what's actually queued, then starts the real
   work (`pipeline.run_clips` — preprocess, call OpenRouter, report each
-  result back) on a background thread. `moreInfo: true` makes each
-  result include the full ValAro prompt text and swaps the attached image
+  result back) on a background thread. `commandAtMs` (Alani-Bot's clock, the T+0 of the
+  timeline) is passed through to each result. `moreInfo: true` makes each
+  result include the full ValAro prompt text, a timeline (Drive upload time,
+  preprocess/VLM offsets), and swaps the attached image
   for py-feat's own annotated frame (`visualize.py`) instead of the plain
   thumbnail.
 - **`/resend`** `{target, invokedBy}` — re-posts already-computed results

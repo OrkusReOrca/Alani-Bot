@@ -12,6 +12,7 @@ this still returns quickly overall.
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import config
@@ -36,6 +37,7 @@ class Handler(BaseHTTPRequestHandler):
         return self.headers.get("Authorization") == f"Bearer {config.SHARED_SECRET}"
 
     def do_POST(self):
+        received_at = time.time()
         if not config.SHARED_SECRET or not self._authorized():
             return self._send_json(401, {"error": "Unauthorized"})
 
@@ -61,6 +63,9 @@ class Handler(BaseHTTPRequestHandler):
         cache_mode = payload.get("cacheMode")
         more_info = bool(payload.get("moreInfo"))
         invoked_by = payload.get("invokedBy", "")
+        command_at_ms = payload.get("commandAtMs")
+        if not isinstance(command_at_ms, (int, float)):
+            command_at_ms = None
 
         if run_mode not in VALID_RUN_MODES:
             return self._send_json(400, {"error": f"runMode must be one of {sorted(VALID_RUN_MODES)}"})
@@ -76,7 +81,7 @@ class Handler(BaseHTTPRequestHandler):
 
         threading.Thread(
             target=pipeline.run_clips,
-            args=(clips, modalities, cache_mode, invoked_by, run_mode, more_info),
+            args=(clips, modalities, cache_mode, invoked_by, run_mode, more_info, command_at_ms, received_at),
             daemon=True,
         ).start()
         self._send_json(202, {"message": "Run started.", "clipNames": [c["name"] for c in clips]})

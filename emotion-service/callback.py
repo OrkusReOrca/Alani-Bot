@@ -44,7 +44,7 @@ def post(path, payload, retries=1):
 
 def post_result(
     clip_name, success, prediction=None, error=None, first_frame_path=None,
-    valence_prompt=None, arousal_prompt=None,
+    valence_prompt=None, arousal_prompt=None, timeline=None, resent=False,
 ):
     payload = {"clipName": clip_name, "success": success}
     if success:
@@ -58,6 +58,8 @@ def post_result(
             payload["valencePrompt"] = valence_prompt
         if arousal_prompt:
             payload["arousalPrompt"] = arousal_prompt
+        if timeline:
+            payload["timeline"] = {**timeline, "resent": resent}
     else:
         payload["error"] = error
     return post("/emotion/result", payload)

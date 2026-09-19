@@ -71,7 +71,7 @@ def resolve_input_folder_id():
 def _list_video_files(folder_id):
     service = _get_service()
     q = f"'{folder_id}' in parents and trashed = false"
-    resp = service.files().list(q=q, fields="files(id, name)", pageSize=1000).execute()
+    resp = service.files().list(q=q, fields="files(id, name, createdTime)", pageSize=1000).execute()
     files = resp.get("files", [])
     return [f for f in files if f["name"].lower().endswith(_VIDEO_EXTS)]
 

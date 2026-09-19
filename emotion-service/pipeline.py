@@ -12,8 +12,10 @@ immediately once the list above is known).
 
 import os
 import shutil
+import time
 import tempfile
 import traceback
+from datetime import datetime
 
 import drive
 import video
@@ -27,6 +29,17 @@ from extract_voice import extract_voice_features, format_voice_string
 from extract_transcript import extract_transcript
 from extract_pose import extract_pose_features, format_eye_string, format_head_string
 from openrouter_client import classify
+
+def _parse_drive_time_ms(rfc3339):
+    """Drive's createdTime ("2026-09-19T05:12:33.123Z") -> epoch ms, or
+    None if absent/unparseable."""
+    if not rfc3339:
+        return None
+    try:
+        return int(datetime.fromisoformat(rfc3339.replace("Z", "+00:00")).timestamp() * 1000)
+    except ValueError:
+        return None
+
 
 ALL_MODALITIES = ["AU", "T", "VO", "ET", "HT"]
 
@@ -43,7 +56,7 @@ def resolve_clips(run_mode):
     return drive.list_all_clips(folder_id)  # runall
 
 
-def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_info):
+def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_info, command_at_ms, run_received_at):
     file_id, filename = file_obj["id"], file_obj["name"]
     work_dir = tempfile.mkdtemp(prefix="emotion_")
     try:
@@ -96,6 +109,7 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_i
             cache["voice_string"] = format_voice_string(extract_voice_features(audio_path))
 
         store.save_clip_cache(file_id, cache)
+        preprocess_done_s = time.time() - run_received_at
 
         au_string = cache.get("au_string", "")
         transcript = cache.get("transcript", "")
@@ -112,8 +126,19 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_i
         )
         arousal_raw = classify(frame_paths, arousal_prompt, max_tokens=8)
         arousal = prompt.parse_arousal(arousal_raw)
+        vlm_done_s = time.time() - run_received_at
 
         result_label = prompt.combine(valence, arousal)
+        # T+0 is the moment the Discord command was given (commandAtMs,
+        # Alani-Bot's clock); the two offsets below are measured on THIS
+        # service's own clock from when /run was received, so the two
+        # containers' clocks never get subtracted from each other.
+        timeline = {
+            "uploadedAtMs": _parse_drive_time_ms(file_obj.get("createdTime")),
+            "commandAtMs": command_at_ms,
+            "preprocessDoneS": round(preprocess_done_s, 1),
+            "vlmDoneS": round(vlm_done_s, 1),
+        }
         short = prompt.SHORT_CODE.get(result_label, result_label)
 
         cache["last_valence_raw"] = valence_raw
@@ -127,6 +152,7 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_i
             # strings actually sent, not rebuilt from current cache state).
             cache["last_valence_prompt"] = valence_prompt
             cache["last_arousal_prompt"] = arousal_prompt
+            cache["last_timeline"] = timeline
         store.save_clip_cache(file_id, cache)
 
         store.append_log_row(
@@ -156,6 +182,7 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_i
             filename, True, prediction=f"{result_label} ({short})", first_frame_path=image_to_send,
             valence_prompt=valence_prompt if more_info else None,
             arousal_prompt=arousal_prompt if more_info else None,
+            timeline=timeline if more_info else None,
         )
         return True
     except Exception as e:
@@ -172,10 +199,11 @@ def _process_clip(file_obj, modalities, cache_mode, invoked_by, run_mode, more_i
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
-def run_clips(clips, modalities, cache_mode, invoked_by, run_mode, more_info):
+def run_clips(clips, modalities, cache_mode, invoked_by, run_mode, more_info, command_at_ms=None, run_received_at=None):
+    run_received_at = run_received_at or time.time()
     succeeded = failed = 0
     for clip in clips:
-        if _process_clip(clip, modalities, cache_mode, invoked_by, run_mode, more_info):
+        if _process_clip(clip, modalities, cache_mode, invoked_by, run_mode, more_info, command_at_ms, run_received_at):
             succeeded += 1
         else:
             failed += 1

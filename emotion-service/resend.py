@@ -33,6 +33,7 @@ def run(target, invoked_by):
             filename, True, prediction=label, first_frame_path=first_frame_path,
             valence_prompt=cache.get("last_valence_prompt"),
             arousal_prompt=cache.get("last_arousal_prompt"),
+            timeline=cache.get("last_timeline"), resent=True,
         ):
             sent += 1
 

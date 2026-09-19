@@ -12,7 +12,7 @@
 
 import { config as botConfig } from "../../common/config.js";
 import { config } from "./config.js";
-import { sendViaBotChannel, sendFileViaBotChannel, chunkMessage } from "../../common/discordApi.js";
+import { sendViaBotChannel, sendFileViaBotChannel } from "../../common/discordApi.js";
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -25,6 +25,65 @@ async function readBody(req) {
   return body;
 }
 
+const TZ = "Asia/Bangkok";
+
+// "19/09/2026 14:05:09" — DD/MM/YYYY, 24h, to the second, GMT+7.
+function formatBangkok(ms) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(ms)).map((p) => [p.type, p.value])
+  );
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+// "T+47.1s" / "T+1m12.4s"
+function formatOffset(seconds) {
+  const s = Math.max(0, seconds);
+  if (s < 60) return `T+${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  return `T+${m}m${(s - m * 60).toFixed(1)}s`;
+}
+
+// One bullet-point message: two absolute GMT+7 times (clip uploaded, run
+// command given = T+0) and three T+X offsets (preprocess done, VLM done,
+// final message sent). The first two offsets come from the Python service
+// (measured on its own clock from when it received /run); the last is
+// measured here, on the same clock as the command's own T+0. A resent
+// result has no meaningful "final message" offset (it went out long after
+// the run), so it shows the resend time instead.
+export function formatTimeline(timeline, nowMs) {
+  const { uploadedAtMs, commandAtMs, preprocessDoneS, vlmDoneS, resent } = timeline;
+  const lines = ["**Timeline** (GMT+7)"];
+  lines.push(`• Clip uploaded: ${uploadedAtMs ? formatBangkok(uploadedAtMs) : "unknown"}`);
+  lines.push(`• Run command given: ${commandAtMs ? `${formatBangkok(commandAtMs)} — T+0` : "unknown"}`);
+  lines.push(`• Preprocess finished: ${formatOffset(preprocessDoneS)}`);
+  lines.push(`• VLM inference finished: ${formatOffset(vlmDoneS)}`);
+  if (resent) {
+    lines.push(`• Final message sent: resent at ${formatBangkok(nowMs)} (original run's timing shown above)`);
+  } else {
+    lines.push(`• Final message sent: ${commandAtMs ? formatOffset((nowMs - commandAtMs) / 1000) : "unknown"}`);
+  }
+  return lines.join("\n");
+}
+
+// One prompt per message, wrapped in its own code fence. A prompt that
+// still exceeds Discord's 2000-char limit alone (e.g. a long transcript)
+// is split into several messages that each carry their own complete
+// fence — chunkMessage() on the whole block would cut a fence in half.
+async function sendPromptMessages(label, text) {
+  const fence = "```";
+  const overhead = `**${label} (99/99):**\n`.length + fence.length * 2 + 2;
+  const limit = 2000 - overhead;
+  const pieces = [];
+  for (let i = 0; i < text.length; i += limit) pieces.push(text.slice(i, i + limit));
+  for (let i = 0; i < pieces.length; i++) {
+    const tag = pieces.length > 1 ? `**${label} (${i + 1}/${pieces.length}):**` : `**${label}:**`;
+    await sendViaBotChannel(botConfig.botToken, config.channelId, `${tag}\n${fence}\n${pieces[i]}\n${fence}`);
+  }
+}
+
 async function handleResult(req, res) {
   let payload;
   try {
@@ -33,7 +92,7 @@ async function handleResult(req, res) {
     return sendJson(res, 400, { error: "Invalid JSON body" });
   }
 
-  const { clipName, success, prediction, error, firstFrameBase64, valencePrompt, arousalPrompt } = payload;
+  const { clipName, success, prediction, error, firstFrameBase64, valencePrompt, arousalPrompt, timeline } = payload;
   if (!clipName) return sendJson(res, 400, { error: "clipName is required" });
 
   const text = success
@@ -53,20 +112,13 @@ async function handleResult(req, res) {
       await sendViaBotChannel(botConfig.botToken, config.channelId, text);
     }
 
-    // "more info" mode only — the full ValAro prompt text as a follow-up,
-    // separate from the result message above since it can easily exceed
-    // Discord's 2000-char single-message limit on its own (chunkMessage
-    // handles that; sendFileViaBotChannel's own `content` param does not).
-    if (success && (valencePrompt || arousalPrompt)) {
-      const promptBlock = [
-        valencePrompt ? `**Valence prompt:**\n\`\`\`\n${valencePrompt}\n\`\`\`` : null,
-        arousalPrompt ? `**Arousal prompt:**\n\`\`\`\n${arousalPrompt}\n\`\`\`` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      for (const chunk of chunkMessage(promptBlock)) {
-        await sendViaBotChannel(botConfig.botToken, config.channelId, chunk);
-      }
+    // "more info" mode only — the full ValAro prompts, one message each
+    // (see sendPromptMessages for why they aren't just chunkMessage()'d
+    // together), then the timeline.
+    if (success && valencePrompt) await sendPromptMessages("Valence prompt", valencePrompt);
+    if (success && arousalPrompt) await sendPromptMessages("Arousal prompt", arousalPrompt);
+    if (success && timeline) {
+      await sendViaBotChannel(botConfig.botToken, config.channelId, formatTimeline(timeline, Date.now()));
     }
   } catch (err) {
     console.error("[emotionApi] failed to post result:", err);

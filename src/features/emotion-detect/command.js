@@ -97,6 +97,8 @@ function parseModalities(token) {
 }
 
 export async function execute(ctx, args = []) {
+  // T+0 for the "mif" timeline — captured before anything else runs.
+  const commandAtMs = Date.now();
   if (!isOwner(ctx.userId)) {
     await ctx.reply("Unauthorized user, no permission");
     return;
@@ -148,7 +150,7 @@ export async function execute(ctx, args = []) {
   // ack can name the clips it resolved — resolving is fast (just a Drive
   // listing; see pipeline.resolve_clips), the actual slow work only
   // starts once this responds.
-  const response = await startService("/run", { runMode, modalities, cacheMode, moreInfo, invokedBy: ctx.userId }, ctx);
+  const response = await startService("/run", { runMode, modalities, cacheMode, moreInfo, commandAtMs, invokedBy: ctx.userId }, ctx);
   if (!response) return; // startService already replied with the error
 
   const clipNames = response.clipNames ?? [];

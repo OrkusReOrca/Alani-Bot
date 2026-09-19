@@ -145,10 +145,12 @@ const EMO_INFO = [
   "- `s` (specified-only) — only extract what's in the modality list this time",
   "",
   "**More info** (optional 4th arg): `mif` — each result also gets the " +
-    "full prompt text (both ValAro steps) as a follow-up message, and the " +
+    "full prompt text (both ValAro steps) as follow-up messages, and the " +
     "attached image is py-feat's own annotated frame (face box, landmarks, " +
-    "AU bars, head pose) instead of the plain first frame. Left off = " +
-    "today's lighter result.",
+    "AU bars, head pose) instead of the plain first frame. The two prompts " +
+    "are separate messages, followed by a timeline (upload time and command " +
+    "time in GMT+7, then T+X for preprocess done, VLM done, final message " +
+    "sent). Left off = today's lighter result.",
   "",
   "Example: `.a emo runany mAU.T d` — process every pending clip using " +
     "AU + transcript in the prompt, caching all five for later.",

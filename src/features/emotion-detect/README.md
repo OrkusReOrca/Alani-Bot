@@ -42,6 +42,12 @@ per clip), not something meant to be discoverable broadly.
   the attached image is py-feat's own annotated frame (face box,
   landmarks, an AU intensity bar chart, head pose) instead of the plain
   first frame. Left off (the default) keeps today's lighter result.
+  Each prompt is its own message (split into several, each with its own
+  code fence, only if one alone exceeds Discord's 2000 chars), followed by
+  one bullet-point **timeline** message: clip upload time (Drive's
+  `createdTime`) and run-command time as `DD/MM/YYYY HH:MM:SS` GMT+7, then
+  `T+X` offsets (T+0 = the command) for preprocess finished, VLM inference
+  finished, and final message sent.
 
 Example: `.a emo runany mAU.T d` — process every pending clip using only
 AU + transcript in the prompt, but cache all five modalities for later.
