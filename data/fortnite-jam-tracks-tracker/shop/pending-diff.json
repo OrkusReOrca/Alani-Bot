@@ -1,23 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_721",
-      "title": "Head Shot / Gas In The Truck",
-      "artist": "iShowSpeed",
-      "image": "https://cdn.fortnite-api.com/tracks/5841c1f376683b4d.jpg",
-      "price": 3000,
-      "inDate": "2026-09-20T00:00:00Z",
-      "outDate": "2026-09-23T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_892",
-      "title": "I Really Want To Stay At Your House",
-      "artist": "Rosa Walton",
-      "image": "https://cdn.fortnite-api.com/tracks/4173381b60d3289e.jpg",
-      "price": 2300,
-      "inDate": "2026-09-20T00:00:00Z",
-      "outDate": "2026-09-26T23:59:59.999Z"
-    }
-  ],
+  "newTracks": [],
   "leftTracks": []
 }
