@@ -31,8 +31,7 @@ src/
     statusLog.js                one-line status-channel posts (online/offline,
                                  trackers, cloud backup, database changes)
     lifecycle.js                online/offline reporting (heartbeat + signals)
-    googleAuth.js / googleDrive.js  Google tokens (service account + OAuth) and
-                                 the raw-REST Drive client
+    googleAuth.js               service-account tokens for the Calendar API
     auth.js                     owner allowlist for admin features (currently just
                                  db) — who's allowed, as opposed to config.js's
                                  where-to-connect concerns
@@ -60,7 +59,7 @@ data/
   <feature-name>-*.yml           this feature's scheduled trigger(s)
 
 test/                             `npm test` - node:test suite (cloud backup)
-scripts/                          one-off helpers (getDriveRefreshToken.js)
+scripts/                          one-off helpers (generateBackupKey.js)
 
 emotion-service/
   (Python, separate bot-hosting.net deployment)  the "Alani Emotion" half of
@@ -123,11 +122,12 @@ you can trigger on a schedule).
   results back here.
 
 - **[settings](src/features/settings/README.md)** - `.a setting`, owner-only:
-  turn routines on/off (`unitracker`, `fortnite`) and drive the cloud backup.
-- **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours all
-  databases and settings are checked against their change logs and saved to
-  Google Drive (last 16 versions kept); a mismatch tags the owner, snapshots
-  the faulty copy separately and asks which side to keep.
+  turn routines on/off (`unitracker`, `fortnite`) and run the cloud backup by hand.
+- **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours and
+  every time the bot starts, all databases and settings are checked against
+  their change logs and saved, encrypted, to a private Discord channel (last
+  16 versions kept); a mismatch tags the owner, stores the faulty copy
+  separately and asks which side to keep.
 
 ## Status channel
 
@@ -358,7 +358,7 @@ finishes.
 ## Daily jobs
 
 Scheduled jobs (`uni-application-updater`'s daily post at 09:19 ICT, and the
-cloud backup at 00:00/06:00/12:00/18:00 ICT) run in-process; each can be gated
+cloud backup at 00:00/06:00/12:00/18:00 ICT, plus once at every startup) run in-process; each can be gated
 by an on/off routine (see `.a setting routine`).
 
 `uni-application-updater`'s daily update runs in-process, on a 30s-poll

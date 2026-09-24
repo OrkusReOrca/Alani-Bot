@@ -17,28 +17,28 @@ function describeDiff({ table, key, a, b }) {
 }
 
 // problems: [{ kind, message, diffs? }] as produced by verify.js /
-// instances.js. restoredFrom: name of the cloud instance the host was reset
+// service.js. restoredFrom: name of the stored instance the host was reset
 // to (null if no intact one was found).
-export function formatFaultReport({ group, problems, restoredFrom, faultyFolderName }) {
+export function formatFaultReport({ group, problems, restoredFrom, faultyName }) {
   const lines = [`**Cloud backup fault — ${group.label}**`, "", "What didn't add up:"];
   for (const problem of problems) lines.push(`• [${problem.kind}] ${problem.message}`);
 
   const diffs = problems.flatMap((p) => p.diffs ?? []);
   if (diffs.length > 0) {
-    lines.push("", "Rows that differ (host vs cloud snapshot + change log):");
+    lines.push("", "Rows that differ (host vs stored snapshot + change log):");
     for (const diff of diffs.slice(0, MAX_DIFF_LINES)) lines.push(describeDiff(diff));
     if (diffs.length > MAX_DIFF_LINES) lines.push(`…and ${diffs.length - MAX_DIFF_LINES} more`);
   }
 
   lines.push(
     "",
-    `The host's copy was saved to Drive as \`${faultyFolderName}\`.`,
+    `The host's copy was saved to the backup channel as \`${faultyName}\`.`,
     restoredFrom
-      ? `The host has been reset to the last good cloud instance (\`${restoredFrom}\`).`
-      : "No intact cloud instance was found, so the host was left as it is.",
+      ? `The host has been reset to the last good stored instance (\`${restoredFrom}\`).`
+      : "No intact stored instance was found, so the host was left as it is.",
     "",
     "Decide which side to keep (only in this channel):",
-    `• \`.a setting cloud resume drive ${group.id}\` — keep the cloud version, discard the faulty copy`,
+    `• \`.a setting cloud resume cloud ${group.id}\` — keep the stored version, discard the faulty copy`,
     `• \`.a setting cloud resume host ${group.id}\` — keep the host's version, save it as the new latest instance`,
     "Changes made on the host after this notice are lost if you choose `host`."
   );

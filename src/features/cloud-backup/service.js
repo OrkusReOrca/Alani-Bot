@@ -1,41 +1,34 @@
 // The cloud backup engine. One pass (runAll) walks every backup group and,
 // for each, either:
 //
-//   - uploads the first-ever instance (nothing in the cloud yet),
-//   - does nothing (no change since the latest cloud instance),
+//   - uploads the first-ever instance (nothing stored yet),
+//   - does nothing (no change since the latest stored instance),
 //   - uploads a new instance (verified changes since the latest one), or
 //   - declares a FAULT (verification failed — see verify.js).
 //
-// On a fault the host's current copy is uploaded as a separate FAULTY_
-// folder (never overwriting anything), the host is reset to the newest
-// intact cloud instance, and the owner is asked which side should win. The
-// group stays paused until they answer via resolveFault().
+// On a fault the host's current copy is stored as a separate FAULTY_ item
+// (never overwriting anything), the host is reset to the newest intact stored
+// instance, and the owner is asked which side should win. The group stays
+// paused until they answer via resolveFault().
 //
-// Everything outside this file is injected (Drive client, notifier, state
-// store, groups), so the whole flow runs against an in-memory Drive in
-// tests. See README.md for the design in prose.
+// Everything outside this file is injected (the store, notifier, state,
+// groups), so the whole flow runs against an in-memory store in tests. See
+// README.md for the design in prose.
 
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { snapshotTo, restoreInto } from "./snapshot.js";
-import { fingerprintFile, compareWithCloudCopy } from "./verify.js";
-import {
-  KEEP_INSTANCES,
-  listInstances,
-  uploadFolder,
-  downloadInstance,
-  instanceIntegrityProblems,
-  instanceFolderName,
-  faultyFolderName,
-  fileNameFor,
-} from "./instances.js";
+import { compareWithCloudCopy } from "./verify.js";
+import { CorruptBackupError } from "./crypto.js";
+import { KEEP_INSTANCES, retainedInstances, instanceName, faultyName, fileNameFor } from "./instances.js";
 import { formatFaultReport } from "./report.js";
 
-export const RESOLUTIONS = ["drive", "host"];
+export const RESOLUTIONS = ["cloud", "host"];
 
-// group: { id, label, folderPath, databases: [{ name, db }] }
-export function createBackupService({ drive, groups, state, notifier, dataDir, keepInstances = KEEP_INSTANCES, now = () => new Date() }) {
+// group: { id, label, databases: [{ name, db }] }
+// store: { list(groupId), put(groupId, name, files), get(item), remove(item) }
+export function createBackupService({ store, groups, state, notifier, dataDir, keepInstances = KEEP_INSTANCES, now = () => new Date() }) {
   let running = false;
 
   const groupById = (id) => groups.find((g) => g.id === id);
@@ -49,7 +42,8 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     }
   };
 
-  // Consistent copies of the group's live databases: { "<file>": path }.
+  // Consistent copies of the group's live databases, as files on disk:
+  // { "<file>": path }.
   function snapshotGroup(group, destDir) {
     fs.mkdirSync(destDir, { recursive: true });
     return Object.fromEntries(
@@ -61,81 +55,65 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     );
   }
 
-  const filesOf = (paths) => Object.entries(paths).map(([name, filePath]) => ({ name, path: filePath }));
+  const readFiles = (paths) => Object.fromEntries(Object.entries(paths).map(([name, filePath]) => [name, fs.readFileSync(filePath)]));
 
-  function metaFor(sequence, paths, extra = {}) {
-    return {
-      sequence,
-      createdAt: now().toISOString(),
-      files: Object.fromEntries(Object.entries(paths).map(([name, filePath]) => [name, fingerprintFile(filePath)])),
-      ...extra,
-    };
+  function writeFiles(files, destDir) {
+    fs.mkdirSync(destDir, { recursive: true });
+    return Object.fromEntries(
+      Object.entries(files).map(([name, data]) => {
+        const dest = path.join(destDir, name);
+        fs.writeFileSync(dest, data);
+        return [name, dest];
+      })
+    );
   }
 
-  // Finds the newest complete instance (one with a meta.json) and downloads
-  // it. An incomplete upload found on the way (a crash mid-upload) is
-  // deleted. Returns { instances: all remaining instances oldest first,
-  // latest: { instance, downloaded } | null }.
-  async function loadInstances(folderId, workDir) {
-    const instances = await listInstances(drive, folderId);
-    while (instances.length > 0) {
-      const candidate = instances.at(-1);
-      const downloaded = await downloadInstance(drive, candidate, path.join(workDir, "cloud", candidate.name));
-      if (downloaded) return { instances, latest: { instance: candidate, downloaded } };
-      await drive.deleteItem(candidate.id);
-      instances.pop();
+  // Fetches a stored instance onto disk. Returns { paths } on success or
+  // { corrupt: <reason> } if it fails to authenticate. Anything else (network,
+  // Discord errors) propagates: an outage must not look like corruption.
+  async function fetchInstance(item, destDir) {
+    try {
+      return { paths: writeFiles(await store.get(item), destDir) };
+    } catch (err) {
+      if (err instanceof CorruptBackupError) return { corrupt: `${item.name}: ${err.message}` };
+      throw err;
     }
-    return { instances, latest: null };
   }
 
-  async function uploadNewInstance(folderId, instances, paths) {
+  async function uploadNewInstance(group, instances, paths) {
     const sequence = (instances.at(-1)?.sequence ?? 0) + 1;
-    await uploadFolder(drive, folderId, instanceFolderName(sequence, now()), filesOf(paths), metaFor(sequence, paths));
+    await store.put(group.id, instanceName(sequence, now()), readFiles(paths));
     // Keep the newest `keepInstances`; the oldest fall off the end.
     const excess = instances.length + 1 - keepInstances;
-    for (const old of instances.slice(0, Math.max(0, excess))) await drive.deleteItem(old.id);
+    for (const old of instances.slice(0, Math.max(0, excess))) await store.remove(old);
   }
 
-  // Compares every live copy against the latest cloud instance.
-  function verifyGroup(group, livePaths, latest, workDir) {
-    const integrity = instanceIntegrityProblems(group.databases.map((d) => d.name), latest.downloaded);
-    if (integrity.length > 0) {
-      return { problems: integrity.map((message) => ({ kind: "drive", message })), changed: true };
-    }
-
+  // Compares every live copy against the fetched latest instance.
+  function verifyGroup(group, livePaths, latestPaths, workDir) {
     const problems = [];
     let changed = false;
     for (const { name } of group.databases) {
       const file = fileNameFor(name);
-      const result = compareWithCloudCopy(name, livePaths[file], latest.downloaded.paths[file], workDir);
+      const result = compareWithCloudCopy(name, livePaths[file], latestPaths[file], workDir);
       problems.push(...result.problems);
       changed ||= result.changed;
     }
     return { problems, changed };
   }
 
-  // The newest cloud instance whose files all pass their integrity check —
-  // what the host is reset to on a fault. `latest` is passed in (already
-  // downloaded); older ones are fetched only if needed.
-  async function findTrustedInstance(group, instances, latest, workDir) {
-    const names = group.databases.map((d) => d.name);
-    if (instanceIntegrityProblems(names, latest.downloaded).length === 0) return latest;
-    for (const instance of [...instances].reverse().slice(1)) {
-      const downloaded = await downloadInstance(drive, instance, path.join(workDir, "cloud", instance.name));
-      if (downloaded && instanceIntegrityProblems(names, downloaded).length === 0) return { instance, downloaded };
+  // The newest stored instance that decrypts intact — what the host is reset
+  // to on a fault. Walks back from the newest until one is fine.
+  async function findTrustedInstance(instances, workDir) {
+    for (const item of [...instances].reverse()) {
+      const fetched = await fetchInstance(item, path.join(workDir, "cloud", item.name));
+      if (fetched.paths) return { item, paths: fetched.paths };
     }
     return null;
   }
 
-  async function handleFault(group, folderId, instances, latest, livePaths, problems, workDir) {
-    const faultyName = faultyFolderName(now());
-    const faultyFolderId = await uploadFolder(
-      drive,
-      folderId,
-      faultyName,
-      filesOf(livePaths),
-      metaFor(null, livePaths, { faulty: true, problems: problems.map(({ kind, message }) => ({ kind, message })) })
-    );
+  async function handleFault(group, instances, livePaths, problems, workDir) {
+    const name = faultyName(now());
+    const faultyItemId = await store.put(group.id, name, readFiles(livePaths));
 
     // Keep the host's copy locally too, so "resume host" needs no re-download.
     const localDir = faultyDirFor(group);
@@ -143,22 +121,16 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     fs.mkdirSync(localDir, { recursive: true });
     for (const [file, filePath] of Object.entries(livePaths)) fs.copyFileSync(filePath, path.join(localDir, file));
 
-    const trusted = await findTrustedInstance(group, instances, latest, workDir);
+    const trusted = await findTrustedInstance(instances, workDir);
     if (trusted) {
-      for (const { name, db } of group.databases) restoreInto(db, trusted.downloaded.paths[fileNameFor(name)]);
+      for (const { name: dbName, db } of group.databases) restoreInto(db, trusted.paths[fileNameFor(dbName)]);
     }
 
-    const report = formatFaultReport({
-      group,
-      problems,
-      restoredFrom: trusted?.instance.name ?? null,
-      faultyFolderName: faultyName,
-    });
+    const report = formatFaultReport({ group, problems, restoredFrom: trusted?.item.name ?? null, faultyName: name });
     state.setPending(group.id, {
       detectedAt: now().toISOString(),
-      faultyFolderId,
-      faultyFolderName: faultyName,
-      restoredFrom: trusted?.instance.name ?? null,
+      faultyItem: { id: faultyItemId, groupId: group.id, name },
+      restoredFrom: trusted?.item.name ?? null,
       report,
     });
     await notifier.fault(group, report);
@@ -173,30 +145,34 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
 
     return withWorkDir(async (workDir) => {
       const livePaths = snapshotGroup(group, path.join(workDir, "live"));
-      const folderId = await drive.resolveFolderPath(group.folderPath);
-      const { instances, latest } = await loadInstances(folderId, workDir);
+      const instances = retainedInstances(await store.list(group.id));
+      const latest = instances.at(-1);
 
       if (!latest) {
-        await uploadNewInstance(folderId, instances, livePaths);
+        await uploadNewInstance(group, instances, livePaths);
         await notifier.cloudUpdated(group);
         return { groupId: group.id, outcome: "baseline" };
       }
 
-      const { problems, changed } = verifyGroup(group, livePaths, latest, workDir);
+      const fetched = await fetchInstance(latest, path.join(workDir, "cloud", latest.name));
+      const { problems, changed } = fetched.corrupt
+        ? { problems: [{ kind: "cloud", message: fetched.corrupt }], changed: true }
+        : verifyGroup(group, livePaths, fetched.paths, workDir);
+
       if (problems.length > 0) {
-        await handleFault(group, folderId, instances, latest, livePaths, problems, workDir);
+        await handleFault(group, instances, livePaths, problems, workDir);
         return { groupId: group.id, outcome: "fault" };
       }
       if (!changed) return { groupId: group.id, outcome: "unchanged" };
 
-      await uploadNewInstance(folderId, instances, livePaths);
+      await uploadNewInstance(group, instances, livePaths);
       await notifier.cloudUpdated(group);
       return { groupId: group.id, outcome: "uploaded" };
     });
   }
 
-  // One full pass over every group. A failure in one group (Drive down,
-  // folder missing) is reported for that group and doesn't stop the others.
+  // One full pass over every group. A failure in one group (Discord down,
+  // channel missing) is reported for that group and doesn't stop the others.
   async function runAll() {
     if (running) return [{ outcome: "busy" }];
     running = true;
@@ -217,31 +193,29 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     }
   }
 
-  // The owner's answer to a fault. "drive": the host already holds the cloud
+  // The owner's answer to a fault. "cloud": the host already holds the stored
   // version, so just discard the faulty copy. "host": put the faulty copy's
-  // data back and upload it as the new latest instance.
+  // data back and store it as the new latest instance.
   async function resolveFault(groupId, choice) {
     const group = groupById(groupId);
     const pending = group && state.pending(groupId);
     if (!pending) return `No unresolved cloud fault for \`${groupId}\`.`;
 
     if (choice === "host") {
-      const localDir = faultyDirFor(group);
-      for (const { name, db } of group.databases) restoreInto(db, path.join(localDir, fileNameFor(name)));
+      for (const { name, db } of group.databases) restoreInto(db, path.join(faultyDirFor(group), fileNameFor(name)));
       await withWorkDir(async (workDir) => {
-        const folderId = await drive.resolveFolderPath(group.folderPath);
-        const { instances } = await loadInstances(folderId, workDir);
-        await uploadNewInstance(folderId, instances, snapshotGroup(group, path.join(workDir, "live")));
+        const instances = retainedInstances(await store.list(group.id));
+        await uploadNewInstance(group, instances, snapshotGroup(group, path.join(workDir, "live")));
       });
       await notifier.cloudUpdated(group);
     }
 
-    await drive.deleteItem(pending.faultyFolderId);
+    await store.remove(pending.faultyItem);
     fs.rmSync(faultyDirFor(group), { recursive: true, force: true });
     state.clearPending(groupId);
     return choice === "host"
-      ? `Kept the host's version of ${group.label}: saved as the new latest cloud instance, faulty copy deleted.`
-      : `Kept the cloud version of ${group.label}: faulty copy deleted.`;
+      ? `Kept the host's version of ${group.label}: saved as the new latest backup, faulty copy deleted.`
+      : `Kept the stored version of ${group.label}: faulty copy deleted.`;
   }
 
   // Human-readable state of every group, for `.a setting cloud status`.
@@ -250,16 +224,15 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     for (const group of groups) {
       const pending = state.pending(group.id);
       try {
-        const folderId = await drive.resolveFolderPath(group.folderPath);
-        const instances = await listInstances(drive, folderId);
+        const instances = retainedInstances(await store.list(group.id));
         const newest = instances.at(-1);
         lines.push(
           `• **${group.label}** (\`${group.id}\`): ${instances.length}/${keepInstances} instances` +
             (newest ? `, latest \`${newest.name}\`` : "") +
-            (pending ? ` — ⚠️ UNRESOLVED FAULT (${pending.faultyFolderName})` : "")
+            (pending ? ` — ⚠️ UNRESOLVED FAULT (${pending.faultyItem.name})` : "")
         );
       } catch (err) {
-        lines.push(`• **${group.label}** (\`${group.id}\`): couldn't reach Drive — ${err.message}`);
+        lines.push(`• **${group.label}** (\`${group.id}\`): couldn't reach the backup channel — ${err.message}`);
       }
     }
     const last = state.lastRunAt();
@@ -267,5 +240,10 @@ export function createBackupService({ drive, groups, state, notifier, dataDir, k
     return lines.join("\n");
   }
 
-  return { runAll, resolveFault, describeStatus, groupIds: () => groups.map((g) => g.id), pendingGroupIds: () => Object.keys(state.allPending()) };
+  return {
+    runAll,
+    resolveFault,
+    describeStatus,
+    pendingGroupIds: () => Object.keys(state.allPending()),
+  };
 }

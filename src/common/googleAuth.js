@@ -2,12 +2,9 @@
 // see googleCalendar.js's header for why this repo keeps its dependency
 // tree small (the host reinstalls it on every restart).
 //
-// Two credential kinds, because they have different powers:
-//   - service account (JWT bearer flow): non-interactive, used for the
-//     Calendar API. It cannot create Drive files (no storage quota).
-//   - OAuth refresh token (a real user's consent): acts as that user, so
-//     it can create Drive files in that user's own storage.
-// Tokens are cached per credential/scope and refreshed shortly before expiry.
+// Service-account credentials only (JWT bearer flow): non-interactive, used
+// for the Calendar API. Tokens are cached per scope and refreshed shortly
+// before expiry.
 
 import crypto from "crypto";
 import { config } from "./config.js";
@@ -55,23 +52,4 @@ export async function getServiceAccountToken(scope) {
       assertion: `${signingInput}.${signature}`,
     });
   });
-}
-
-export function isOAuthConfigured() {
-  return Boolean(config.googleOAuthClientId && config.googleOAuthClientSecret && config.googleOAuthRefreshToken);
-}
-
-// Access token acting as the user who granted the refresh token.
-export async function getOAuthToken() {
-  if (!isOAuthConfigured()) {
-    throw new Error("Google OAuth isn't configured — set GOOGLE_OAUTH_CLIENT_ID/_CLIENT_SECRET/_REFRESH_TOKEN");
-  }
-  return cached("oauth-user", () =>
-    requestToken({
-      grant_type: "refresh_token",
-      client_id: config.googleOAuthClientId,
-      client_secret: config.googleOAuthClientSecret,
-      refresh_token: config.googleOAuthRefreshToken,
-    })
-  );
 }

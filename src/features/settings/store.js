@@ -1,5 +1,5 @@
 // The bot's settings, kept in their own small SQLite database (backed up to
-// Google Drive like the others — see features/cloud-backup/). Only keys
+// the encrypted backup channel like the others — see features/cloud-backup/). Only keys
 // declared in definitions.js exist; anything unset reads as its default, so
 // a fresh install needs no seeding.
 

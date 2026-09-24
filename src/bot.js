@@ -47,7 +47,7 @@ import { startGenReminderScheduler } from "./features/db/scheduler.js";
 import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
-import { scheduleStartupCatchUp } from "./features/cloud-backup/index.js";
+import { runScheduledBackup } from "./features/cloud-backup/index.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
@@ -90,7 +90,8 @@ client.once(Events.ClientReady, (readyClient) => {
   startGenReminderScheduler();
   startBridgeServer();
   startDailyJobs();
-  scheduleStartupCatchUp();
+  // Verify (and if needed save) a backup every time the bot comes online.
+  runScheduledBackup().catch((err) => console.error("[cloud-backup] startup backup failed:", err));
   startLifecycleReporting(() => client.destroy()).catch((err) => console.error("[lifecycle] failed to start:", err));
 });
 

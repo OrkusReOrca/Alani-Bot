@@ -33,15 +33,10 @@ export const config = {
   // The channel Alani posts one-line status updates to (online/offline,
   // tracker runs, cloud backups, database changes — see common/statusLog.js).
   statusChannelId: readEnv("DISCORD_STATUS_CHANNEL"),
-  // Google Drive access for the cloud backup (see common/googleDrive.js).
-  // Deliberately an OAuth *user* credential, not the service account above:
-  // Google gives service accounts no Drive storage quota, so a service
-  // account can read/rename files it's been shared but can never create
-  // one. The refresh token is minted once with scripts/getDriveRefreshToken.js.
-  googleOAuthClientId: readEnv("GOOGLE_OAUTH_CLIENT_ID"),
-  googleOAuthClientSecret: readEnv("GOOGLE_OAUTH_CLIENT_SECRET"),
-  googleOAuthRefreshToken: readEnv("GOOGLE_OAUTH_REFRESH_TOKEN"),
-  // Drive folder (path from My Drive root) that holds the "DB Backup" and
-  // "Settings" backup folders.
-  driveBackupRootPath: readEnv("DRIVE_BACKUP_ROOT_PATH") || "Alani",
+  // Cloud backup (see features/cloud-backup/): the private channel that holds
+  // the encrypted backup files, and the 64-hex-character AES key they're
+  // encrypted with (generate one with `npm run backup-key` and keep a copy
+  // somewhere safe — without it the backups can't be read).
+  backupChannelId: readEnv("DISCORD_BACKUP_CHANNEL"),
+  backupEncryptionKey: readEnv("BACKUP_ENCRYPTION_KEY"),
 };

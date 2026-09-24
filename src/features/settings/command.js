@@ -6,7 +6,7 @@
 //   .a setting cloud [status|push|resume ...]      cloud backup (see cloud-backup/command.js)
 //
 // Every change lands in the settings database, so it's change-logged and
-// backed up to Google Drive like the rest of the bot's data.
+// backed up (encrypted) to the backup channel like the rest of the bot's data.
 
 import { isOwner } from "../../common/auth.js";
 import { chunkMessage } from "../../common/discordApi.js";

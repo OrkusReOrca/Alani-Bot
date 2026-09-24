@@ -9,12 +9,12 @@ import { getBackupService, isBackupConfigured } from "./index.js";
 const USAGE = [
   "Usage:",
   "`.a setting cloud` — status of the cloud backup",
-  "`.a setting cloud push` — run a backup pass now",
-  "`.a setting cloud resume <drive|host> [db|settings]` — answer a fault (command box only)",
+  "`.a setting cloud push` — back up now (verify + save if anything changed)",
+  "`.a setting cloud resume <cloud|host> [db|settings]` — answer a fault (command box only)",
 ].join("\n");
 
 const NOT_CONFIGURED =
-  "Cloud backup isn't set up yet — set GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN (see the cloud-backup README).";
+  "Cloud backup isn't set up yet — set DISCORD_BACKUP_CHANNEL and BACKUP_ENCRYPTION_KEY (see the cloud-backup README).";
 
 function describeOutcome({ groupId, outcome, error }) {
   const text = {

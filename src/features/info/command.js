@@ -51,7 +51,7 @@ const FEATURES = [
   },
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
   {
-    text: "**Cloud backup** — every 6 hours (from midnight, GMT+7) all databases and settings are verified against their change logs and saved to Google Drive, keeping the last 16 versions. See `.a info setting`.",
+    text: "**Cloud backup** — every 6 hours (from midnight, GMT+7) all databases and settings are verified against their change logs and saved (encrypted) to a private Discord channel, keeping the last 16 versions. See `.a info setting`.",
     private: true,
   },
   {
@@ -197,7 +197,7 @@ const SETTING_INFO = [
   ".a setting",
   ".a setting routine",
   ".a setting routine <unitracker|fortnite> <setON|setOFF>",
-  ".a setting cloud [status|push|resume <drive|host> [db|settings]]",
+  ".a setting cloud [status|push|resume <cloud|host> [db|settings]]",
   "```",
   "",
   "**Routines** — `unitracker` (the daily uni post, runs in the bot) and " +
@@ -207,16 +207,17 @@ const SETTING_INFO = [
   "",
   "**Cloud backup** — at 00:00, 06:00, 12:00 and 18:00 (GMT+7) the bot " +
     "checks every database and the settings against their change logs and " +
-    "uploads a new version to Drive when something really changed (the " +
-    "last 16 versions are kept, per folder). `push` runs a pass now.",
+    "saves a new encrypted version when something really changed (the " +
+    "last 16 versions are kept, per group). It also runs every time the " +
+    "bot comes online, and `push` runs it on demand.",
   "",
-  "**If the check fails** (the data, the change log and the Drive copy " +
+  "**If the check fails** (the data, the change log and the stored copy " +
     "don't agree): you're tagged in the status channel, the host's copy is " +
-    "saved to Drive as a separate `FAULTY_...` folder, the host is reset " +
-    "to the last good Drive version, and a report of what differs goes to " +
-    "the command box. Answer there with `resume drive` (keep Drive's " +
-    "version) or `resume host` (keep the host's). Backups of that folder " +
-    "stay paused until you do.",
+    "saved as a separate `FAULTY_...` backup, the host is reset to the last " +
+    "good stored version, and a report of what differs goes to the command " +
+    "box. Answer there with `resume cloud` (keep the stored version) or " +
+    "`resume host` (keep the host's). Backups of that group stay paused " +
+    "until you do.",
 ].join("\n");
 
 // ctx: { reply, guildId, ... } — a uniform interface over both a

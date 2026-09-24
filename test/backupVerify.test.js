@@ -6,7 +6,7 @@ import path from "path";
 import { DatabaseSync } from "node:sqlite";
 import { installChangeLog, maxLogId, readLogTail } from "../src/features/cloud-backup/changeLog.js";
 import { snapshotTo, restoreInto, dataDigest, openDatabase, diffData } from "../src/features/cloud-backup/snapshot.js";
-import { fingerprintFile, checkCloudCopyIntegrity, compareWithCloudCopy } from "../src/features/cloud-backup/verify.js";
+import { compareWithCloudCopy } from "../src/features/cloud-backup/verify.js";
 
 const SCHEMA = `
   CREATE TABLE reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, done INTEGER DEFAULT 0);
@@ -26,12 +26,11 @@ function makeLiveDb(dir) {
   return db;
 }
 
-// Simulates one backup upload: the "cloud" copy plus the fingerprint
-// recorded alongside it.
+// Simulates one backup upload: the stored copy of the database.
 function uploadSnapshot(db, dir, name) {
   const cloudPath = path.join(dir, `${name}.cloud.db`);
   snapshotTo(db, cloudPath);
-  return { cloudPath, recorded: fingerprintFile(cloudPath) };
+  return { cloudPath };
 }
 
 function liveCopy(db, dir) {
@@ -108,20 +107,6 @@ test("a live log that no longer continues the cloud log is reported as a log fau
 
   const result = compareWithCloudCopy("live", liveCopy(db, dir), cloudPath, dir);
   assert.equal(result.problems[0].kind, "log");
-});
-
-test("a cloud copy that doesn't match its recorded fingerprint fails the integrity check", () => {
-  const dir = makeWorkDir();
-  const db = makeLiveDb(dir);
-  db.prepare(`INSERT INTO reminders (text) VALUES ('x')`).run();
-  const { cloudPath, recorded } = uploadSnapshot(db, dir, "one");
-  assert.deepEqual(checkCloudCopyIntegrity("live", cloudPath, recorded), []);
-
-  const tampered = openDatabase(cloudPath);
-  tampered.exec(`UPDATE reminders SET text = 'edited in drive'`);
-  tampered.close();
-  assert.ok(checkCloudCopyIntegrity("live", cloudPath, recorded).length > 0);
-  assert.ok(checkCloudCopyIntegrity("live", cloudPath, undefined).length > 0);
 });
 
 test("a schema migration since the snapshot is not mistaken for a fault", () => {

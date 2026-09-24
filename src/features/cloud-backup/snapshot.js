@@ -18,10 +18,6 @@ function sqlString(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-export function fileSha256(path) {
-  return crypto.createHash("sha256").update(fs.readFileSync(path)).digest("hex");
-}
-
 export function openDatabase(path) {
   return new DatabaseSync(path);
 }

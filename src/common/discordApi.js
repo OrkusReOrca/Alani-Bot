@@ -106,21 +106,16 @@ export async function sendViaBotChannel(botToken, channelId, message) {
   }
 }
 
-// Sends a binary file (e.g. a generated PNG) as a message attachment.
-// Uses multipart/form-data, NOT the JSON path above — fetch sets its own
-// Content-Type with the multipart boundary when given a FormData body, so
-// this deliberately doesn't go through discordApi()'s JSON header default.
-export async function sendFileViaBotChannel(
-  botToken,
-  channelId,
-  buffer,
-  filename,
-  content = "",
-  retriesLeft = 5
-) {
+// Sends one or more binary files (e.g. a generated PNG) as attachments of a
+// single message. Uses multipart/form-data, NOT the JSON path above — fetch
+// sets its own Content-Type with the multipart boundary when given a
+// FormData body, so this deliberately doesn't go through discordApi()'s
+// JSON header default. files: [{ name, data }] (data: Buffer). Returns the
+// posted message, e.g. for its .attachments[].url.
+export async function sendFilesViaBotChannel(botToken, channelId, files, content = "", retriesLeft = 5) {
   const form = new FormData();
   form.append("payload_json", JSON.stringify({ content }));
-  form.append("files[0]", new Blob([buffer]), filename);
+  files.forEach((file, i) => form.append(`files[${i}]`, new Blob([file.data]), file.name));
 
   const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: "POST",
@@ -131,12 +126,37 @@ export async function sendFileViaBotChannel(
   if (res.status === 429 && retriesLeft > 0) {
     const { retry_after } = await res.json();
     await sleep(Math.ceil((retry_after ?? 1) * 1000) + 50);
-    return sendFileViaBotChannel(botToken, channelId, buffer, filename, content, retriesLeft - 1);
+    return sendFilesViaBotChannel(botToken, channelId, files, content, retriesLeft - 1);
   }
 
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Discord file send failed: ${res.status} ${res.statusText} - ${body}`);
   }
-  return res.json(); // the posted message, e.g. for its .attachments[0].url
+  return res.json();
+}
+
+export function sendFileViaBotChannel(botToken, channelId, buffer, filename, content = "") {
+  return sendFilesViaBotChannel(botToken, channelId, [{ name: filename, data: buffer }], content);
+}
+
+// One page of a channel's messages, newest first (Discord's own order).
+// `before`: a message id — returns the page of messages older than it.
+export function fetchChannelMessages(botToken, channelId, { before, limit = 100 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before) params.set("before", before);
+  return discordApi(botToken, `/channels/${channelId}/messages?${params}`);
+}
+
+export function fetchChannelMessage(botToken, channelId, messageId) {
+  return discordApi(botToken, `/channels/${channelId}/messages/${messageId}`);
+}
+
+export function deleteChannelMessage(botToken, channelId, messageId) {
+  return discordApi(botToken, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
+}
+
+// The bot's own user id (from its token).
+export async function fetchBotUserId(botToken) {
+  return (await discordApi(botToken, "/users/@me")).id;
 }

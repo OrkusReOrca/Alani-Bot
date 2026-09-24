@@ -29,5 +29,5 @@ setting never claims a state GitHub isn't in.
 3. If it's an on/off routine, add it to `routines.js` and gate its job.
 
 Settings live in their own SQLite file (`data/settings/settings.db`), which is
-change-logged and backed up to Drive with everything else — see the cloud-backup
+change-logged and backed up with everything else — see the cloud-backup
 README.
