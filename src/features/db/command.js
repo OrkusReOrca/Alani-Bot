@@ -43,6 +43,7 @@ import { config } from "../../common/config.js";
 import { isOwner } from "../../common/auth.js";
 import { canSendInChannel } from "../../common/channelAccess.js";
 import { getClient } from "../../common/discordClient.js";
+import { announceDatabaseCreated } from "../../common/dbAnnouncements.js";
 import { register, get as getDatabase } from "./registry.js";
 import * as store from "./store.js";
 import orkusInfo from "../orkus-info/actions.js";
@@ -143,6 +144,7 @@ async function handleCreate(args, ctx) {
     primaryChannelId,
     channelId: ctx.channelId,
   });
+  announceDatabaseCreated({ name: instance.name, guildId: ctx.guildId, userId: ctx.userId });
   return `Created ${tierArg} database "${instance.name}" — primary destination: ${primaryChannelId === "dm" ? "DM" : `<#${primaryChannelId}>`}. Use it via \`.a db ${instance.name} ...\`.`;
 }
 

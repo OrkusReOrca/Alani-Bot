@@ -21,3 +21,9 @@ venv/
 # the SQLite files above: it changes constantly and doesn't need git
 # history.
 emotion-service/data/
+
+# Runtime state of the cloud backup (last-run time, unresolved faults, the
+# host-side copy of a faulty snapshot) and the online/offline heartbeat —
+# machine-local, like the databases above.
+data/cloud-backup/
+data/status/

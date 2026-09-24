@@ -3,14 +3,14 @@
 // commands require a live gateway connection to receive interactions.
 // Run with `npm start`.
 //
-// uni-application-updater's daily job runs on an in-process timer now —
-// see common/dailyJobs.js — instead of GitHub Actions cron, since this
-// bot is online 24/7 and doesn't need to wait on GitHub's Actions queue
-// (which was seen running 30-48+ minutes late). fortnite-jam-tracks-
-// tracker's shop check/post was tried the same way and reverted back to
-// GitHub Actions — its post step needs the `canvas` native module, which
-// bot-hosting.net's script policy blocks from building (see
-// common/dailyJobs.js's comment for the full story).
+// Scheduled jobs (uni-application-updater's daily post, the 6-hourly cloud
+// backup) run on an in-process timer — see common/dailyJobs.js — instead of
+// GitHub Actions cron, since this bot is online 24/7 and doesn't need to
+// wait on GitHub's Actions queue (which was seen running 30-48+ minutes
+// late). fortnite-jam-tracks-tracker's shop check/post was tried the same
+// way and reverted back to GitHub Actions — its post step needs the
+// `canvas` native module, which bot-hosting.net's script policy blocks from
+// building (see common/dailyJobs.js's comment for the full story).
 //
 // Every command is reachable as a prefix command (.a <name> [args...]),
 // dispatched to command.js's execute(ctx, args) via the ctx-adapter each
@@ -41,10 +41,13 @@ import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/c
 import * as dbCommand from "./features/db/command.js";
 import * as listDbCommand from "./features/db/listDbCommand.js";
 import * as emotionCommand from "./features/emotion-detect/command.js";
+import * as settingCommand from "./features/settings/command.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
 import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
+import { startLifecycleReporting } from "./common/lifecycle.js";
+import { scheduleStartupCatchUp } from "./features/cloud-backup/index.js";
 
 const commands = new Map([
   [infoCommand.data.name, infoCommand],
@@ -52,6 +55,7 @@ const commands = new Map([
   [dbCommand.data.name, dbCommand],
   [listDbCommand.data.name, listDbCommand],
   [emotionCommand.data.name, emotionCommand],
+  [settingCommand.data.name, settingCommand],
 ]);
 
 // ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,
@@ -86,6 +90,8 @@ client.once(Events.ClientReady, (readyClient) => {
   startGenReminderScheduler();
   startBridgeServer();
   startDailyJobs();
+  scheduleStartupCatchUp();
+  startLifecycleReporting(() => client.destroy()).catch((err) => console.error("[lifecycle] failed to start:", err));
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

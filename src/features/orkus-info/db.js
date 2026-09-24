@@ -16,6 +16,8 @@
 // benefit from git history.
 
 import { DatabaseSync } from "node:sqlite";
+import { ensureColumn } from "../../common/sqlite.js";
+import { installChangeLog } from "../cloud-backup/changeLog.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -52,18 +54,12 @@ db.exec(`
 // errors if run a second time) so this stays safe to run on every
 // startup, including against a database that already has rows from
 // before these columns existed (they just come back NULL for those).
-function ensureColumn(table, column, definition) {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
-  if (!columns.some((c) => c.name === column)) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-  }
-}
 
 // created_by: who to DM by default when the reminder fires (and whose
 // username to show if it posts to a channel instead). channel_id: if
 // set, post there instead of DMing created_by. See scheduler.js.
-ensureColumn("reminders", "created_by", "TEXT");
-ensureColumn("reminders", "channel_id", "TEXT");
+ensureColumn(db, "reminders", "created_by", "TEXT");
+ensureColumn(db, "reminders", "channel_id", "TEXT");
 
 // display_number: the small, user-facing number reminders are actually
 // added/edited/deleted by — separate from `id` (the real primary key,
@@ -75,13 +71,34 @@ ensureColumn("reminders", "channel_id", "TEXT");
 // in use at once, and shrinks back down as soon as gaps open up again —
 // no separate "current range" bookkeeping needed, this falls out of
 // "always take the smallest free number" on its own.
-ensureColumn("reminders", "display_number", "INTEGER");
+ensureColumn(db, "reminders", "display_number", "INTEGER");
 
 // mentions: comma-separated Discord user IDs to tag when this reminder
 // fires, alongside the normal DM/channel delivery — resolved from
 // usernames/IDs at add-time (see common/mentions.js), never at fire
 // time. NULL/empty means no extra mentions, same as before this existed.
-ensureColumn("reminders", "mentions", "TEXT");
+ensureColumn(db, "reminders", "mentions", "TEXT");
+
+// google_event_id: the matching Google Calendar event's own ID, once
+// synced there — null until/unless the Google sync is configured (see
+// config.js's googleCalendarId and common/googleCalendar.js). Needed so
+// edits/deletes can find and update/remove the right Google-side event,
+// not just add new ones there.
+ensureColumn(db, "events", "google_event_id", "TEXT");
+
+// all_day: whether this event spans a whole calendar day (start/end are
+// still stored as the usual midnight-to-midnight-next-day timestamps —
+// see format.js's startOfIctDay — this column just controls display
+// formatting and which Google Calendar API shape gets used, date vs
+// dateTime, since Google renders those differently even though the
+// underlying time range would look the same). Existing rows default to
+// 0 (not all-day), correct for anything added before this existed.
+ensureColumn(db, "events", "all_day", "INTEGER DEFAULT 0");
+
+// Schema is final — start recording every write (see cloud-backup/
+// changeLog.js). Kept BEFORE the backfill below so that startup data fix is
+// logged like any other write.
+installChangeLog(db);
 
 // One-time backfill for rows that predate this column (display_number
 // comes back NULL for those otherwise, making them unaddressable by the
@@ -104,22 +121,6 @@ ensureColumn("reminders", "mentions", "TEXT");
     }
   }
 }
-
-// google_event_id: the matching Google Calendar event's own ID, once
-// synced there — null until/unless the Google sync is configured (see
-// config.js's googleCalendarId and common/googleCalendar.js). Needed so
-// edits/deletes can find and update/remove the right Google-side event,
-// not just add new ones there.
-ensureColumn("events", "google_event_id", "TEXT");
-
-// all_day: whether this event spans a whole calendar day (start/end are
-// still stored as the usual midnight-to-midnight-next-day timestamps —
-// see format.js's startOfIctDay — this column just controls display
-// formatting and which Google Calendar API shape gets used, date vs
-// dateTime, since Google renders those differently even though the
-// underlying time range would look the same). Existing rows default to
-// 0 (not all-day), correct for anything added before this existed.
-ensureColumn("events", "all_day", "INTEGER DEFAULT 0");
 
 // Smallest positive integer not currently used by any existing reminder.
 export function getNextDisplayNumber() {

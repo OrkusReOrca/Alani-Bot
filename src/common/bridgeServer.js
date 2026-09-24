@@ -11,6 +11,7 @@
 
 import http from "http";
 import { config } from "./config.js";
+import { sendJson, BadRequestError } from "./http.js";
 import { registerVoiceRoutes } from "../features/db/voiceApi.js";
 import { registerUniTrackerPushRoute } from "../features/uni-application-updater/pushApi.js";
 import { registerEmotionRoutes } from "../features/emotion-detect/emotionApi.js";
@@ -19,11 +20,6 @@ const routes = [];
 
 export function registerRoute(method, path, secret, handler) {
   routes.push({ method, path, secret, handler });
-}
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
 }
 
 // Every current route sends small JSON (a handful of KB at most, now that
@@ -56,6 +52,7 @@ export function startBridgeServer() {
     try {
       await route.handler(req, res);
     } catch (err) {
+      if (err instanceof BadRequestError) return sendJson(res, 400, { error: err.message });
       console.error(`[bridgeServer] error handling ${req.method} ${req.url}:`, err);
       sendJson(res, 500, { error: "Internal error" });
     }

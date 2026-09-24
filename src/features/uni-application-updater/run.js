@@ -4,6 +4,7 @@ import { loadPrograms } from "./programs.js";
 import { loadState, saveState, diffPrograms, stateFromPrograms } from "./state.js";
 import { formatDailyMessage, formatChangeAlert } from "./formatter.js";
 import { sendViaDM, sendViaBotChannel } from "../../common/discordApi.js";
+import { statusUniversity } from "../../common/statusLog.js";
 
 // forceDm: true for a manual/verification run (was previously only the
 // GitHub Actions workflow_dispatch case, via FORCE_DM=true) — sends a
@@ -48,6 +49,7 @@ export async function run(forceDm = process.env.FORCE_DM === "true") {
   }
 
   saveState(stateFromPrograms(programs));
+  await statusUniversity();
   console.log("Done.");
 }
 

@@ -29,3 +29,44 @@ export function extractQuoted(tokens) {
   const text = raw.slice(1, -1);
   return { before: tokens.slice(0, startIdx), text, after: tokens.slice(endIdx + 1) };
 }
+
+// Case- and whitespace-insensitive form of a name field, used for duplicate
+// detection.
+export function normalizeText(text) {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Pulls trailing modifier tokens (any order) off the end of an args list
+// that's ALREADY had its quoted "name" field extracted (see
+// common/textParsing.js's extractQuoted) — so what's left here is only
+// ever modifiers, never reminder text itself: "force" (skip the
+// duplicate check), a bare Discord snowflake (channel to post in,
+// instead of DMing the creator), and — reminders only — one mentions
+// token (comma-separated user IDs/usernames, or a single one; see
+// common/mentions.js). A single bare numeric mention with no comma is
+// indistinguishable from a channel-id and resolves as one — a known,
+// accepted limitation; use a comma (even for one entry) or a username
+// to avoid the ambiguity.
+export function stripTrailingModifiers(args, { allowMentions = false } = {}) {
+  const rest = [...args];
+  let force = false;
+  let channelId = null;
+  let mentions = null;
+
+  while (rest.length > 0) {
+    const last = rest[rest.length - 1];
+    if (last.toLowerCase() === "force") {
+      force = true;
+      rest.pop();
+    } else if (/^\d{15,20}$/.test(last)) {
+      channelId = last;
+      rest.pop();
+    } else if (allowMentions && mentions === null) {
+      mentions = last;
+      rest.pop();
+    } else {
+      break;
+    }
+  }
+  return { rest, force, channelId, mentions };
+}

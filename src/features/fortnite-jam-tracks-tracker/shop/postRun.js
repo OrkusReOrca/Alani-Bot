@@ -4,6 +4,7 @@ import { loadPendingDiff, clearPendingDiff } from "./state.js";
 import { formatUpdateMessage } from "./formatter.js";
 import { postShopGridImage } from "./postGridImage.js";
 import { sendViaBotChannel } from "../../../common/discordApi.js";
+import { statusFortnite } from "../../../common/statusLog.js";
 
 export async function run() {
   if (!config.botToken || !config.channelId) {
@@ -28,6 +29,7 @@ export async function run() {
   }
 
   clearPendingDiff();
+  await statusFortnite();
   console.log("Done.");
 }
 

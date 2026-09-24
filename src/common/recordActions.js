@@ -4,9 +4,11 @@
 // with orkus-info (the "Main" tier), which keeps its own separate,
 // untouched copy of this same shape of logic — see the root README's
 // "Tiers" section for why Main was kept fully independent rather than
-// refactored to share code with these two. Some duplication of the
-// dedup/overlap/display-number pattern against orkus-info/actions.js is
-// intentional, accepted for that reason.
+// refactored to share code with these two. The pure helpers (quoted-field
+// and modifier parsing, name normalizing, the dedup window) ARE shared —
+// see textParsing.js and recordRules.js — but each side keeps its own SQL
+// and dedup/overlap/display-number flow, an intentional duplication
+// accepted for that reason.
 //
 // createRecordActions() is called fresh per command invocation (not once
 // at module load), since which database instance (databaseId) is being
@@ -20,43 +22,11 @@
 import storeDb, { getNextDisplayNumber, logEvent } from "../features/db/store.js";
 import { getClient } from "./discordClient.js";
 import { canSendInChannel } from "./channelAccess.js";
-import { extractQuoted } from "./textParsing.js";
+import { extractQuoted, normalizeText, stripTrailingModifiers } from "./textParsing.js";
+import { DEDUP_WINDOW_MS, DEFAULT_EVENT_DURATION_MS } from "./recordRules.js";
 import { resolveMentions, formatMentions } from "./mentions.js";
 import { parseIct, fmtIct, fmtIctDate, startOfIctDay } from "../features/orkus-info/format.js";
-
-const DEDUP_WINDOW_MS = 60 * 60 * 1000;
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
-
-function normalize(text) {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-// Same shape as orkus-info/actions.js's own copy — see that file's
-// comment for the full reasoning (duplicated here, not shared, per this
-// module's own top comment).
-function stripTrailingModifiers(args, { allowMentions = false } = {}) {
-  const rest = [...args];
-  let force = false;
-  let channelId = null;
-  let mentions = null;
-
-  while (rest.length > 0) {
-    const last = rest[rest.length - 1];
-    if (last.toLowerCase() === "force") {
-      force = true;
-      rest.pop();
-    } else if (/^\d{15,20}$/.test(last)) {
-      channelId = last;
-      rest.pop();
-    } else if (allowMentions && mentions === null) {
-      mentions = last;
-      rest.pop();
-    } else {
-      break;
-    }
-  }
-  return { rest, force, channelId, mentions };
-}
+import { announceDatabaseUpdated } from "./dbAnnouncements.js";
 
 export function createRecordActions({
   databaseId,
@@ -66,6 +36,8 @@ export function createRecordActions({
   onEventUpdate = async () => {},
   onEventDelete = async () => {},
 }) {
+  const announce = (change, itemName, userId) => announceDatabaseUpdated({ name: databaseName, change, itemName, userId });
+
   // ---------- reminders ----------
 
   async function addReminderRecord({ text, remindAt, channelId = null, createdBy, force = false, mentionIds = [], ctx = null }) {
@@ -82,7 +54,7 @@ export function createRecordActions({
       }
     }
 
-    const normalized = normalize(text);
+    const normalized = normalizeText(text);
     const windowStart = new Date(remindAt.getTime() - DEDUP_WINDOW_MS).toISOString();
     const windowEnd = new Date(remindAt.getTime() + DEDUP_WINDOW_MS).toISOString();
     const dupe = storeDb
@@ -117,6 +89,7 @@ export function createRecordActions({
       channelId: ctx?.channelId ?? null,
       guildId: ctx?.guildId ?? null,
     });
+    announce("new reminder", text, createdBy);
 
     const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
     const mentionNote = mentionIds.length > 0 ? `, will also tag ${formatMentions(mentionIds)}` : "";
@@ -174,19 +147,24 @@ export function createRecordActions({
       .join("\n");
   }
 
-  function deleteReminder(displayNumber) {
+  function deleteReminder(displayNumber, ctx = null) {
     if (!displayNumber) return "Usage: `.a db delete reminder <id|all>`";
     if (displayNumber.toLowerCase() === "all") {
       const result = storeDb.prepare(`DELETE FROM gen_reminders WHERE database_id = ?`).run(databaseId);
-      return result.changes > 0 ? `Deleted all ${result.changes} reminder(s).` : "No reminders to delete.";
+      if (result.changes === 0) return "No reminders to delete.";
+      announce("deleted reminders", `all ${result.changes}`, ctx?.userId);
+      return `Deleted all ${result.changes} reminder(s).`;
     }
-    const result = storeDb
-      .prepare(`DELETE FROM gen_reminders WHERE database_id = ? AND display_number = ?`)
-      .run(databaseId, Number(displayNumber));
-    return result.changes > 0 ? `Deleted reminder #${displayNumber}.` : `No reminder #${displayNumber}.`;
+    const existing = storeDb
+      .prepare(`SELECT text FROM gen_reminders WHERE database_id = ? AND display_number = ?`)
+      .get(databaseId, Number(displayNumber));
+    if (!existing) return `No reminder #${displayNumber}.`;
+    storeDb.prepare(`DELETE FROM gen_reminders WHERE database_id = ? AND display_number = ?`).run(databaseId, Number(displayNumber));
+    announce("deleted reminder", existing.text, ctx?.userId);
+    return `Deleted reminder #${displayNumber}.`;
   }
 
-  function editReminder(args) {
+  function editReminder(args, ctx = null) {
     const quoted = extractQuoted(args);
     const [displayNumber, when] = quoted?.before ?? [];
     const text = quoted?.text.trim();
@@ -196,10 +174,10 @@ export function createRecordActions({
     }
     const result = storeDb
       .prepare(`UPDATE gen_reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE database_id = ? AND display_number = ?`)
-      .run(text, normalize(text), remindAt.toISOString(), databaseId, Number(displayNumber));
-    return result.changes > 0
-      ? `Updated reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())}`
-      : `No reminder #${displayNumber}.`;
+      .run(text, normalizeText(text), remindAt.toISOString(), databaseId, Number(displayNumber));
+    if (result.changes === 0) return `No reminder #${displayNumber}.`;
+    announce("edited reminder", text, ctx?.userId);
+    return `Updated reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())}`;
   }
 
   // ---------- events ----------
@@ -249,7 +227,7 @@ export function createRecordActions({
     if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
     const location = pipedLocation ?? databaseName;
 
-    const normalized = normalize(title);
+    const normalized = normalizeText(title);
     const windowStart = new Date(startTime.getTime() - DEDUP_WINDOW_MS).toISOString();
     const windowEnd = new Date(startTime.getTime() + DEDUP_WINDOW_MS).toISOString();
     const dupe = storeDb
@@ -275,6 +253,7 @@ export function createRecordActions({
       channelId: ctx?.channelId ?? null,
       guildId: ctx?.guildId ?? null,
     });
+    announce("new event", title, ctx?.userId);
 
     try {
       const { discordEventId } = (await onEventCreate({ title, start: startTime, end: endTime, allDay, location })) ?? {};
@@ -310,12 +289,14 @@ export function createRecordActions({
       .join("\n");
   }
 
-  async function deleteEvent(id) {
+  async function deleteEvent(id, ctx = null) {
     if (!id) return "Usage: `.a db delete event <id>`";
-    const row = storeDb.prepare(`SELECT discord_event_id FROM gen_events WHERE database_id = ? AND id = ?`).get(databaseId, Number(id));
-    const result = storeDb.prepare(`DELETE FROM gen_events WHERE database_id = ? AND id = ?`).run(databaseId, Number(id));
+    const row = storeDb.prepare(`SELECT title, discord_event_id FROM gen_events WHERE database_id = ? AND id = ?`).get(databaseId, Number(id));
+    if (!row) return `No event #${id}.`;
+    storeDb.prepare(`DELETE FROM gen_events WHERE database_id = ? AND id = ?`).run(databaseId, Number(id));
+    announce("deleted event", row.title, ctx?.userId);
 
-    if (result.changes > 0 && row?.discord_event_id) {
+    if (row.discord_event_id) {
       try {
         await onEventDelete(row.discord_event_id);
       } catch (err) {
@@ -323,10 +304,10 @@ export function createRecordActions({
       }
     }
 
-    return result.changes > 0 ? `Deleted event #${id}.` : `No event #${id}.`;
+    return `Deleted event #${id}.`;
   }
 
-  async function editEvent(args) {
+  async function editEvent(args, ctx = null) {
     const quoted = extractQuoted(args);
     const [id, start, end] = quoted?.before ?? [];
     const title = quoted?.text.trim();
@@ -341,9 +322,12 @@ export function createRecordActions({
     const location = pipedLocation ?? existing?.location ?? databaseName;
     const result = storeDb
       .prepare(`UPDATE gen_events SET title = ?, title_normalized = ?, start_time = ?, end_time = ?, all_day = 0, location = ? WHERE database_id = ? AND id = ?`)
-      .run(title, normalize(title), startTime.toISOString(), endTime.toISOString(), location, databaseId, Number(id));
+      .run(title, normalizeText(title), startTime.toISOString(), endTime.toISOString(), location, databaseId, Number(id));
 
-    if (result.changes > 0 && existing?.discord_event_id) {
+    if (result.changes === 0) return `No event #${id}.`;
+    announce("edited event", title, ctx?.userId);
+
+    if (existing?.discord_event_id) {
       try {
         await onEventUpdate(existing.discord_event_id, { title, start: startTime, end: endTime, location });
       } catch (err) {
@@ -351,9 +335,7 @@ export function createRecordActions({
       }
     }
 
-    return result.changes > 0
-      ? `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`
-      : `No event #${id}.`;
+    return `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
   }
 
   return { addReminderRecord, addReminder, listReminders, deleteReminder, editReminder, addEvent, listEvents, deleteEvent, editEvent };

@@ -18,25 +18,10 @@
 
 import { config } from "./config.js";
 import { savePrograms } from "./programs.js";
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
-async function readBody(req) {
-  let body = "";
-  for await (const chunk of req) body += chunk;
-  return body;
-}
+import { sendJson, readJsonBody } from "../../common/http.js";
 
 async function handlePushPrograms(req, res) {
-  let programs;
-  try {
-    programs = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const programs = await readJsonBody(req);
 
   try {
     savePrograms(programs);

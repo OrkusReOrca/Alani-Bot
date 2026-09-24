@@ -12,16 +12,7 @@
 // "+07:00" when no offset is already present makes parsing deterministic
 // regardless of the host's own clock/timezone setting.
 
-const ICT_OFFSET_MINUTES = 7 * 60;
-
-function currentIctDate() {
-  const shifted = new Date(Date.now() + ICT_OFFSET_MINUTES * 60 * 1000);
-  return {
-    year: shifted.getUTCFullYear(),
-    month: String(shifted.getUTCMonth() + 1).padStart(2, "0"),
-    day: String(shifted.getUTCDate()).padStart(2, "0"),
-  };
-}
+import { ICT_OFFSET_MS, ictParts } from "../../common/time.js";
 
 // Expands a partial (or entirely omitted) date into full "YYYY-MM-DD":
 // "" (nothing at all — a bare "T19:00" time) assumes today's ICT date
@@ -30,7 +21,7 @@ function currentIctDate() {
 // unchanged (each component zero-padded either way, so "26-8-5" and
 // "2026-08-05" both work).
 function expandPartialDate(datePart) {
-  const { year, month, day } = currentIctDate();
+  const { year, month, day } = ictParts(Date.now());
   if (!datePart) return `${year}-${month}-${day}`;
   const parts = datePart.split("-").map((p) => p.padStart(2, "0"));
   if (parts.length >= 3) return parts.join("-");
@@ -59,36 +50,24 @@ export function parseIct(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function ictDateParts(date) {
-  const shifted = new Date(date.getTime() + ICT_OFFSET_MINUTES * 60 * 1000);
-  return {
-    yyyy: shifted.getUTCFullYear(),
-    mo: String(shifted.getUTCMonth() + 1).padStart(2, "0"),
-    dd: String(shifted.getUTCDate()).padStart(2, "0"),
-  };
-}
-
 // Formats a UTC ISO string back into ICT, "HH:MM YYYY/MM/DD" — the exact
 // shape both `.a db add`'s confirmation and the reminder-fired message use.
 export function fmtIct(isoUtc) {
-  const shifted = new Date(new Date(isoUtc).getTime() + ICT_OFFSET_MINUTES * 60 * 1000);
-  const hh = String(shifted.getUTCHours()).padStart(2, "0");
-  const mm = String(shifted.getUTCMinutes()).padStart(2, "0");
-  const { yyyy, mo, dd } = ictDateParts(new Date(isoUtc));
-  return `${hh}:${mm} ${yyyy}/${mo}/${dd}`;
+  const { year, month, day, hour, minute } = ictParts(isoUtc);
+  return `${hour}:${minute} ${year}/${month}/${day}`;
 }
 
 // Date-only display, for all-day events — "YYYY/MM/DD", no time.
 export function fmtIctDate(isoUtc) {
-  const { yyyy, mo, dd } = ictDateParts(new Date(isoUtc));
-  return `${yyyy}/${mo}/${dd}`;
+  const { year, month, day } = ictParts(isoUtc);
+  return `${year}/${month}/${day}`;
 }
 
 // Date-only, Google Calendar API shape ("YYYY-MM-DD", for an all-day
 // event's date field — distinct from the dateTime field timed events use).
 export function ictDateString(date) {
-  const { yyyy, mo, dd } = ictDateParts(date);
-  return `${yyyy}-${mo}-${dd}`;
+  const { year, month, day } = ictParts(date);
+  return `${year}-${month}-${day}`;
 }
 
 // Midnight ICT of the same calendar day as `date` (also an ICT moment,
@@ -96,7 +75,7 @@ export function ictDateString(date) {
 // of whether a time component was given (e.g. someone types
 // "2026-08-25T14:00 allday" out of habit; the 14:00 gets discarded).
 export function startOfIctDay(date) {
-  const shifted = new Date(date.getTime() + ICT_OFFSET_MINUTES * 60 * 1000);
+  const shifted = new Date(date.getTime() + ICT_OFFSET_MS);
   shifted.setUTCHours(0, 0, 0, 0);
-  return new Date(shifted.getTime() - ICT_OFFSET_MINUTES * 60 * 1000);
+  return new Date(shifted.getTime() - ICT_OFFSET_MS);
 }

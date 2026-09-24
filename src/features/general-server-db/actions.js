@@ -33,16 +33,16 @@ async function del(args, ctx, instance) {
   const [type, id] = args;
   const t = type?.toLowerCase();
   const actions = actionsFor(instance);
-  if (t === "reminder") return actions.deleteReminder(id);
-  if (t === "event") return actions.deleteEvent(id);
+  if (t === "reminder") return actions.deleteReminder(id, ctx);
+  if (t === "event") return actions.deleteEvent(id, ctx);
   return "Usage: `.a db delete <reminder|event> <id>`";
 }
 
 async function edit(args, ctx, instance) {
   const [type, ...rest] = args;
   const actions = actionsFor(instance);
-  if (type?.toLowerCase() === "reminder") return actions.editReminder(rest);
-  if (type?.toLowerCase() === "event") return actions.editEvent(rest);
+  if (type?.toLowerCase() === "reminder") return actions.editReminder(rest, ctx);
+  if (type?.toLowerCase() === "event") return actions.editEvent(rest, ctx);
   return "Usage: `.a db edit <reminder|event> <id> ...`";
 }
 

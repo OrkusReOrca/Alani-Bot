@@ -3,14 +3,9 @@
 // this is an authorization concern (who's allowed), not a
 // where-to-connect concern.
 
-import dotenv from "dotenv";
-dotenv.config();
+import { readEnv } from "./env.js";
 
-function required(name) {
-  return process.env[name] && process.env[name].trim() !== "" ? process.env[name].trim() : null;
-}
-
-const OWNER_IDS = [required("DISCORD_OWNER_0"), required("DISCORD_OWNER_1")].filter(Boolean);
+const OWNER_IDS = [readEnv("DISCORD_OWNER_0"), readEnv("DISCORD_OWNER_1")].filter(Boolean);
 
 export function isOwner(userId) {
   return OWNER_IDS.includes(userId);

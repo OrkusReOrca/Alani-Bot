@@ -13,30 +13,8 @@
 import { config as botConfig } from "../../common/config.js";
 import { config } from "./config.js";
 import { sendViaBotChannel, sendFileViaBotChannel } from "../../common/discordApi.js";
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
-async function readBody(req) {
-  let body = "";
-  for await (const chunk of req) body += chunk;
-  return body;
-}
-
-const TZ = "Asia/Bangkok";
-
-// "19/09/2026 14:05:09" — DD/MM/YYYY, 24h, to the second, GMT+7.
-function formatBangkok(ms) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-    }).formatToParts(new Date(ms)).map((p) => [p.type, p.value])
-  );
-  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
-}
+import { sendJson, readJsonBody } from "../../common/http.js";
+import { formatIctDateTime } from "../../common/time.js";
 
 // "T+47.1s" / "T+1m12.4s"
 function formatOffset(seconds) {
@@ -56,12 +34,12 @@ function formatOffset(seconds) {
 export function formatTimeline(timeline, nowMs) {
   const { uploadedAtMs, commandAtMs, preprocessDoneS, vlmDoneS, resent } = timeline;
   const lines = ["**Timeline** (GMT+7)"];
-  lines.push(`• Clip uploaded: ${uploadedAtMs ? formatBangkok(uploadedAtMs) : "unknown"}`);
-  lines.push(`• Run command given: ${commandAtMs ? `${formatBangkok(commandAtMs)} — T+0` : "unknown"}`);
+  lines.push(`• Clip uploaded: ${uploadedAtMs ? formatIctDateTime(uploadedAtMs, { seconds: true }) : "unknown"}`);
+  lines.push(`• Run command given: ${commandAtMs ? `${formatIctDateTime(commandAtMs, { seconds: true })} — T+0` : "unknown"}`);
   lines.push(`• Preprocess finished: ${formatOffset(preprocessDoneS)}`);
   lines.push(`• VLM inference finished: ${formatOffset(vlmDoneS)}`);
   if (resent) {
-    lines.push(`• Final message sent: resent at ${formatBangkok(nowMs)} (original run's timing shown above)`);
+    lines.push(`• Final message sent: resent at ${formatIctDateTime(nowMs, { seconds: true })} (original run's timing shown above)`);
   } else {
     lines.push(`• Final message sent: ${commandAtMs ? formatOffset((nowMs - commandAtMs) / 1000) : "unknown"}`);
   }
@@ -85,12 +63,7 @@ async function sendPromptMessages(label, text) {
 }
 
 async function handleResult(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { clipName, success, prediction, error, firstFrameBase64, valencePrompt, arousalPrompt, timeline } = payload;
   if (!clipName) return sendJson(res, 400, { error: "clipName is required" });
@@ -128,12 +101,7 @@ async function handleResult(req, res) {
 }
 
 async function handleBatchDone(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { total = 0, succeeded = 0, failed = 0 } = payload;
   const text = `Run finished — ${succeeded}/${total} succeeded${failed ? `, ${failed} failed` : ""}.`;

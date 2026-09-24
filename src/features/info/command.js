@@ -30,6 +30,10 @@ const COMMANDS = [
     text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips. Owner-only, one dedicated channel. See `.a info emo`.",
     private: true,
   },
+  {
+    text: "**.a setting [routine|cloud] ...** — turn routines on/off, inspect or run the cloud backup. Owner-only. See `.a info setting`.",
+    private: true,
+  },
 ];
 
 const FEATURES = [
@@ -46,6 +50,14 @@ const FEATURES = [
     private: false,
   },
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
+  {
+    text: "**Cloud backup** — every 6 hours (from midnight, GMT+7) all databases and settings are verified against their change logs and saved to Google Drive, keeping the last 16 versions. See `.a info setting`.",
+    private: true,
+  },
+  {
+    text: "**Status channel** — one-line updates on Alani going online/offline, tracker runs, cloud backups, emotion runs and database changes.",
+    private: true,
+  },
   {
     text: "**Emotion detection** — a Qwen3-VL-8B-Instruct VLM pipeline (from a JAIST research thesis) predicting emotional state from video-call clips uploaded to Google Drive. See `.a info emo`.",
     private: true,
@@ -175,6 +187,38 @@ const EMO_INFO = [
     "anything else = a filename (matches with or without the `DONE_` prefix).",
 ].join("\n");
 
+// `.a info setting` — same private-server gating as EMO_INFO. Source of
+// truth: src/features/settings/README.md and src/features/cloud-backup/README.md.
+const SETTING_INFO = [
+  "**Settings & cloud backup**",
+  "",
+  "Owner-only.",
+  "```",
+  ".a setting",
+  ".a setting routine",
+  ".a setting routine <unitracker|fortnite> <setON|setOFF>",
+  ".a setting cloud [status|push|resume <drive|host> [db|settings]]",
+  "```",
+  "",
+  "**Routines** — `unitracker` (the daily uni post, runs in the bot) and " +
+    "`fortnite` (the shop check/post, which runs as scheduled GitHub " +
+    "workflows — switching it enables/disables those workflows). Off means " +
+    "it doesn't fire until turned back on.",
+  "",
+  "**Cloud backup** — at 00:00, 06:00, 12:00 and 18:00 (GMT+7) the bot " +
+    "checks every database and the settings against their change logs and " +
+    "uploads a new version to Drive when something really changed (the " +
+    "last 16 versions are kept, per folder). `push` runs a pass now.",
+  "",
+  "**If the check fails** (the data, the change log and the Drive copy " +
+    "don't agree): you're tagged in the status channel, the host's copy is " +
+    "saved to Drive as a separate `FAULTY_...` folder, the host is reset " +
+    "to the last good Drive version, and a report of what differs goes to " +
+    "the command box. Answer there with `resume drive` (keep Drive's " +
+    "version) or `resume host` (keep the host's). Backups of that folder " +
+    "stay paused until you do.",
+].join("\n");
+
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
 // need to know which one triggered it. See bot.js's
@@ -206,6 +250,17 @@ export async function execute(ctx, args = []) {
       return;
     }
     for (const chunk of chunkMessage(EMO_INFO)) {
+      await ctx.reply(chunk);
+    }
+    return;
+  }
+
+  if (args[0]?.toLowerCase() === "setting") {
+    if (!showPrivate) {
+      await execute(ctx, []);
+      return;
+    }
+    for (const chunk of chunkMessage(SETTING_INFO)) {
       await ctx.reply(chunk);
     }
     return;

@@ -35,6 +35,7 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_FORTNITE_CHANNEL_ID: ${{ secrets.DISCORD_FORTNITE_CHANNEL_ID }}
+          DISCORD_STATUS_CHANNEL: ${{ secrets.DISCORD_STATUS_CHANNEL }}
 
       - name: Commit updated state, cleared diff, and posted-grid record
         run: |

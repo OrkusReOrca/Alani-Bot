@@ -3,8 +3,8 @@
 // general-server-db). Deliberately its OWN file/module, separate from
 // orkus-info/db.js — orkus-info (the "Main" tier) stays completely
 // untouched by this feature; nothing here is shared with or imported by
-// it. Some duplication of orkus-info's schema/patterns (ensureColumn,
-// the smallest-free-display-number scheme) is intentional, not an
+// it. Some duplication of orkus-info's schema/patterns (the
+// smallest-free-display-number scheme) is intentional, not an
 // oversight — see the root README's "Tiers" section for why Main was
 // kept separate rather than refactored to share code with these two.
 //
@@ -12,6 +12,8 @@
 // orkus-info — see that file's own comment for the full reasoning.
 
 import { DatabaseSync } from "node:sqlite";
+import { ensureColumn } from "../../common/sqlite.js";
+import { installChangeLog } from "../cloud-backup/changeLog.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -89,21 +91,17 @@ db.exec(`
 `);
 
 // Column added after this table already existed in production (some
-// general-user-db/general-server-db instances predate it) — same
-// guarded-ALTER pattern as orkus-info/db.js's ensureColumn, not a bare
-// `CREATE TABLE IF NOT EXISTS` column (which only matters for a table
-// that doesn't exist yet at all, not new columns on one that already does).
-function ensureColumn(table, column, definition) {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
-  if (!columns.some((c) => c.name === column)) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-  }
-}
+// general-user-db/general-server-db instances predate it) — added via
+// ensureColumn(), not the `CREATE TABLE IF NOT EXISTS` above (which only
+// applies to a table that doesn't exist yet at all).
 
 // mentions: comma-separated Discord user IDs to tag when this reminder
 // fires — same field/behavior as orkus-info's own reminders.mentions,
 // just on this shared table instead (see common/mentions.js).
-ensureColumn("gen_reminders", "mentions", "TEXT");
+ensureColumn(db, "gen_reminders", "mentions", "TEXT");
+
+// Schema is final — start recording every write (see cloud-backup/changeLog.js).
+installChangeLog(db);
 
 // ---------- audit log ----------
 // Append-only history — "who did what, where, when" — for the two

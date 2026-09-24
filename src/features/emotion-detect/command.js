@@ -40,6 +40,7 @@
 
 import { config } from "./config.js";
 import { isOwner } from "../../common/auth.js";
+import { statusEmotionCalled } from "../../common/statusLog.js";
 
 export const data = {
   name: "emo",
@@ -162,4 +163,5 @@ export async function execute(ctx, args = []) {
     `Starting \`${runMode}\` — using ${modalities.join("+")} (${cacheModeLabel}${moreInfoLabel}). ${clipsLabel}.` +
       (clipNames.length > 0 ? " Results will post here as each clip finishes." : "")
   );
+  statusEmotionCalled(`${runMode}, ${clipNames.length} clip(s)`);
 }

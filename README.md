@@ -24,6 +24,15 @@ src/
     config.js                   bot-level env vars (token, client ID) — for
                                  bot.js/deployCommands.js, as opposed to each
                                  feature's own config.js
+    env.js                      readEnv() - the one place env vars are read
+    http.js                     sendJson/readJsonBody shared by bridge routes
+    time.js                     ICT (UTC+7) helpers and the DD/MM/YYYY formatter
+    sqlite.js                   ensureColumn() shared by the database modules
+    statusLog.js                one-line status-channel posts (online/offline,
+                                 trackers, cloud backup, database changes)
+    lifecycle.js                online/offline reporting (heartbeat + signals)
+    googleAuth.js / googleDrive.js  Google tokens (service account + OAuth) and
+                                 the raw-REST Drive client
     auth.js                     owner allowlist for admin features (currently just
                                  db) — who's allowed, as opposed to config.js's
                                  where-to-connect concerns
@@ -49,6 +58,9 @@ data/
 
 .github/workflows/
   <feature-name>-*.yml           this feature's scheduled trigger(s)
+
+test/                             `npm test` - node:test suite (cloud backup)
+scripts/                          one-off helpers (getDriveRefreshToken.js)
 
 emotion-service/
   (Python, separate bot-hosting.net deployment)  the "Alani Emotion" half of
@@ -109,6 +121,23 @@ you can trigger on a schedule).
   "Emotion detection bridge" below) to run video clips from Google Drive
   through the JAIST thesis's VLM emotion-recognition pipeline and post
   results back here.
+
+- **[settings](src/features/settings/README.md)** - `.a setting`, owner-only:
+  turn routines on/off (`unitracker`, `fortnite`) and drive the cloud backup.
+- **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours all
+  databases and settings are checked against their change logs and saved to
+  Google Drive (last 16 versions kept); a mismatch tags the owner, snapshots
+  the faulty copy separately and asks which side to keep.
+
+## Status channel
+
+`DISCORD_STATUS_CHANNEL` receives one line per event (`common/statusLog.js`),
+`DD/MM/YYYY HH:MM` in GMT+7: 🟢 online · 🔴 offline (also detected after a
+crash, via a heartbeat file) · 🇫 Fortnite tracker sent · 🇺 uni tracker
+updated · ☁️ database updated to cloud · ☁️‼️ faulty cloud update · 🍋 emotion
+recognition called · 📀 database created/updated. The Fortnite line is posted
+from the GitHub Actions run, so add `DISCORD_STATUS_CHANNEL` as a repository
+secret too. Reserved for later: 📧 "Email from ...".
 
 ## Tiers
 
@@ -327,6 +356,10 @@ finishes.
 6. Write a `src/features/<name>/README.md` covering that feature's setup.
 
 ## Daily jobs
+
+Scheduled jobs (`uni-application-updater`'s daily post at 09:19 ICT, and the
+cloud backup at 00:00/06:00/12:00/18:00 ICT) run in-process; each can be gated
+by an on/off routine (see `.a setting routine`).
 
 `uni-application-updater`'s daily update runs in-process, on a 30s-poll
 timer in `src/common/dailyJobs.js` (started from `bot.js`'s

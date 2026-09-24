@@ -55,6 +55,11 @@ import orkusInfoActions, { addReminderRecord } from "../orkus-info/actions.js";
 import { parseIct, fmtIct } from "../orkus-info/format.js";
 import * as store from "./store.js";
 import { actionsForInstance } from "../../common/dbInstanceActions.js";
+import { sendJson, readJsonBody } from "../../common/http.js";
+
+// voice-Alani always acts as DISCORD_OWNER_0 — the "user" shown in the
+// status channel for anything it changes.
+const VOICE_CTX = { userId: config.ownerZeroId };
 
 // Resolves a database name to either the special "main" sentinel or a
 // real store.js instance row — shared by the reminder/event add routes
@@ -67,24 +72,8 @@ function resolveDatabase(name) {
   return store.getDatabaseByName(normalized, config.ownerZeroId, { includeAll: true });
 }
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
-async function readBody(req) {
-  let body = "";
-  for await (const chunk of req) body += chunk;
-  return body;
-}
-
 async function handleReminder(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { text, remindAt: remindAtRaw, database, channelId = null } = payload;
   const remindAt = parseIct(remindAtRaw);
@@ -148,17 +137,12 @@ async function handleListReminders(req, res) {
 }
 
 async function handleDeleteReminder(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { id } = payload;
   if (!id) return sendJson(res, 400, { error: "id is required" });
 
-  const message = await orkusInfoActions.delete(["reminder", String(id)]);
+  const message = await orkusInfoActions.delete(["reminder", String(id)], VOICE_CTX);
   sendJson(res, 200, { message });
 }
 
@@ -185,12 +169,7 @@ function quoteTokens(text) {
 // just via explicit fields here instead of positional-token guessing,
 // since this is JSON not chat tokens.
 async function handleAddEvent(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { title, start, end, allDay, database } = payload;
   if (!title || !parseIct(start)) {
@@ -207,7 +186,7 @@ async function handleAddEvent(req, res) {
 
   const message =
     resolved.kind === "main"
-      ? await orkusInfoActions.add(["event", ...eventArgs])
+      ? await orkusInfoActions.add(["event", ...eventArgs], VOICE_CTX)
       : await actionsForInstance(resolved).addEvent(eventArgs, { userId: config.ownerZeroId, guildId: resolved.guild_id });
   sendJson(res, 200, { message });
 }
@@ -218,17 +197,12 @@ async function handleListEvents(req, res) {
 }
 
 async function handleDeleteEvent(req, res) {
-  let payload;
-  try {
-    payload = JSON.parse(await readBody(req));
-  } catch {
-    return sendJson(res, 400, { error: "Invalid JSON body" });
-  }
+  const payload = await readJsonBody(req);
 
   const { id } = payload;
   if (!id) return sendJson(res, 400, { error: "id is required" });
 
-  const message = await orkusInfoActions.delete(["event", String(id)]);
+  const message = await orkusInfoActions.delete(["event", String(id)], VOICE_CTX);
   sendJson(res, 200, { message });
 }
 

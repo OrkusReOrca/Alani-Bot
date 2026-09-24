@@ -17,56 +17,17 @@
 import db, { getNextDisplayNumber } from "./db.js";
 import { getClient } from "../../common/discordClient.js";
 import { canSendInChannel } from "../../common/channelAccess.js";
-import { extractQuoted } from "../../common/textParsing.js";
+import { extractQuoted, normalizeText, stripTrailingModifiers } from "../../common/textParsing.js";
+import { DEDUP_WINDOW_MS, DEFAULT_EVENT_DURATION_MS } from "../../common/recordRules.js";
 import { resolveMentions, formatMentions } from "../../common/mentions.js";
 import { parseIct, fmtIct, fmtIctDate, ictDateString, startOfIctDay } from "./format.js";
 import { config } from "./config.js";
 import * as googleCalendar from "../../common/googleCalendar.js";
+import { announceDatabaseUpdated } from "../../common/dbAnnouncements.js";
 
-// Same-ish record within an hour of each other counts as a likely
-// duplicate — narrow enough that two genuinely different reminders/events
-// an hour apart don't collide, wide enough to catch "did I already add
-// this" re-entry.
-const DEDUP_WINDOW_MS = 60 * 60 * 1000;
+const DATABASE_NAME = "orkus-info";
+const announce = (change, itemName, userId) => announceDatabaseUpdated({ name: DATABASE_NAME, change, itemName, userId });
 
-function normalize(text) {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-// Pulls trailing modifier tokens (any order) off the end of an args list
-// that's ALREADY had its quoted "name" field extracted (see
-// common/textParsing.js's extractQuoted) — so what's left here is only
-// ever modifiers, never reminder text itself: "force" (skip the
-// duplicate check), a bare Discord snowflake (channel to post in,
-// instead of DMing the creator), and — reminders only — one mentions
-// token (comma-separated user IDs/usernames, or a single one; see
-// common/mentions.js). A single bare numeric mention with no comma is
-// indistinguishable from a channel-id and resolves as one — a known,
-// accepted limitation; use a comma (even for one entry) or a username
-// to avoid the ambiguity.
-function stripTrailingModifiers(args, { allowMentions = false } = {}) {
-  const rest = [...args];
-  let force = false;
-  let channelId = null;
-  let mentions = null;
-
-  while (rest.length > 0) {
-    const last = rest[rest.length - 1];
-    if (last.toLowerCase() === "force") {
-      force = true;
-      rest.pop();
-    } else if (/^\d{15,20}$/.test(last)) {
-      channelId = last;
-      rest.pop();
-    } else if (allowMentions && mentions === null) {
-      mentions = last;
-      rest.pop();
-    } else {
-      break;
-    }
-  }
-  return { rest, force, channelId, mentions };
-}
 
 // ---------- reminders ----------
 
@@ -91,7 +52,7 @@ export async function addReminderRecord({ text, remindAt, channelId = null, crea
     guildIdForMentions = channel?.guildId ?? null;
   }
 
-  const normalized = normalize(text);
+  const normalized = normalizeText(text);
   const windowStart = new Date(remindAt.getTime() - DEDUP_WINDOW_MS).toISOString();
   const windowEnd = new Date(remindAt.getTime() + DEDUP_WINDOW_MS).toISOString();
   const dupe = db
@@ -117,6 +78,7 @@ export async function addReminderRecord({ text, remindAt, channelId = null, crea
     displayNumber,
     mentionIds.length > 0 ? mentionIds.join(",") : null
   );
+  announce("new reminder", text, createdBy);
 
   const destination = channelId ? `will post in <#${channelId}>` : "will DM you";
   const mentionNote = mentionIds.length > 0 ? `, will also tag ${formatMentions(mentionIds)}` : "";
@@ -186,17 +148,22 @@ function listReminders() {
 // "all" deletes every active reminder — its own path (not just "id ==
 // 'all'" on the normal one) since it doesn't reference a display_number
 // at all.
-function deleteReminder(displayNumber) {
+function deleteReminder(displayNumber, ctx) {
   if (!displayNumber) return "Usage: `.a db delete reminder <id|all>`";
   if (displayNumber.toLowerCase() === "all") {
     const result = db.prepare(`DELETE FROM reminders`).run();
-    return result.changes > 0 ? `Deleted all ${result.changes} reminder(s).` : "No reminders to delete.";
+    if (result.changes === 0) return "No reminders to delete.";
+    announce("deleted reminders", `all ${result.changes}`, ctx?.userId);
+    return `Deleted all ${result.changes} reminder(s).`;
   }
-  const result = db.prepare(`DELETE FROM reminders WHERE display_number = ?`).run(Number(displayNumber));
-  return result.changes > 0 ? `Deleted reminder #${displayNumber}.` : `No reminder #${displayNumber}.`;
+  const existing = db.prepare(`SELECT text FROM reminders WHERE display_number = ?`).get(Number(displayNumber));
+  if (!existing) return `No reminder #${displayNumber}.`;
+  db.prepare(`DELETE FROM reminders WHERE display_number = ?`).run(Number(displayNumber));
+  announce("deleted reminder", existing.text, ctx?.userId);
+  return `Deleted reminder #${displayNumber}.`;
 }
 
-function editReminder(args) {
+function editReminder(args, ctx) {
   const quoted = extractQuoted(args);
   const [displayNumber, when] = quoted?.before ?? [];
   const text = quoted?.text.trim();
@@ -206,10 +173,10 @@ function editReminder(args) {
   }
   const result = db
     .prepare(`UPDATE reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE display_number = ?`)
-    .run(text, normalize(text), remindAt.toISOString(), Number(displayNumber));
-  return result.changes > 0
-    ? `Updated reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())}`
-    : `No reminder #${displayNumber}.`;
+    .run(text, normalizeText(text), remindAt.toISOString(), Number(displayNumber));
+  if (result.changes === 0) return `No reminder #${displayNumber}.`;
+  announce("edited reminder", text, ctx?.userId);
+  return `Updated reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())}`;
 }
 
 // ---------- events ----------
@@ -222,12 +189,10 @@ function editReminder(args) {
 // no-op (return null/undefined) if the sync isn't configured at all, so
 // none of this needs its own "is this set up" branching here.
 
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000; // 1 hour, when no end is given
-
 const ADD_EVENT_USAGE =
   'Usage: `.a db add event <start> [end|allday] "<title>" [force]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; add `force` at the end to skip the duplicate check)';
 
-async function addEvent(args) {
+async function addEvent(args, ctx) {
   const quoted = extractQuoted(args);
   if (!quoted) return ADD_EVENT_USAGE;
   const force = quoted.after.some((t) => t.toLowerCase() === "force");
@@ -258,7 +223,7 @@ async function addEvent(args) {
   const title = quoted.text.trim();
   if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
 
-  const normalized = normalize(title);
+  const normalized = normalizeText(title);
   const windowStart = new Date(startTime.getTime() - DEDUP_WINDOW_MS).toISOString();
   const windowEnd = new Date(startTime.getTime() + DEDUP_WINDOW_MS).toISOString();
   const dupe = db
@@ -281,6 +246,7 @@ async function addEvent(args) {
       `INSERT INTO events (title, title_normalized, start_time, end_time, created_at, all_day) VALUES (?, ?, ?, ?, ?, ?)`
     )
     .run(title, normalized, startTime.toISOString(), endTime.toISOString(), new Date().toISOString(), allDay ? 1 : 0);
+  announce("new event", title, ctx?.userId);
 
   try {
     const googleEventId = await googleCalendar.createEvent(config.googleCalendarId, {
@@ -319,12 +285,14 @@ function listEvents() {
     .join("\n");
 }
 
-async function deleteEvent(id) {
+async function deleteEvent(id, ctx) {
   if (!id) return "Usage: `.a db delete event <id>`";
-  const row = db.prepare(`SELECT google_event_id FROM events WHERE id = ?`).get(Number(id));
-  const result = db.prepare(`DELETE FROM events WHERE id = ?`).run(Number(id));
+  const row = db.prepare(`SELECT title, google_event_id FROM events WHERE id = ?`).get(Number(id));
+  if (!row) return `No event #${id}.`;
+  db.prepare(`DELETE FROM events WHERE id = ?`).run(Number(id));
+  announce("deleted event", row.title, ctx?.userId);
 
-  if (result.changes > 0 && row?.google_event_id) {
+  if (row.google_event_id) {
     try {
       await googleCalendar.deleteEvent(config.googleCalendarId, row.google_event_id);
     } catch (err) {
@@ -332,10 +300,10 @@ async function deleteEvent(id) {
     }
   }
 
-  return result.changes > 0 ? `Deleted event #${id}.` : `No event #${id}.`;
+  return `Deleted event #${id}.`;
 }
 
-async function editEvent(args) {
+async function editEvent(args, ctx) {
   const quoted = extractQuoted(args);
   const [id, start, end] = quoted?.before ?? [];
   const title = quoted?.text.trim();
@@ -352,9 +320,12 @@ async function editEvent(args) {
   // rather than leaving a stale all_day=1 next to real timed values.
   const result = db
     .prepare(`UPDATE events SET title = ?, title_normalized = ?, start_time = ?, end_time = ?, all_day = 0 WHERE id = ?`)
-    .run(title, normalize(title), startTime.toISOString(), endTime.toISOString(), Number(id));
+    .run(title, normalizeText(title), startTime.toISOString(), endTime.toISOString(), Number(id));
 
-  if (result.changes > 0 && existing?.google_event_id) {
+  if (result.changes === 0) return `No event #${id}.`;
+  announce("edited event", title, ctx?.userId);
+
+  if (existing?.google_event_id) {
     try {
       await googleCalendar.updateEvent(config.googleCalendarId, existing.google_event_id, {
         summary: title,
@@ -366,9 +337,7 @@ async function editEvent(args) {
     }
   }
 
-  return result.changes > 0
-    ? `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`
-    : `No event #${id}.`;
+  return `Updated event #${id}: "${title}" from ${fmtIct(startTime.toISOString())} to ${fmtIct(endTime.toISOString())}`;
 }
 
 // ---------- registry interface — each dispatches on the record type
@@ -377,7 +346,7 @@ async function editEvent(args) {
 async function add(args, ctx) {
   const [type, ...rest] = args;
   if (type?.toLowerCase() === "reminder") return addReminder(rest, ctx);
-  if (type?.toLowerCase() === "event") return addEvent(rest);
+  if (type?.toLowerCase() === "event") return addEvent(rest, ctx);
   return "Usage: `.a db add <reminder|event> ...`";
 }
 
@@ -389,18 +358,18 @@ async function list(args) {
   return "Usage: `.a db list <reminders|events>`";
 }
 
-async function del(args) {
+async function del(args, ctx) {
   const [type, id] = args;
   const t = type?.toLowerCase();
-  if (t === "reminder") return deleteReminder(id);
-  if (t === "event") return deleteEvent(id);
+  if (t === "reminder") return deleteReminder(id, ctx);
+  if (t === "event") return deleteEvent(id, ctx);
   return "Usage: `.a db delete <reminder|event> <id>`";
 }
 
-async function edit(args) {
+async function edit(args, ctx) {
   const [type, ...rest] = args;
-  if (type?.toLowerCase() === "reminder") return editReminder(rest);
-  if (type?.toLowerCase() === "event") return editEvent(rest);
+  if (type?.toLowerCase() === "reminder") return editReminder(rest, ctx);
+  if (type?.toLowerCase() === "event") return editEvent(rest, ctx);
   return "Usage: `.a db edit <reminder|event> <id> ...`";
 }
 
