@@ -1,4 +1,59 @@
 {
-  "newTracks": [],
+  "newTracks": [
+    {
+      "id": "sid_placeholder_696",
+      "title": "Rockstar",
+      "artist": "LISA",
+      "image": "https://cdn.fortnite-api.com/tracks/04a094918afe52c3.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-09-30T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_930",
+      "title": "Life Will Change",
+      "artist": "Lyn, ATLUS Sound Team, ATLUS GAME MUSIC",
+      "image": "https://cdn.fortnite-api.com/tracks/5d8e262c1f111f3d.jpg",
+      "price": 3800,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-10-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_692",
+      "title": "Manchild",
+      "artist": "Sabrina Carpenter",
+      "image": "https://cdn.fortnite-api.com/tracks/6b54d4ae10a7742e.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-09-30T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_226",
+      "title": "yes, and?",
+      "artist": "Ariana Grande",
+      "image": "https://cdn.fortnite-api.com/tracks/08ca711cf5d30e25.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_685",
+      "title": "EARFQUAKE",
+      "artist": "Tyler, The Creator",
+      "image": "https://cdn.fortnite-api.com/tracks/05417f360116136c.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-09-30T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_596",
+      "title": "Bonde Do Brunão",
+      "artist": "Bruno Mars",
+      "image": "https://cdn.fortnite-api.com/tracks/8152d5c62024c1b9.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    }
+  ],
   "leftTracks": []
 }
