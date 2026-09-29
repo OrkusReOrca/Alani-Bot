@@ -1,14 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_157",
-      "title": "WHATS POPPIN",
-      "artist": "Jack Harlow",
-      "image": "https://cdn.fortnite-api.com/tracks/feb4c89318bf84b4.jpg",
-      "price": 1500,
-      "inDate": "2026-09-29T00:00:00Z",
-      "outDate": "2026-10-01T23:59:59.999Z"
-    }
-  ],
+  "newTracks": [],
   "leftTracks": []
 }
