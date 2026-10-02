@@ -10,7 +10,7 @@ const USAGE = [
   "Usage:",
   "`.a setting cloud` — status of the cloud backup",
   "`.a setting cloud push` — back up now (verify + save if anything changed)",
-  "`.a setting cloud resume <cloud|host> [db|settings]` — answer a fault (command box only)",
+  "`.a setting cloud resume <cloud|host> [db|settings|ai-history]` — answer a fault (command box only)",
 ].join("\n");
 
 const NOT_CONFIGURED =

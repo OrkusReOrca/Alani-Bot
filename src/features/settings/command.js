@@ -18,6 +18,18 @@ export const data = {
   name: "setting",
 };
 
+export const aiGuide = `
+.a setting                                  — overview of settings (owners only)
+.a setting routine                          — which routines are on/off
+.a setting routine <unitracker|fortnite> <setON|setOFF>  — switch a routine (unitracker = daily uni admissions post; fortnite = Fortnite shop post)
+.a setting cloud                            — status of the encrypted cloud backup
+.a setting cloud push                       — back up now
+.a setting cloud resume <cloud|host> [db|settings|ai-history] — answer a backup fault (command box channel only)
+All owner-only.`;
+
+// Answering a backup fault discards one side's data.
+export const isDestructive = (args) => args[0]?.toLowerCase() === "cloud" && args[1]?.toLowerCase() === "resume";
+
 const USAGE = [
   "Usage:",
   "`.a setting` — overview",

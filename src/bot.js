@@ -12,7 +12,8 @@
 // `canvas` native module, which bot-hosting.net's script policy blocks from
 // building (see common/dailyJobs.js's comment for the full story).
 //
-// Every command is reachable as a prefix command (.a <name> [args...]),
+// Every command is reachable as a prefix command (.a <name> [args...]) and, in
+// plain language, through ".aii <request>" (features/ai-assistant/),
 // dispatched to command.js's execute(ctx, args) via the ctx-adapter each
 // handler builds below. Commands that also have a `description` are
 // additionally registered as slash commands (/name) — see
@@ -26,7 +27,8 @@
 //      `execute(ctx, args)`, where ctx exposes `reply(text)`,
 //      `replyWithFile(buffer, filename)`, `userId`, `channelId`, and
 //      `guildId`).
-//   2. Register it in the `commands` map below.
+//   2. Register it in src/commands.js (its `aiGuide` export is required — it's
+//      how the .aii assistant learns the command).
 //   3. If it has a `description` (i.e. it's also a slash command), run
 //      `npm run deploy-commands` (only needed again when a command's
 //      name/description/options change, not on every bot restart). Prefix
@@ -36,31 +38,15 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { config } from "./common/config.js";
 import { setClient } from "./common/discordClient.js";
-import * as infoCommand from "./features/info/command.js";
-import * as fjamtrackCommand from "./features/fortnite-jam-tracks-tracker/shop/command.js";
-import * as dbCommand from "./features/db/command.js";
-import * as listDbCommand from "./features/db/listDbCommand.js";
-import * as emotionCommand from "./features/emotion-detect/command.js";
-import * as settingCommand from "./features/settings/command.js";
+import { commands } from "./commands.js";
+import { parsePrefixCommand } from "./common/commandParsing.js";
+import { parseAiInvocation, handleAiMessage } from "./features/ai-assistant/handler.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
 import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
 import { runScheduledBackup } from "./features/cloud-backup/index.js";
-
-const commands = new Map([
-  [infoCommand.data.name, infoCommand],
-  [fjamtrackCommand.data.name, fjamtrackCommand],
-  [dbCommand.data.name, dbCommand],
-  [listDbCommand.data.name, listDbCommand],
-  [emotionCommand.data.name, emotionCommand],
-  [settingCommand.data.name, settingCommand],
-]);
-
-// ".a" must be its own token — "someword.a" or ".abc" shouldn't trigger it,
-// only ".a" alone or ".a <command>".
-const PREFIX = ".a";
 
 if (!config.botToken) {
   console.error("Missing DISCORD_BOT_TOKEN — check your .env.");
@@ -124,11 +110,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
-  if (message.content !== PREFIX && !message.content.startsWith(`${PREFIX} `)) return;
 
-  const tokens = message.content.slice(PREFIX.length).trim().split(/\s+/).filter(Boolean);
-  const commandName = tokens[0]?.toLowerCase();
-  const args = tokens.slice(1);
+  const aiText = parseAiInvocation(message.content);
+  if (aiText !== null) {
+    await handleAiMessage(message, aiText).catch((err) => {
+      console.error("Error handling .aii:", err);
+      return message.reply("Something went wrong running that.").catch(() => {});
+    });
+    return;
+  }
+
+  const parsed = parsePrefixCommand(message.content);
+  if (!parsed) return;
+  const { name: commandName, args } = parsed;
   const command = commands.get(commandName);
   if (!command) return;
 

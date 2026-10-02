@@ -60,6 +60,41 @@ export const data = {
   name: "db",
 };
 
+export const aiGuide = `
+.a db [<database>] <verb> ...   — reminders and events stored in a database.
+
+Verbs (after the optional database name):
+  add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]
+  add event <start> [end|allday] "<title>" [| <location>] [force]
+  list reminders | list events
+  delete reminder <number|all> | delete event <id>
+  edit reminder <number> <YYYY-MM-DDTHH:MM> "<text>"
+  edit event <id> <start> <end> "<title>" [| <location>]
+
+Rules:
+- Times are 24-hour, UTC+7 (Indochina/Bangkok). Year/month/day may be left off and today's is assumed; "T19:00" alone means today 19:00. Example: 2026-10-03T10:55.
+- The reminder text / event title MUST be in double quotes. Quotes cannot be nested; use the title itself to be short and descriptive (you invent it when the user doesn't give one).
+- [mentions] is ONE token: comma-separated user IDs and/or usernames, no spaces, e.g. higgorca,kk or 123456789012345678,987654321098765432. It tags those people when the reminder fires. Prefer numeric user IDs (from the message's mention list) when known.
+- [channel-id] is a channel ID (digits only). The reminder posts there; omit it and the reminder DMs its creator. Modifiers go AFTER the quoted text, in the order: mentions, channel-id, force.
+- "force" skips the duplicate check; add it only if the user asks or a duplicate warning came back and they want it anyway.
+- <database> is the database NAME (see "Databases the caller can use" in the context). Leave it out if the caller has exactly one. "main" is the owners' original database and only works in the command-box channel.
+- Reminders are addressed by their small display number, events by id.
+
+Admin and management verbs:
+  .a db create <personal|server> <name> <channel-id|dm>   — create your database (needs a granted tier; "server" must be run inside a server)
+  .a db drop <name>                                        — delete a database and everything in it
+  .a db collab add|remove <name> <user-id>                 — server-database collaborators
+  .a db grant|revoke <personal|server> <user-id>           — give/take a tier (bot owners only)
+  .a db transfer <name> <new-owner-id>                     — reassign ownership (bot owners only)
+Tiers: personal = one private database usable anywhere; server = one server-scoped database with collaborators whose events also appear as real Discord server events.`;
+
+// Deleting/dropping/revoking/transferring/removing: .aii confirms these first.
+const DESTRUCTIVE_VERBS = new Set(["delete", "drop", "revoke", "transfer"]);
+export function isDestructive(args) {
+  const [first, second] = args.map((a) => a.toLowerCase());
+  return DESTRUCTIVE_VERBS.has(first) || DESTRUCTIVE_VERBS.has(second) || (first === "collab" && second === "remove");
+}
+
 function usage() {
   return [
     "Usage: `.a db [<database>] <add|list|delete|edit> [args...]`",

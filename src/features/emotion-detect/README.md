@@ -10,8 +10,8 @@ emotion-recognition pipeline from the user's JAIST thesis
 <all|recent|<filename>>` re-sends already-computed results with no
 recompute at all — see "Resend" below.
 
-Owner-only (`DISCORD_OWNER_0`/`DISCORD_OWNER_1`, same allowlist as `.a
-db`), and only responds inside the one dedicated channel
+Needs the `AIallowed` tag (bot owners always have it; see
+`../tags/README.md`; also runnable through `.aii`), and only responds inside the one dedicated channel
 (`DISCORD_EMOTION_CHANNEL`) — silent everywhere else, since this is a
 slow, resource-heavy command (real video preprocessing + two VLM calls
 per clip), not something meant to be discoverable broadly.

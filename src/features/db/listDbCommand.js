@@ -26,6 +26,9 @@ export const data = {
   name: "list",
 };
 
+export const aiGuide = `
+.a list db  — lists the databases the caller can see and use (read-only; what you see depends on who asks and where)`;
+
 function formatInstance(instance) {
   const kindLabel = instance.kind === "user" ? "Personal" : "Server";
   const collaborators = instance.kind === "server" ? store.listCollaborators(instance.id) : [];

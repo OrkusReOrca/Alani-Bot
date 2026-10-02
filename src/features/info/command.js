@@ -16,6 +16,14 @@ export const data = {
   description: "About Alani — what she can do and how to use her",
 };
 
+export const aiGuide = `
+.a info          — what Alani is and the list of commands/features
+.a info db       — full explanation of the database tier system
+.a info emo      — explanation of emotion detection (private server only)
+.a info setting  — explanation of settings and cloud backup (private server only)
+.a info ai       — explanation of the .aii assistant (private server only)
+Read-only.`;
+
 const PRIVATE_SERVER_ID = "1539132003109314572";
 
 const COMMANDS = [
@@ -27,7 +35,15 @@ const COMMANDS = [
   },
   { text: "**.a list db** — which database(s) you can see and use.", private: false },
   {
-    text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips. Owner-only, one dedicated channel. See `.a info emo`.",
+    text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips. Needs the AIallowed tag, one dedicated channel. See `.a info emo`.",
+    private: true,
+  },
+  {
+    text: "**.aii <request>** — tell Alani what to do in plain language and she runs the commands for you. Needs the AIallowed tag. See `.a info ai`.",
+    private: true,
+  },
+  {
+    text: "**.a tag add|remove|list AIallowed <user>** — who may use `.aii` and `.a emo`. Owner-only.",
     private: true,
   },
   {
@@ -50,6 +66,10 @@ const FEATURES = [
     private: false,
   },
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
+  {
+    text: "**AI assistant** — `.aii` turns plain-language requests into commands (with web search), remembers recent turns, and logs everything to AIcommandHistory. See `.a info ai`.",
+    private: true,
+  },
   {
     text: "**Cloud backup** — every 6 hours (from midnight, GMT+7) all databases and settings are verified against their change logs and saved (encrypted) to a private Discord channel, keeping the last 16 versions. See `.a info setting`.",
     private: true,
@@ -133,7 +153,7 @@ const EMO_INFO = [
   "",
   "Reproduces a JAIST research thesis's VLM emotion-recognition pipeline " +
     "(Qwen3-VL-8B-Instruct via OpenRouter, four-class circumplex model) " +
-    "against video-call clips sitting in a Google Drive folder. Owner-only, " +
+    "against video-call clips sitting in a Google Drive folder. Needs the AIallowed tag, " +
     "and only responds in its one dedicated channel — silent everywhere else.",
   "",
   "```",
@@ -220,6 +240,36 @@ const SETTING_INFO = [
     "until you do.",
 ].join("\n");
 
+// `.a info ai` — same private-server gating as EMO_INFO. Source of truth:
+// src/features/ai-assistant/README.md and src/features/tags/README.md.
+const AI_INFO = [
+  "**AI assistant (`.aii`)**",
+  "",
+  "Say what you want in plain language and Alani runs the right commands for " +
+    "you, showing each one (`Ran ...`) and its reply. Works in any channel, " +
+    "server or DM. Needs the **AIallowed** tag.",
+  "```",
+  ".aii add a reminder in kk server db for when the new fortnite version drops, tag me and @KK",
+  ".aii run the one latest video on emotion prediction, more info, use AU T and VO, cache all",
+  "```",
+  "",
+  "It knows every command, uses UTC+7 24-hour time, can search the web for " +
+    "current info, and invents names for reminders/events when you don't give one. " +
+    "It runs commands as **you**, so each command's own permissions still apply " +
+    "(if something isn't allowed it tells you).",
+  "",
+  "**Confirmations**: delete/drop/revoke/transfer-type commands ask first — " +
+    "reply `yes` within 60 s or nothing runs.",
+  "**Follow-ups**: it remembers your last 10 requests from the past hour, so " +
+    "\"make it 11:00 instead\" works.",
+  "**History**: every request, command and reply is saved (AIcommandHistory) " +
+    "and backed up.",
+  "",
+  "**Access**: bot owners always have it. They grant it with " +
+    "`.a tag add AIallowed <user>` (also `remove` / `list`). AIallowed also " +
+    "unlocks `.a emo`.",
+].join("\n");
+
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
 // need to know which one triggered it. See bot.js's
@@ -251,6 +301,17 @@ export async function execute(ctx, args = []) {
       return;
     }
     for (const chunk of chunkMessage(EMO_INFO)) {
+      await ctx.reply(chunk);
+    }
+    return;
+  }
+
+  if (args[0]?.toLowerCase() === "ai") {
+    if (!showPrivate) {
+      await execute(ctx, []);
+      return;
+    }
+    for (const chunk of chunkMessage(AI_INFO)) {
       await ctx.reply(chunk);
     }
     return;

@@ -39,6 +39,10 @@ export const data = {
   name: "fjamtrack",
 };
 
+export const aiGuide = `
+.a fjamtrack shop     — sends the current Fortnite Jam Tracks shop grid image (anyone)
+.a fjamtrack refresh  — forces an immediate re-check and re-post of the shop (owners only)`;
+
 function usage() {
   return [
     "Usage: `.a fjamtrack shop` — sends the current Jam Tracks shop grid.",

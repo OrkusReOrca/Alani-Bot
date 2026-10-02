@@ -16,6 +16,8 @@ src/
                                   need GitHub Actions specifically (e.g. one needing
                                   a native module bot-hosting.net's script policy
                                   blocks), see "Daily jobs" in this README
+  commands.js                    the registry of every `.a <name>` command (each
+                                  must export `aiGuide` so .aii can use it)
   deployCommands.js              registers slash commands with Discord — run once,
                                   and again whenever a command's shape changes
   common/                       shared plumbing used by every feature
@@ -24,6 +26,7 @@ src/
     config.js                   bot-level env vars (token, client ID) — for
                                  bot.js/deployCommands.js, as opposed to each
                                  feature's own config.js
+    commandParsing.js           parsePrefixCommand() shared by bot.js and .aii
     env.js                      readEnv() - the one place env vars are read
     http.js                     sendJson/readJsonBody shared by bridge routes
     time.js                     ICT (UTC+7) helpers and the DD/MM/YYYY formatter
@@ -115,12 +118,19 @@ you can trigger on a schedule).
   guild-scoped database. See "Tiers" below. SQLite-backed throughout, with
   duplicate and overlap detection.
 - **[emotion-detect](src/features/emotion-detect/README.md)** — `.a emo
-  <run1|runany|runall> m<modalities> <d|s>`, owner-only, one dedicated
+  <run1|runany|runall> m<modalities> <d|s>`, AIallowed users, one dedicated
   channel. Triggers "Alani Emotion" (a separate Python service — see
   "Emotion detection bridge" below) to run video clips from Google Drive
   through the JAIST thesis's VLM emotion-recognition pipeline and post
   results back here.
 
+- **[ai-assistant](src/features/ai-assistant/README.md)** - `.aii <request>`: an LLM
+  (Claude Haiku 4.5 via OpenRouter, with web search) turns plain language into
+  Alani commands and runs them as the caller; destructive ones ask first; recent
+  turns are remembered; everything is logged to AIcommandHistory. Needs the
+  AIallowed tag.
+- **[tags](src/features/tags/README.md)** - `.a tag add|remove|list AIallowed <user>`,
+  owner-only; AIallowed unlocks `.aii` and `.a emo`.
 - **[settings](src/features/settings/README.md)** - `.a setting`, owner-only:
   turn routines on/off (`unitracker`, `fortnite`) and run the cloud backup by hand.
 - **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours and

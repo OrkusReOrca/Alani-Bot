@@ -22,7 +22,17 @@ settingsDb.exec(`
     key        TEXT PRIMARY KEY,
     value      TEXT NOT NULL,
     updated_at TEXT NOT NULL
-  )
+  );
+
+  -- Tags attached to Discord user IDs (see features/tags/). Lives here so
+  -- it's change-logged and backed up with the settings.
+  CREATE TABLE IF NOT EXISTS user_tags (
+    user_id    TEXT NOT NULL,
+    tag        TEXT NOT NULL,
+    granted_by TEXT NOT NULL,
+    granted_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, tag)
+  );
 `);
 installChangeLog(settingsDb);
 

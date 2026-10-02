@@ -17,8 +17,8 @@
 //             box, landmarks, AU bars, head pose) instead of the plain
 //             first frame. Left off = today's normal, lighter result.
 //
-// Owner-only (same DISCORD_OWNER_0/1 allowlist as ".a db"), and only usable
-// in the one dedicated channel (DISCORD_EMOTION_CHANNEL) — this is a
+// Needs the AIallowed tag (bot owners always have it — see features/tags/),
+// and only usable in the one dedicated channel (DISCORD_EMOTION_CHANNEL) — this is a
 // slow, resource-heavy command (video preprocessing + two VLM calls per
 // clip), not something to expose broadly.
 //
@@ -39,12 +39,22 @@
 // result that already exists would be wasteful.
 
 import { config } from "./config.js";
-import { isOwner } from "../../common/auth.js";
+import { hasTag, TAGS } from "../tags/store.js";
 import { statusEmotionCalled } from "../../common/statusLog.js";
 
 export const data = {
   name: "emo",
 };
+
+export const aiGuide = `
+.a emo <run1|runany|runall> m<modalities> <d|s> [mif]   — run the emotion-detection pipeline on video clips in Google Drive.
+.a emo resend <all|recent|<filename>>                    — re-post already-computed results (no recompute).
+Arguments, in this exact order, no spaces inside a token:
+- run mode: run1 = exactly one pending clip ("the latest video", "one video"); runany = every pending clip; runall = force-reprocess every clip, done or not.
+- modalities: "m" + a dot-separated subset of AU (facial action units), T (transcript), VO (voice), ET (eye gaze), HT (head pose); e.g. mAU.T.VO; or mall for all five. What goes into the prompt.
+- cache mode: d = also extract and cache ALL five modalities (user says "cache all of them"); s = extract only the listed ones.
+- mif (optional, last): more info — also posts the full prompt text and an annotated frame (user says "more info").
+Example: ".a emo run1 mAU.T.VO d mif". Needs the AIallowed tag and only responds in the emotion channel.`;
 
 const RUN_MODES = ["run1", "runany", "runall"];
 const MODALITIES = ["AU", "T", "VO", "ET", "HT"];
@@ -100,15 +110,15 @@ function parseModalities(token) {
 export async function execute(ctx, args = []) {
   // T+0 for the "mif" timeline — captured before anything else runs.
   const commandAtMs = Date.now();
-  if (!isOwner(ctx.userId)) {
-    await ctx.reply("Unauthorized user, no permission");
+  if (!hasTag(ctx.userId, TAGS.AIallowed)) {
+    await ctx.reply("You don't have permission to use `.a emo` — it needs the AIallowed tag, which only a bot owner can grant.");
     return;
   }
   if (!config.channelId || ctx.channelId !== config.channelId) {
-    // Silent outside the dedicated channel — same posture as ".a db main"
-    // replying only for owners elsewhere; here it just says nothing at all,
-    // since a stray "wrong channel" reply for a command this narrow isn't
-    // useful to anyone but the owner, who already knows the right channel.
+    // Silent outside the dedicated channel (a stray "wrong channel" reply for
+    // a command this narrow isn't useful to anyone) — except when .aii ran
+    // it, where the assistant needs to know why nothing happened.
+    if (ctx.viaAI) await ctx.reply("`.a emo` only works in the emotion channel.");
     return;
   }
 

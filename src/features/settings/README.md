@@ -28,6 +28,6 @@ setting never claims a state GitHub isn't in.
 2. Read it with `getSetting(key)` from `store.js`.
 3. If it's an on/off routine, add it to `routines.js` and gate its job.
 
-Settings live in their own SQLite file (`data/settings/settings.db`), which is
+Settings (and the `user_tags` table, see `../tags/README.md`) live in their own SQLite file (`data/settings/settings.db`), which is
 change-logged and backed up with everything else — see the cloud-backup
 README.
