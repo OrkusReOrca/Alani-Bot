@@ -36,11 +36,38 @@ async function requestToken(params) {
   return res.json();
 }
 
+// The key is a whole JSON file pasted into a one-line env box, and hosting
+// panels mangle that in predictable ways. Accepts the plain JSON plus the
+// common mangled forms: wrapped in quotes, quotes backslash-escaped, or line
+// breaks turned into a literal backslash-n between the JSON's own tokens (the
+// backslash-n sequences inside the private key string are legitimate and are
+// left alone).
+export function parseServiceAccountKey(raw) {
+  const unquoted = raw.trim().replace(/^(['"`])([\s\S]*)\1$/, "$2");
+  const attempts = [
+    raw,
+    unquoted,
+    unquoted.replace(/\\"/g, '"'),
+    unquoted.replace(/([{,])\s*\\n\s*/g, "$1 ").replace(/\s*\\n\s*}/g, " }"),
+  ];
+  for (const text of attempts) {
+    try {
+      const key = JSON.parse(text);
+      if (key?.client_email && key?.private_key) return key;
+    } catch {
+      // try the next form
+    }
+  }
+  // Describe the shape only (letters/digits masked) — never echo the secret.
+  const shape = raw.trim().slice(0, 10).replace(/[A-Za-z0-9]/g, "x");
+  throw new Error(`GOOGLE_SERVICE_ACCOUNT_KEY isn't valid service-account JSON (it starts like ${JSON.stringify(shape)}). Paste the key file's contents as one line.`);
+}
+
 // Access token for the service account in GOOGLE_SERVICE_ACCOUNT_KEY, or
 // null if none is configured (callers treat "not configured" as "skip").
 export async function getServiceAccountToken(scope) {
   if (!config.googleServiceAccountKey) return null;
-  const credentials = JSON.parse(config.googleServiceAccountKey);
+  const credentials = parseServiceAccountKey(config.googleServiceAccountKey);
 
   return cached(`service-account:${scope}`, () => {
     const now = nowSeconds();

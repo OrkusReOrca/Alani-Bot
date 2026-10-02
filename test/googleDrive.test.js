@@ -68,3 +68,35 @@ test("downloadStream streams the file's bytes; Drive errors are reported", async
   fakeGoogle([() => new Response("nope", { status: 404 })]);
   await assert.rejects(drive.downloadStream("gone"), /404/);
 });
+
+// ---------- service-account key parsing ----------
+const { parseServiceAccountKey } = await import("../src/common/googleAuth.js");
+
+test("the service-account key is accepted as plain JSON and as the forms hosting panels mangle it into", () => {
+  const key = { type: "service_account", client_email: "bot@x.iam.gserviceaccount.com", private_key: "-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n" };
+  const plain = JSON.stringify(key);
+  const pretty = JSON.stringify(key, null, 2);
+
+  const forms = {
+    plain,
+    pretty,
+    "wrapped in quotes": `'${plain}'`,
+    "wrapped in double quotes, inner quotes escaped": `"${plain.replace(/"/g, '\\"')}"`,
+    "inner quotes escaped": plain.replace(/"/g, '\\"'),
+    // pretty-printed JSON whose line breaks became a literal backslash + n:
+    "line breaks as literal backslash-n": pretty.replace(/\n/g, "\\n").replace(/\\\\n/g, "\\n"),
+  };
+  for (const [label, raw] of Object.entries(forms)) {
+    const parsed = parseServiceAccountKey(raw);
+    assert.equal(parsed.client_email, key.client_email, label);
+    assert.equal(parsed.private_key, key.private_key, `${label}: private key must survive intact`);
+  }
+});
+
+test("an unusable key fails with a message that shows its shape but not its content", () => {
+  assert.throws(
+    () => parseServiceAccountKey("{secretvalue: nope}"),
+    (err) => /isn't valid service-account JSON/.test(err.message) && !err.message.includes("secretvalue") && err.message.includes("{xxxxxxxxx")
+  );
+  assert.throws(() => parseServiceAccountKey('{"client_email":"a"}'), /isn't valid/); // no private key
+});
