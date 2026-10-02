@@ -1,6 +1,6 @@
 // Multi-page embeds with ⬅️ ➡️ buttons (like a Mudae list).
 //
-// A page is plain data — { title, description, footer } — so callers stay free
+// A page is plain data — { title, description?, fields?, footer } — so callers stay free
 // of discord.js. Only the person who asked can turn the pages; the buttons
 // disappear after a couple of idle minutes.
 
@@ -11,7 +11,13 @@ const EMBED_COLOR = 0x5865f2;
 const PREVIOUS = "pages:previous";
 const NEXT = "pages:next";
 
-const toEmbed = (page) => new EmbedBuilder().setTitle(page.title).setDescription(page.description).setFooter({ text: page.footer }).setColor(EMBED_COLOR);
+// `fields` ([{ name, value }]) are shown as inline columns.
+function toEmbed(page) {
+  const embed = new EmbedBuilder().setTitle(page.title).setFooter({ text: page.footer }).setColor(EMBED_COLOR);
+  if (page.description) embed.setDescription(page.description);
+  if (page.fields) embed.addFields(page.fields.map((field) => ({ name: field.name, value: field.value, inline: true })));
+  return embed;
+}
 
 function buttonRow(index, count) {
   return new ActionRowBuilder().addComponents(
@@ -24,7 +30,8 @@ function buttonRow(index, count) {
 // (only the first page — there's nothing to click).
 export function pagesAsText(pages) {
   const [first] = pages;
-  return `**${first.title}**\n${first.description}\n${first.footer}`;
+  const columns = (first.fields ?? []).map((field) => `**${field.name}**\n${field.value}`);
+  return [`**${first.title}**`, first.description, ...columns, first.footer].filter(Boolean).join("\n");
 }
 
 // Replies to `message` with the first page and wires up the buttons.

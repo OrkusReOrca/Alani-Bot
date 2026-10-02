@@ -4,8 +4,12 @@
 
 const EXTENSION = /\.[a-z0-9]{2,5}$/i;
 
+export function stripExtension(name) {
+  return name.trim().replace(EXTENSION, "");
+}
+
 export function normalizeName(name) {
-  return name.trim().replace(EXTENSION, "").toLowerCase().replace(/\s+/g, " ");
+  return stripExtension(name).toLowerCase().replace(/\s+/g, " ");
 }
 
 // Strips one pair of surrounding quotes a user may have typed around a name.

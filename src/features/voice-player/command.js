@@ -16,7 +16,8 @@
 // (e.g. ".avc p SONG", ".avc q lp on").
 //   .avc remove FILE NAME              take a track out of the queue
 //   .avc removeall                     SongMaster: clear the queue
-//   .avc list [a|d]                    every playable file, in pages (a = A-Z, d = newest first)
+//   .avc list [a|d|m]                  every playable file, in pages (a = A-Z, d = newest first,
+//                                      m = grouped by game/media in columns)
 //   .avc status
 //   .avc leave                         leave the call (the queue is kept)
 //
@@ -53,7 +54,7 @@ export const aiGuide = `
 .avc queue playcall on|off       — whether the bot posts a "Now playing" message when a track starts (per server; errors and leave notices still post)
 .avc remove <file name>          — remove a track from the queue
 .avc removeall                   — clear the whole queue (SongMaster tag only)
-.avc list [a|d]                  — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first. Open to anyone. Its result to you is EVERY file's full name — use it to find files by artist/keyword, then queue each with .avc play <exact file name> (e.g. "add all songs by robin" = list, then one play per matching file).
+.avc list [a|d|m]                — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first, m = grouped by game/media (file names are ARTIST-Song or ARTIST-GAME/MEDIA-Song; groups with a single song, and names without a media part, go under Others). Open to anyone. Its result to you is EVERY file's full name — use it to find files by artist/keyword, then queue each with .avc play <exact file name> (e.g. "add all songs by robin" = list, then one play per matching file).
 .avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall/persistent settings
 .avc leave                       — leave the call (the queue is kept)
 Short forms (use them freely): j=join, p=play, fp or "f p"=force play, pa=pause, sk=skip, q=queue, l/ls=list, rm=remove, rma=removeall, st=status, lv=leave; under queue: lp=loop, sh=shuffle, pc=playcall, ps=persistent. Example: ".avc q lp on".
@@ -64,7 +65,7 @@ export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
   "Usage: `.avc join` · `.avc play <file>` (or several: `.avc play \"name 1\" \"name 2\"`) · `.avc force play <file>` · `.avc pause` · `.avc skip`",
-  "`.avc list [a|d]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
+  "`.avc list [a|d|m]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
@@ -272,7 +273,7 @@ function describePause(result) {
 // caller can't show them). Replies itself, so returns nothing.
 async function handleList(ctx, sortArg, { listPlayableFiles }) {
   const sort = (sortArg ?? "a").toLowerCase();
-  if (!SORTS[sort]) return void (await ctx.reply("Usage: `.avc list` (A–Z) · `.avc list a` (A–Z) · `.avc list d` (newest first)"));
+  if (!SORTS[sort]) return void (await ctx.reply("Usage: `.avc list` (A–Z) · `.avc list a` (A–Z) · `.avc list d` (newest first) · `.avc list m` (grouped by media)"));
 
   let files;
   try {

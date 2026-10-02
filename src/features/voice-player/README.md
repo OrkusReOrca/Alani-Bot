@@ -11,7 +11,7 @@ only — a bot can't share video, so a video file plays just its sound.
 .avc force play FILE NAME          SongMaster: play it NEXT and skip the current track
 .avc pause                         pause (run again to resume)
 .avc skip
-.avc list [a|d]                    every playable file, in pages (a = A–Z, d = newest first)
+.avc list [a|d|m]                  every playable file, in pages (a = A–Z, d = newest first, m = by media)
 .avc queue                         the queue, with each track's length
 .avc queue loop on|off
 .avc queue shuffle on|off          shuffle on also means looping
@@ -61,6 +61,17 @@ shows the newest uploads first (with their date, GMT+7). It's a box list of 15 f
 per page, numbered across pages, with **⬅️ ➡️** buttons and a "Page 1 / N" footer, like
 a Mudae list. Long names are cut at 40 characters. Only the person who asked can turn
 the pages, and the buttons go away after 2 idle minutes. Open to anyone in the server.
+
+### Grouped by media — `.avc list m`
+
+Name your files `ARTIST-Song name` or `ARTIST-GAME/MEDIA-Song name`, for example
+`Hoyomix-Genshin-Ronova Boss Fight Theme.mp4` or `Miku-Monitoring (Best Friend Remix).m4a`.
+`.avc list m` groups the files by the media part: each media is a **column** (3 per row, up to 3
+rows per page), media sorted alphabetically, songs inside each one sorted by artist then title,
+shown as `Artist - Song`. **Others** comes last and holds names with no media part plus any media
+that has only one song (those are shown by their full name). Only the first two dashes split the
+name, so a song title may contain dashes. Media names match case-insensitively. A big group
+continues in a second column ("Genshin (2)"). Same ⬅️ ➡️ buttons and page footer as the other views.
 
 ## File names
 

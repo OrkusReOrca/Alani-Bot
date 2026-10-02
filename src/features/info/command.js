@@ -293,7 +293,7 @@ const AVC_INFO = [
   ".avc force play FILE NAME      SongMaster: play next, skip the current",
   ".avc pause                     pause (again to resume)",
   ".avc skip",
-  ".avc list [a|d]                files you can play (A-Z / newest first), paged",
+  ".avc list [a|d|m]              files you can play (A-Z / newest first / grouped by media), paged",
   ".avc queue                     the queue with lengths",
   ".avc queue loop on|off",
   ".avc queue shuffle on|off      (shuffle also means loop)",
@@ -305,6 +305,9 @@ const AVC_INFO = [
   ".avc leave                     the queue is kept",
   "```",
   "",
+  "**Naming**: files named `ARTIST-GAME-Song name` are grouped by game/media in " +
+    "`.avc list m` (columns, A-Z; single-song media and names without a media " +
+    "part go under Others).",
   "**Short forms**: `j` join, `p` play, `fp` force play, `pa` pause, `sk` skip, " +
     "`q` queue, `l` list, `rm` remove, `rma` removeall, `st` status, `lv` leave; " +
     "under queue: `lp` loop, `sh` shuffle, `pc` playcall, `ps` persistent " +
