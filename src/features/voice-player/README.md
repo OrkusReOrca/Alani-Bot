@@ -13,6 +13,7 @@ only — a bot can't share video, so a video file plays just its sound.
 .avc queue                         the queue, with each track's length
 .avc queue loop on|off
 .avc queue shuffle on|off          shuffle on also means looping
+.avc queue playcall on|off         "Now playing" messages on/off
 .avc remove FILE NAME              take a track out of the queue
 .avc removeall                     SongMaster: clear the queue
 .avc status                        in a call? what's playing? loop/shuffle
@@ -52,9 +53,11 @@ audio/video (or with a known audio/video extension) is playable.
   track). The same after a bot restart.
 - The bot leaves by itself after 5 minutes with nothing playing, or 1 minute after
   everyone else has left the call. The queue is kept either way.
-- "Now playing" messages go to the text channel of the latest command.
+- "Now playing" messages go to the text channel of the latest command. **PlayCall**
+  (`.avc queue playcall on|off`, default on, per server like loop and shuffle) turns
+  them off; failures and "left the call" notices still post.
 
-Queue, loop and shuffle are saved **per server** in one database, `VoiceState.db`
+Queue, loop, shuffle and PlayCall are saved **per server** in one database, `VoiceState.db`
 (a server gets its row the first time a voice command is used there). It is
 change-logged and backed up as its own group, `voice` — see `../cloud-backup/README.md`.
 

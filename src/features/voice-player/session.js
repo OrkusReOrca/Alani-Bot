@@ -13,7 +13,7 @@
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
 
-import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle } from "./queue.js";
+import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall } from "./queue.js";
 
 export function createGuildSession({ guildId, store, getCache, output, announce, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let connected = false;
@@ -86,7 +86,8 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     }
     playing = true;
     paused = false;
-    announce(`Now playing: **${entry.name}**`);
+    // PlayCall (per server): off silences this message only; failures and leave notices always post.
+    if (load().playCall) announce(`Now playing: **${entry.name}**`);
   }
 
   function onTrackEnded(myToken) {
@@ -187,6 +188,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
 
     setLoop: (on) => save(setLoop(load(), on)),
     setShuffle: (on) => save(setShuffle(load(), on)),
+    setPlayCall: (on) => save(setPlayCall(load(), on)),
 
     // Called when someone joins/leaves the call: leaves after a grace period
     // if the bot is left alone, and cancels that if someone comes back.

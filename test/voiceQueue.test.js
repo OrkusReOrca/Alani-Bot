@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { matchByName, normalizeName, cleanQuery } from "../src/features/voice-player/match.js";
-import { emptyState, enqueue, enqueueFront, insertNext, advance, removeAt, clearQueue, setLoop, setShuffle, isLooping } from "../src/features/voice-player/queue.js";
+import { emptyState, enqueue, enqueueFront, insertNext, advance, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, isLooping } from "../src/features/voice-player/queue.js";
 import { formatDuration, describeSettings, describeQueue } from "../src/features/voice-player/format.js";
 import { loadState, saveState, voiceDb } from "../src/features/voice-player/stateStore.js";
 import { isPlayableFile } from "../src/features/voice-player/config.js";
@@ -79,6 +79,8 @@ test("insertNext, enqueueFront, removeAt, clearQueue and the setting toggles", (
   assert.deepEqual(names(clearQueue(base)), []);
   assert.equal(setLoop(base, true).loop, true);
   assert.equal(setShuffle(base, true).shuffle, true);
+  assert.equal(emptyState().playCall, true); // on by default
+  assert.equal(setPlayCall(base, false).playCall, false);
   assert.deepEqual(names(base), ["a", "b"]); // never mutated
 });
 
@@ -90,11 +92,12 @@ test("durations", () => {
   assert.equal(formatDuration(undefined), "length unknown yet");
 });
 
-test("settings show loop as on-because-of-shuffle while keeping the two separate", () => {
-  assert.equal(describeSettings(stateOf([], { loop: true })), "Loop: **on** · Shuffle: **off**");
-  assert.equal(describeSettings(stateOf([], { shuffle: true })), "Loop: **on (because shuffle is on)** · Shuffle: **on**");
-  assert.equal(describeSettings(stateOf([], { loop: true, shuffle: true })), "Loop: **on** · Shuffle: **on**");
-  assert.equal(describeSettings(emptyState()), "Loop: **off** · Shuffle: **off**");
+test("settings show loop as on-because-of-shuffle while keeping the two separate, plus PlayCall", () => {
+  assert.equal(describeSettings(stateOf([], { loop: true })), "Loop: **on** · Shuffle: **off** · PlayCall: **on**");
+  assert.equal(describeSettings(stateOf([], { shuffle: true })), "Loop: **on (because shuffle is on)** · Shuffle: **on** · PlayCall: **on**");
+  assert.equal(describeSettings(stateOf([], { loop: true, shuffle: true })), "Loop: **on** · Shuffle: **on** · PlayCall: **on**");
+  assert.equal(describeSettings(emptyState()), "Loop: **off** · Shuffle: **off** · PlayCall: **on**");
+  assert.equal(describeSettings(stateOf([], { playCall: false })), "Loop: **off** · Shuffle: **off** · PlayCall: **off**");
 });
 
 test("the queue listing shows each track's length, the current one, and the total", () => {
@@ -138,4 +141,21 @@ test("state round-trips per server, and a server only gets a row once it's used"
   assert.deepEqual(loadState(guildA), stateOf(["z"], { loop: true }));
 
   voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(guildA);
+});
+
+test("PlayCall is saved per server, and a server saved before the column existed comes back with it on", () => {
+  const stamp = Date.now();
+  const [on, off, legacy] = [`pc-on-${stamp}`, `pc-off-${stamp}`, `pc-legacy-${stamp}`];
+
+  saveState(on, stateOf(["a"]));
+  saveState(off, stateOf(["a"], { playCall: false }));
+  assert.equal(loadState(on).playCall, true);
+  assert.equal(loadState(off).playCall, false);
+  assert.equal(loadState(`pc-never-${stamp}`).playCall, true);
+
+  // A row written by the older version of the bot (no play_call value at all).
+  voiceDb.prepare(`INSERT INTO guild_voice_state (guild_id, queue_json, loop, shuffle, updated_at) VALUES (?, '[]', 0, 0, 'x')`).run(legacy);
+  assert.equal(loadState(legacy).playCall, true);
+
+  for (const id of [on, off, legacy]) voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
 });

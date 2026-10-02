@@ -1,4 +1,4 @@
-// Per-server voice player state (queue, loop, shuffle) in ONE SQLite file for
+// Per-server voice player state (queue, loop, shuffle, PlayCall) in ONE SQLite file for
 // every server — VoiceState.db, change-logged and backed up as its own group
 // (see cloud-backup/groups.js). A server gets its row the first time a voice
 // command is used there.
@@ -12,6 +12,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { installChangeLog } from "../cloud-backup/changeLog.js";
+import { ensureColumn } from "../../common/sqlite.js";
 import { emptyState } from "./queue.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,22 +31,24 @@ voiceDb.exec(`
     updated_at TEXT NOT NULL
   )
 `);
+// Added after the table first shipped: servers that already have a row get it switched on.
+ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAULT 1");
 installChangeLog(voiceDb);
 
 // The server's state, or an empty one if it has none yet (nothing is written
 // until the first saveState).
 export function loadState(guildId) {
-  const row = voiceDb.prepare(`SELECT queue_json, loop, shuffle FROM guild_voice_state WHERE guild_id = ?`).get(guildId);
+  const row = voiceDb.prepare(`SELECT queue_json, loop, shuffle, play_call FROM guild_voice_state WHERE guild_id = ?`).get(guildId);
   if (!row) return emptyState();
-  return { queue: JSON.parse(row.queue_json), loop: Boolean(row.loop), shuffle: Boolean(row.shuffle) };
+  return { queue: JSON.parse(row.queue_json), loop: Boolean(row.loop), shuffle: Boolean(row.shuffle), playCall: Boolean(row.play_call) };
 }
 
 export function saveState(guildId, state) {
   voiceDb
     .prepare(
-      `INSERT INTO guild_voice_state (guild_id, queue_json, loop, shuffle, updated_at) VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO guild_voice_state (guild_id, queue_json, loop, shuffle, play_call, updated_at) VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT (guild_id) DO UPDATE SET queue_json = excluded.queue_json, loop = excluded.loop,
-         shuffle = excluded.shuffle, updated_at = excluded.updated_at`
+         shuffle = excluded.shuffle, play_call = excluded.play_call, updated_at = excluded.updated_at`
     )
-    .run(guildId, JSON.stringify(state.queue), state.loop ? 1 : 0, state.shuffle ? 1 : 0, new Date().toISOString());
+    .run(guildId, JSON.stringify(state.queue), state.loop ? 1 : 0, state.shuffle ? 1 : 0, state.playCall ? 1 : 0, new Date().toISOString());
 }

@@ -217,3 +217,22 @@ test("a join that fails is reported, not thrown", async () => {
   const t = setup();
   assert.match(await t.run("join", { vc: "bad" }), /Couldn't join your voice channel: timed out/);
 });
+
+test("queue playcall on/off: per-server, needs the bot's call, shows in status, and silences 'Now playing'", async () => {
+  const t = setup();
+  assert.match(await t.run("queue playcall off"), /not in a voice call/); // not in a call yet
+  await t.run("play lofi");
+  assert.match(t.announcements.join("\n"), /Now playing: \*\*Lofi Mix\.wav\*\*/);
+
+  assert.match(await t.run("queue playcall off", { vc: "vc2" }), /need to be in my voice channel/);
+  assert.match(await t.run("queue playcall off"), /PlayCall is now \*\*off\*\*\.\nLoop: \*\*off\*\* · Shuffle: \*\*off\*\* · PlayCall: \*\*off\*\*/);
+  assert.match(await t.run("status", { vc: null }), /PlayCall: \*\*off\*\*/);
+
+  const before = t.announcements.length;
+  await t.run("play rain sounds");
+  await t.run("skip"); // Rain Sounds starts: silently
+  assert.equal(t.announcements.length, before);
+
+  assert.match(await t.run("queue playcall on"), /PlayCall is now \*\*on\*\*/);
+  assert.match(await t.run("queue playcall maybe"), /Usage:.*playcall on\|off/);
+});

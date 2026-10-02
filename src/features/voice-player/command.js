@@ -8,6 +8,7 @@
 //   .avc queue                         list the queue with lengths
 //   .avc queue loop on|off
 //   .avc queue shuffle on|off          (shuffle on also means looping)
+//   .avc queue playcall on|off         "Now playing" messages on/off (per server)
 //   .avc remove FILE NAME              take a track out of the queue
 //   .avc removeall                     SongMaster: clear the queue
 //   .avc status
@@ -39,9 +40,10 @@ export const aiGuide = `
 .avc queue                       — list the queue with each track's length
 .avc queue loop on|off           — loop the queue
 .avc queue shuffle on|off        — shuffle (also implies looping)
+.avc queue playcall on|off       — whether the bot posts a "Now playing" message when a track starts (per server; errors and leave notices still post)
 .avc remove <file name>          — remove a track from the queue
 .avc removeall                   — clear the whole queue (SongMaster tag only)
-.avc status                      — whether the bot is in a call, what is playing, loop/shuffle settings
+.avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall settings
 .avc leave                       — leave the call (the queue is kept)
 Everything except queue/status needs the caller to be in the bot's voice channel (see "Caller's voice channel" in the context). Finished tracks are removed unless loop or shuffle is on.`;
 
@@ -50,7 +52,7 @@ export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
   "Usage: `.avc join` · `.avc play <file>` · `.avc force play <file>` · `.avc pause` · `.avc skip`",
-  "`.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
+  "`.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
@@ -134,21 +136,34 @@ async function handlePlay(ctx, session, nameArgs, { force }, { prepareVoice, fin
   return startsNow ? `Playing **${entry.name}**.` : `Added **${entry.name}** to the queue (position ${position}).`;
 }
 
+// The per-server switches that live next to the queue: how to set each one and
+// an optional extra note for the confirmation.
+const QUEUE_SWITCHES = {
+  loop: {
+    label: "Loop",
+    apply: (session, on) => session.setLoop(on),
+    note: (state, on) => (!on && state.shuffle ? "\nLoop stays active while shuffle is on." : ""),
+  },
+  shuffle: { label: "Shuffle", apply: (session, on) => session.setShuffle(on) },
+  playcall: { label: "PlayCall", apply: (session, on) => session.setPlayCall(on) },
+};
+const QUEUE_USAGE = "Usage: `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off`";
+
 function handleQueue(ctx, session, rest) {
   if (rest.length === 0) {
     return describeQueue(session.state(), { durationOf: (entry) => session.durationOf(entry), playing: session.isPlaying(), paused: session.isPaused() });
   }
 
   const [setting, value] = rest.map((word) => word.toLowerCase());
-  if (!["loop", "shuffle"].includes(setting) || !(value in ON_OFF)) return "Usage: `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off`";
+  const switchDef = QUEUE_SWITCHES[setting];
+  if (!switchDef || !(value in ON_OFF)) return QUEUE_USAGE;
 
   const denied = mustBeInBotsCall(ctx, session);
   if (denied) return denied;
 
   const on = ON_OFF[value];
-  const state = setting === "loop" ? session.setLoop(on) : session.setShuffle(on);
-  const note = setting === "loop" && !on && state.shuffle ? "\nLoop stays active while shuffle is on." : "";
-  return `${setting === "loop" ? "Loop" : "Shuffle"} is now **${on ? "on" : "off"}**.${note}\n${describeSettings(state)}`;
+  const state = switchDef.apply(session, on);
+  return `${switchDef.label} is now **${on ? "on" : "off"}**.${switchDef.note?.(state, on) ?? ""}\n${describeSettings(state)}`;
 }
 
 function handleRemove(ctx, session, nameArgs) {

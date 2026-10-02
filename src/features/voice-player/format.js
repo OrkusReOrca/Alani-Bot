@@ -16,7 +16,7 @@ export function formatDuration(ms) {
 
 export function describeSettings(state) {
   const loop = isLooping(state) ? (state.loop ? "on" : "on (because shuffle is on)") : "off";
-  return `Loop: **${loop}** · Shuffle: **${state.shuffle ? "on" : "off"}**`;
+  return `Loop: **${loop}** · Shuffle: **${state.shuffle ? "on" : "off"}** · PlayCall: **${state.playCall ? "on" : "off"}**`;
 }
 
 // durationOf(entry) -> ms | undefined. `playing`/`paused` describe queue[0].

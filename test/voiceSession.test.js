@@ -258,3 +258,37 @@ test("a failed join leaves the session disconnected", async () => {
   await assert.rejects(t.session.join("bad"), /timed out/);
   assert.equal(t.session.isConnected(), false);
 });
+
+test("PlayCall off silences only the 'Now playing' message — for that server alone — and takes effect immediately", async () => {
+  const store = memoryStore();
+  const quiet = makeSession({ store, guildId: "quiet" });
+  const loud = makeSession({ store, guildId: "loud" });
+  await quiet.session.join("vc1");
+  await loud.session.join("vc1");
+
+  quiet.session.setPlayCall(false);
+  quiet.session.add(track("A"));
+  quiet.session.add(track("B"));
+  loud.session.add(track("A"));
+
+  assert.deepEqual(quiet.announcements, []); // A started silently
+  assert.deepEqual(loud.announcements, ["Now playing: **A**"]); // the other server is unaffected
+  assert.equal(quiet.session.isPlaying(), true);
+
+  quiet.output.failTrack(new Error("decode error")); // problems still post
+  assert.match(quiet.announcements.join("\n"), /Couldn't play \*\*A\*\*/);
+  assert.equal(quiet.announcements.some((a) => a.startsWith("Now playing")), false); // B started silently
+
+  quiet.session.setPlayCall(true);
+  quiet.session.add(track("C"));
+  quiet.output.finishTrack(); // B ends, C starts
+  assert.match(quiet.announcements.at(-1), /Now playing: \*\*C\*\*/);
+
+  // The switch survives leaving and a brand-new session (it lives in the saved state).
+  quiet.session.setPlayCall(false);
+  await quiet.session.leave();
+  const reborn = makeSession({ store, guildId: "quiet" });
+  await reborn.session.join("vc1");
+  assert.deepEqual(reborn.announcements, []);
+  assert.equal(store.loadState("quiet").playCall, false);
+});
