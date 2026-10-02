@@ -1,7 +1,7 @@
 {
   "name": "alani-bot",
   "version": "1.0.0",
-  "description": "Alani — multi-feature Discord bot",
+  "description": "Alani \u2014 multi-feature Discord bot",
   "type": "module",
   "main": "src/bot.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "check:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/checkRun.js",
     "post:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postRun.js",
     "post-grid:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/postGridRun.js",
-    "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js"
+    "test-send:fortnite-jam-tracks-tracker-shop": "node src/features/fortnite-jam-tracks-tracker/shop/testSend.js",
+    "voice-spike": "node scripts/voiceSpike.js"
   },
   "engines": {
     "node": ">=22.5.0"
@@ -26,5 +27,12 @@
   },
   "allowScripts": {
     "canvas@3.2.3": true
+  },
+  "optionalDependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@snazzah/davey": "^0.1.12",
+    "libsodium-wrappers": "^0.8.4",
+    "opusscript": "^0.1.1"
   }
 }
