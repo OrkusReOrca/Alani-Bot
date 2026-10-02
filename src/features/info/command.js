@@ -226,6 +226,7 @@ const SETTING_INFO = [
   ".a setting",
   ".a setting routine",
   ".a setting routine <unitracker|fortnite> <setON|setOFF>",
+  ".a setting playcall [on|off]",
   ".a setting cloud [status|push|resume <cloud|host> [db|settings]]",
   "```",
   "",
@@ -233,6 +234,9 @@ const SETTING_INFO = [
     "`fortnite` (the shop check/post, which runs as scheduled GitHub " +
     "workflows — switching it enables/disables those workflows). Off means " +
     "it doesn't fire until turned back on.",
+  "",
+  "**PlayCall** — `.a setting playcall on|off`: whether the voice player " +
+    "posts a \"Now playing\" message when a track starts (default on).",
   "",
   "**Cloud backup** — at 00:00, 06:00, 12:00 and 18:00 (GMT+7) the bot " +
     "checks every database and the settings against their change logs and " +

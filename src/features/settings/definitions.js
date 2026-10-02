@@ -16,4 +16,12 @@ export const SETTING_DEFINITIONS = {
     allowed: [ON, OFF],
     description: "Fortnite Jam Tracks shop check + post (runs as scheduled GitHub Actions workflows)",
   },
+  "voice.playCall": {
+    default: ON,
+    allowed: [ON, OFF],
+    description: "PlayCall: post a \"Now playing\" message when a voice-player track starts",
+  },
 };
+
+// The key behind the `.a setting playcall` switch.
+export const PLAY_CALL_KEY = "voice.playCall";

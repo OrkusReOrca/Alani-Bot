@@ -11,6 +11,8 @@ import { createAudioCache } from "./audioCache.js";
 import { createDiscordOutput } from "./discordOutput.js";
 import { createGuildSession } from "./session.js";
 import { loadState, saveState } from "./stateStore.js";
+import { getSetting } from "../settings/store.js";
+import { ON, PLAY_CALL_KEY } from "../settings/definitions.js";
 
 let cache = null;
 const sessions = new Map(); // guildId -> { session, textChannelId }
@@ -54,6 +56,7 @@ export function getSession(guildId) {
         if (!entry.textChannelId) return;
         sendViaBotChannel(botConfig.botToken, entry.textChannelId, text).catch((err) => console.error("[voice-player] announce failed:", err));
       },
+      announceNowPlaying: () => getSetting(PLAY_CALL_KEY) === ON,
       timing: limits,
     });
     sessions.set(guildId, entry);

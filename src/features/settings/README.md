@@ -22,6 +22,13 @@ used by `.a fjamtrack refresh`) with Actions read/write. The GitHub call
 runs first and the stored setting only changes if it succeeds, so the
 setting never claims a state GitHub isn't in.
 
+## PlayCall
+
+`.a setting playcall` shows it, `.a setting playcall on|off` changes it. It's a
+global switch for the voice player (`../voice-player/README.md`): when **off**, the
+player doesn't post "Now playing: ..." when a track starts. Problems (a track that
+can't be played) and "left the call" notices still post. Default: on.
+
 ## Adding a setting
 
 1. Add it to `definitions.js` (default, allowed values, description).
