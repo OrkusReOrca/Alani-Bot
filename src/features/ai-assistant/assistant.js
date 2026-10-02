@@ -11,6 +11,7 @@
 //   user: { id }, channelId, guildId,
 //   post(text)               send text to the channel
 //   postFile(buffer, name)   send a file
+//   postPages(pages)         send a multi-page embed with buttons
 //   confirm(text) -> bool    ask the caller to confirm (destructive commands)
 // }
 
@@ -53,6 +54,10 @@ async function runCommandLine(line, { env, commands, recordEvent }) {
     reply: async (text) => {
       replies.push(String(text));
       await env.post(String(text));
+    },
+    replyPages: async (pages) => {
+      replies.push(`[showed a paged list: ${pages.length} page${pages.length === 1 ? "" : "s"}; first page: ${pages[0].description.split("\n").slice(0, 3).join(" | ")}…]`);
+      await env.postPages(pages);
     },
     replyWithFile: async (buffer, filename) => {
       replies.push(`[sent the file ${filename}]`);

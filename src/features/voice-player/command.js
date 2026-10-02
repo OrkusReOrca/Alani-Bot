@@ -11,6 +11,7 @@
 //   .avc queue playcall on|off         "Now playing" messages on/off (per server)
 //   .avc remove FILE NAME              take a track out of the queue
 //   .avc removeall                     SongMaster: clear the queue
+//   .avc list [a|d]                    every playable file, in pages (a = A-Z, d = newest first)
 //   .avc status
 //   .avc leave                         leave the call (the queue is kept)
 //
@@ -21,7 +22,9 @@
 
 import { hasTag, TAGS } from "../tags/store.js";
 import { describeQueue, describeSettings } from "./format.js";
-import { findPlayableFile } from "./library.js";
+import { findPlayableFile, listPlayableFiles } from "./library.js";
+import { buildListPages, SORTS } from "./listPages.js";
+import { pagesAsText } from "../../common/pagination.js";
 import { cacheKeyFor } from "./audioCache.js";
 import { matchByName, cleanQuery } from "./match.js";
 import { getSession, setTextChannel, prepareVoice } from "./manager.js";
@@ -43,6 +46,7 @@ export const aiGuide = `
 .avc queue playcall on|off       — whether the bot posts a "Now playing" message when a track starts (per server; errors and leave notices still post)
 .avc remove <file name>          — remove a track from the queue
 .avc removeall                   — clear the whole queue (SongMaster tag only)
+.avc list [a|d]                  — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first. Open to anyone; use it to find the exact file name for play.
 .avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall settings
 .avc leave                       — leave the call (the queue is kept)
 Everything except queue/status needs the caller to be in the bot's voice channel (see "Caller's voice channel" in the context). Finished tracks are removed unless loop or shuffle is on.`;
@@ -52,7 +56,7 @@ export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
   "Usage: `.avc join` · `.avc play <file>` · `.avc force play <file>` · `.avc pause` · `.avc skip`",
-  "`.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
+  "`.avc list [a|d]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
@@ -186,6 +190,22 @@ function describePause(result) {
   return result === "resumed" ? "Resumed." : "Nothing is playing.";
 }
 
+// Shows the Drive folder's files as pages with buttons (or plain text where the
+// caller can't show them). Replies itself, so returns nothing.
+async function handleList(ctx, sortArg, { listPlayableFiles }) {
+  const sort = (sortArg ?? "a").toLowerCase();
+  if (!SORTS[sort]) return void (await ctx.reply("Usage: `.avc list` (A–Z) · `.avc list a` (A–Z) · `.avc list d` (newest first)"));
+
+  let files;
+  try {
+    files = await listPlayableFiles();
+  } catch (err) {
+    return void (await ctx.reply(`Couldn't read the file list: ${err.message}`));
+  }
+  const pages = buildListPages(files, sort);
+  await (ctx.replyPages ? ctx.replyPages(pages) : ctx.reply(pagesAsText(pages)));
+}
+
 function handleStatus(session) {
   const state = session.state();
   const [current] = state.queue;
@@ -246,6 +266,9 @@ async function run(ctx, args, deps) {
       }
       break;
     }
+    case "list":
+      await handleList(ctx, rest[0], deps);
+      return;
     case "status":
       reply = handleStatus(session);
       break;
@@ -269,4 +292,4 @@ export function createExecute(deps) {
   return (ctx, args = []) => run(ctx, args, deps);
 }
 
-export const execute = createExecute({ getSession, setTextChannel, prepareVoice, findPlayableFile });
+export const execute = createExecute({ getSession, setTextChannel, prepareVoice, findPlayableFile, listPlayableFiles });

@@ -40,7 +40,7 @@ const COMMANDS = [
     private: true,
   },
   {
-    text: "**.avc join|play|pause|skip|queue|remove|status|leave ...** — Alani plays audio from a Google Drive folder in your voice call, with a saved queue, loop and shuffle. See `.a info avc`.",
+    text: "**.avc join|play|list|pause|skip|queue|remove|status|leave ...** — Alani plays audio from a Google Drive folder in your voice call, with a saved queue, loop and shuffle. See `.a info avc`.",
     private: false,
   },
   {
@@ -292,6 +292,7 @@ const AVC_INFO = [
   ".avc force play FILE NAME      SongMaster: play next, skip the current",
   ".avc pause                     pause (again to resume)",
   ".avc skip",
+  ".avc list [a|d]                files you can play (A-Z / newest first), paged",
   ".avc queue                     the queue with lengths",
   ".avc queue loop on|off",
   ".avc queue shuffle on|off      (shuffle also means loop)",

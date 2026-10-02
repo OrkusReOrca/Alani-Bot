@@ -25,7 +25,8 @@
 //      for the shape: export `data` — needs at least `name`, plus
 //      `description` if it should also be a slash command — and
 //      `execute(ctx, args)`, where ctx exposes `reply(text)`,
-//      `replyWithFile(buffer, filename)`, `userId`, `channelId`, and
+//      `replyWithFile(buffer, filename)`, `replyPages(pages)` (prefix commands only:
+//      pages are { title, description, footer } with ⬅️ ➡️ buttons), `userId`, `channelId`, and
 //      `guildId`).
 //   2. Register it in src/commands.js (its `aiGuide` export is required — it's
 //      how the .aii assistant learns the command).
@@ -40,6 +41,7 @@ import { config } from "./common/config.js";
 import { setClient } from "./common/discordClient.js";
 import { commands } from "./commands.js";
 import { parseCommandLine } from "./common/commandParsing.js";
+import { sendPaginated } from "./common/pagination.js";
 import { parseAiInvocation, handleAiMessage } from "./features/ai-assistant/handler.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
@@ -136,6 +138,7 @@ client.on(Events.MessageCreate, async (message) => {
   const ctx = {
     reply: (text) => message.reply(text),
     replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
+    replyPages: (pages) => sendPaginated(message, pages), // multi-page embed with ⬅️ ➡️ buttons
     userId: message.author.id,
     channelId: message.channelId,
     guildId: message.guildId, // null in DMs

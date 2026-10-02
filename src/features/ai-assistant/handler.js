@@ -4,6 +4,7 @@
 
 import { isOwner } from "../../common/auth.js";
 import { chunkMessage } from "../../common/discordApi.js";
+import { sendPaginated } from "../../common/pagination.js";
 import { hasTag, TAGS } from "../tags/store.js";
 import * as dbStore from "../db/store.js";
 import { commands } from "../../commands.js";
@@ -57,6 +58,7 @@ function envFor(message) {
     post: async (text) => {
       for (const chunk of chunkMessage(text)) await message.reply({ content: chunk, allowedMentions: ALLOWED_MENTIONS });
     },
+    postPages: (pages) => sendPaginated(message, pages),
     postFile: (buffer, name) => message.reply({ files: [{ attachment: buffer, name }], allowedMentions: ALLOWED_MENTIONS }),
     confirm: async (prompt) => {
       await message.reply({ content: prompt, allowedMentions: ALLOWED_MENTIONS });

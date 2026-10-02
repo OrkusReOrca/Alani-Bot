@@ -10,6 +10,7 @@ only — a bot can't share video, so a video file plays just its sound.
 .avc force play FILE NAME          SongMaster: play it NEXT and skip the current track
 .avc pause                         pause (run again to resume)
 .avc skip
+.avc list [a|d]                    every playable file, in pages (a = A–Z, d = newest first)
 .avc queue                         the queue, with each track's length
 .avc queue loop on|off
 .avc queue shuffle on|off          shuffle on also means looping
@@ -31,6 +32,14 @@ Also works in plain language through `.aii` ("play the rain sounds in my call").
 - **`force play`, `removeall`**: need the **SongMaster** tag (`.a tag add SongMaster <user>`,
   owners only; bot owners hold it automatically).
 - Server-only: it does nothing in DMs.
+
+## Browsing the files
+
+`.avc list` (or `.avc list a`) shows every playable file alphabetically; `.avc list d`
+shows the newest uploads first (with their date, GMT+7). It's a box list of 15 files
+per page, numbered across pages, with **⬅️ ➡️** buttons and a "Page 1 / N" footer, like
+a Mudae list. Long names are cut at 40 characters. Only the person who asked can turn
+the pages, and the buttons go away after 2 idle minutes. Open to anyone in the server.
 
 ## File names
 
