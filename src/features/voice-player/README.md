@@ -52,9 +52,7 @@ audio/video (or with a known audio/video extension) is playable.
   track). The same after a bot restart.
 - The bot leaves by itself after 5 minutes with nothing playing, or 1 minute after
   everyone else has left the call. The queue is kept either way.
-- "Now playing" messages go to the text channel of the latest command. The **PlayCall**
-  setting (`.a setting playcall on|off`, default on) turns them off; failures and
-  "left the call" notices still post.
+- "Now playing" messages go to the text channel of the latest command.
 
 Queue, loop and shuffle are saved **per server** in one database, `VoiceState.db`
 (a server gets its row the first time a voice command is used there). It is

@@ -12,12 +12,10 @@
 //   cache   { open(entry) -> { stream }, ensure(entry), durationOf(entry), setPinned(keys) }
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
-//   announceNowPlaying  () => boolean: whether to post "Now playing" messages at all
-//                    (the PlayCall setting); errors and leave notices always post
 
 import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle } from "./queue.js";
 
-export function createGuildSession({ guildId, store, getCache, output, announce, announceNowPlaying = () => true, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
+export function createGuildSession({ guildId, store, getCache, output, announce, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let connected = false;
   let playing = false;
   let paused = false;
@@ -88,7 +86,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     }
     playing = true;
     paused = false;
-    if (announceNowPlaying()) announce(`Now playing: **${entry.name}**`);
+    announce(`Now playing: **${entry.name}**`);
   }
 
   function onTrackEnded(myToken) {

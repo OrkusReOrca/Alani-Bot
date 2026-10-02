@@ -103,7 +103,7 @@ export const TIMING = { idleLeaveMs: 300_000, aloneLeaveMs: 60_000 };
 
 export const track = (name) => ({ fileId: `id-${name}`, name, key: `key-${name}`, mimeType: "audio/mpeg", version: "v1", addedBy: "u1" });
 
-export function makeSession({ store = memoryStore(), output = fakeOutput(), cache = fakeCache(), timers = fakeTimers(), random = () => 0, guildId = "g1", playCall = () => true } = {}) {
+export function makeSession({ store = memoryStore(), output = fakeOutput(), cache = fakeCache(), timers = fakeTimers(), random = () => 0, guildId = "g1" } = {}) {
   const announcements = [];
   const session = createGuildSession({
     guildId,
@@ -111,7 +111,6 @@ export function makeSession({ store = memoryStore(), output = fakeOutput(), cach
     getCache: () => cache,
     output,
     announce: (text) => announcements.push(text),
-    announceNowPlaying: playCall,
     timing: TIMING,
     random,
     setTimer: timers.setTimer,
