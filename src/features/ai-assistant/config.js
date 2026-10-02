@@ -9,11 +9,12 @@ export const config = {
 
 // Behavior limits (not env-tunable on purpose — they're cost/safety bounds).
 export const limits = {
-  maxRounds: 6, // model calls per .aii request
+  maxRounds: 6, // model calls per .aii request (each round may run several commands)
   maxOutputTokens: 1200,
   memoryTurns: 10,
   memoryWindowMs: 60 * 60 * 1000,
   confirmTimeoutMs: 60 * 1000,
-  maxResultCharsForModel: 3000,
+  maxResultCharsForModel: 12000, // a long file list must fit
+  maxCommandsPerRequest: 40, // one request can't spam the channel with commands
   maxWebSearchesPerRequest: 2,
 };

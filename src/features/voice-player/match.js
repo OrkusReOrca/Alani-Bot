@@ -13,6 +13,17 @@ export function cleanQuery(query) {
   return query.trim().replace(/^["'`](.*)["'`]$/, "$1").trim();
 }
 
+// Several names given as quoted strings — "Song A.mp3" "Song B.mp3", with or
+// without spaces between the quotes. Returns the names, or null when the text
+// isn't made ONLY of quoted names (so a plain, unquoted name is left to the
+// single-name path). Curly quotes (phone keyboards) count as straight ones.
+export function parseQuotedNames(text) {
+  const straight = text.replace(/[\u201C\u201D\u201E]/g, '"');
+  const names = [...straight.matchAll(/"([^"]*)"/g)].map((m) => m[1].trim());
+  if (names.length === 0 || straight.replace(/"[^"]*"/g, "").trim() !== "") return null;
+  return names.filter(Boolean);
+}
+
 // items: any array; nameOf(item) -> its display name.
 // Returns { status: "one", item } | { status: "many", items } | { status: "none" }.
 // Order of preference: the exact full name, then the exact name without its

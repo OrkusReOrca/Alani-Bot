@@ -24,12 +24,15 @@ const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}… [trun
 
 // Runs one `.a ...` line for the caller. Returns the text to hand back to the
 // model. Posts "Ran `...`" and the command's own replies to the channel as it goes.
-async function runCommandLine(line, { env, commands, recordEvent }) {
+async function runCommandLine(line, { env, commands, recordEvent, budget }) {
   const parsed = !/[\r\n]/.test(line) && parseCommandLine(line);
   if (!parsed?.name) return REFUSED_NOT_COMMAND;
 
   const command = commands.get(parsed.name);
   if (!command) return `Error: there is no command ".a ${parsed.name}". Available: ${[...commands.keys()].join(", ")}.`;
+
+  if (budget.commandsLeft <= 0) return `Error: the limit of ${limits.maxCommandsPerRequest} commands per request was reached — nothing more was run. Tell the user which items are left.`;
+  budget.commandsLeft--;
 
   const shown = line.trim();
   if (command.isDestructive?.(parsed.args)) {
@@ -55,8 +58,9 @@ async function runCommandLine(line, { env, commands, recordEvent }) {
       replies.push(String(text));
       await env.post(String(text));
     },
-    replyPages: async (pages) => {
-      replies.push(`[showed a paged list: ${pages.length} page${pages.length === 1 ? "" : "s"}; first page: ${pages[0].description.split("\n").slice(0, 3).join(" | ")}…]`);
+    // The user sees the pages; the model gets `detail` (the full list, untruncated) if the command supplies one.
+    replyPages: async (pages, { detail } = {}) => {
+      replies.push(detail ?? `[showed a paged list of ${pages.length} page${pages.length === 1 ? "" : "s"}]`);
       await env.postPages(pages);
     },
     replyWithFile: async (buffer, filename) => {
@@ -91,6 +95,7 @@ export async function runAssistant({ text, systemPrompt, memory, env, commands, 
 
   const messages = [{ role: "system", content: systemPrompt }, ...memory, { role: "user", content: text }];
   const usage = { promptTokens: 0, completionTokens: 0 };
+  const budget = { commandsLeft: limits.maxCommandsPerRequest }; // shared by every command this request runs
   let finalText = null;
 
   try {
@@ -110,7 +115,7 @@ export async function runAssistant({ text, systemPrompt, memory, env, commands, 
         const args = call.function?.name === "run_command" ? parseToolArguments(call.function.arguments) : null;
         const result =
           typeof args?.command === "string"
-            ? await runCommandLine(args.command, { env, commands, recordEvent })
+            ? await runCommandLine(args.command, { env, commands, recordEvent, budget })
             : "Error: only run_command(command) is available, with a JSON argument {\"command\": \"...\"}.";
         messages.push({ role: "tool", tool_call_id: call.id, content: result });
       }

@@ -39,3 +39,11 @@ export function buildListPages(files, sort = "a") {
     return { title: heading, description: lines.join("\n"), footer: `Page ${page + 1} / ${pageCount} · ${sorted.length} file${sorted.length === 1 ? "" : "s"}` };
   });
 }
+
+// Every file's FULL name, one per line, in the same order as the pages — what
+// .aii reads so it can pick files out of the list. (The pages truncate names
+// for display; this never does.)
+export function buildFileListText(files, sort = "a") {
+  const sorted = [...files].sort(SORTS[sort].compare);
+  return `${sorted.length} playable file${sorted.length === 1 ? "" : "s"} (${SORTS[sort].title}):\n${sorted.map((file) => `- ${file.name}`).join("\n")}`;
+}

@@ -2,6 +2,7 @@
 //
 //   .avc join                          join your voice channel (resumes the queue)
 //   .avc play FILE NAME                add a file from the Drive folder to the end of the queue
+//   .avc play "NAME A" "NAME B"        add several at once (each full name in quotes)
 //   .avc force play FILE NAME          SongMaster: play it next and cut the current track short
 //   .avc pause                         pause / resume
 //   .avc skip
@@ -28,10 +29,10 @@ import { isOwner } from "../../common/auth.js";
 import { hasTag, TAGS } from "../tags/store.js";
 import { describeQueue, describeSettings } from "./format.js";
 import { findPlayableFile, listPlayableFiles } from "./library.js";
-import { buildListPages, SORTS } from "./listPages.js";
+import { buildListPages, buildFileListText, SORTS } from "./listPages.js";
 import { pagesAsText } from "../../common/pagination.js";
 import { cacheKeyFor } from "./audioCache.js";
-import { matchByName, cleanQuery } from "./match.js";
+import { matchByName, cleanQuery, parseQuotedNames } from "./match.js";
 import { getSession, setTextChannel, prepareVoice } from "./manager.js";
 
 export const data = {
@@ -41,7 +42,7 @@ export const data = {
 export const aiGuide = `
 .avc is the voice-call music player. It plays audio files from a Google Drive folder in the voice channel the user is in.
 .avc join                        — join the caller's voice channel (resumes the saved queue)
-.avc play <file name>            — add a file to the END of the queue (joins the caller's call if the bot isn't in one). Name matching ignores case and extension; a unique partial name works.
+.avc play <file name>            — add a file to the END of the queue. SEVERAL files in one command: .avc play "Full Name One.mp3" "Full Name Two.mp3" (each full name in double quotes, up to 40) — prefer this over many separate play commands (joins the caller's call if the bot isn't in one). Name matching ignores case and extension; a unique partial name works.
 .avc force play <file name>      — play it NEXT and skip the current track (SongMaster tag only)
 .avc pause                       — pause; run again to resume
 .avc skip                        — skip the current track
@@ -52,7 +53,7 @@ export const aiGuide = `
 .avc queue playcall on|off       — whether the bot posts a "Now playing" message when a track starts (per server; errors and leave notices still post)
 .avc remove <file name>          — remove a track from the queue
 .avc removeall                   — clear the whole queue (SongMaster tag only)
-.avc list [a|d]                  — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first. Open to anyone; use it to find the exact file name for play.
+.avc list [a|d]                  — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first. Open to anyone. Its result to you is EVERY file's full name — use it to find files by artist/keyword, then queue each with .avc play <exact file name> (e.g. "add all songs by robin" = list, then one play per matching file).
 .avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall/persistent settings
 .avc leave                       — leave the call (the queue is kept)
 Short forms (use them freely): j=join, p=play, fp or "f p"=force play, pa=pause, sk=skip, q=queue, l/ls=list, rm=remove, rma=removeall, st=status, lv=leave; under queue: lp=loop, sh=shuffle, pc=playcall, ps=persistent. Example: ".avc q lp on".
@@ -62,7 +63,7 @@ Everything except queue/status needs the caller to be in the bot's voice channel
 export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
-  "Usage: `.avc join` · `.avc play <file>` · `.avc force play <file>` · `.avc pause` · `.avc skip`",
+  "Usage: `.avc join` · `.avc play <file>` (or several: `.avc play \"name 1\" \"name 2\"`) · `.avc force play <file>` · `.avc pause` · `.avc skip`",
   "`.avc list [a|d]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
@@ -117,7 +118,48 @@ async function handleJoin(ctx, session) {
   return queueLength > 0 ? `Joined ${channelMention(ctx.voiceChannelId)} and resumed the queue (${queueLength} track${queueLength === 1 ? "" : "s"}).` : `Joined ${channelMention(ctx.voiceChannelId)}.`;
 }
 
-async function handlePlay(ctx, session, nameArgs, { force }, { prepareVoice, findPlayableFile }) {
+const MAX_SONGS_PER_COMMAND = 40;
+const MAX_FAILURES_SHOWN = 8;
+
+// ".avc play "A.mp3" "B.mp3" ..." — queues several files at once, in the order given.
+// Files that can't be found (or are ambiguous) are reported and skipped.
+async function handlePlayMany(ctx, session, names, { prepareVoice, findPlayableFile }) {
+  if (names.length > MAX_SONGS_PER_COMMAND) return `That's ${names.length} songs — add at most ${MAX_SONGS_PER_COMMAND} per command.`;
+
+  const found = [];
+  const failures = [];
+  try {
+    await prepareVoice();
+    for (const name of names) {
+      const match = await findPlayableFile(name);
+      if (match.status === "one") found.push(match.item);
+      else failures.push(match.status === "many" ? `"${name}" (matches several files: ${match.items.slice(0, 3).map((f) => f.name).join(", ")}…)` : `"${name}" (no such file)`);
+    }
+  } catch (err) {
+    return `Couldn't read the file list: ${err.message}`;
+  }
+
+  const shownFailures = failures.slice(0, MAX_FAILURES_SHOWN).join(", ") + (failures.length > MAX_FAILURES_SHOWN ? ` …and ${failures.length - MAX_FAILURES_SHOWN} more` : "");
+  const failureLine = failures.length > 0 ? `\nCouldn't add ${failures.length}: ${shownFailures}` : "";
+  if (found.length === 0) return `None of those files were found.${failureLine}`;
+
+  const problem = await ensureInCallerChannel(ctx, session);
+  if (problem) return problem;
+
+  const results = found.map((file) => session.add(entryFor(file, ctx.userId)));
+  const lastPosition = results.at(-1).position;
+  const where = found.length === 1 ? `position ${lastPosition}` : `positions ${results[0].position}–${lastPosition}`;
+  const head = results[0].startsNow ? `Playing **${found[0].name}** and queued ${found.length - 1} more` : `Added ${found.length} song${found.length === 1 ? "" : "s"} to the queue (${where})`;
+  return `${head}.${failureLine}`;
+}
+
+async function handlePlay(ctx, session, nameArgs, { force }, deps) {
+  const { prepareVoice, findPlayableFile } = deps;
+  const quoted = parseQuotedNames(nameArgs.join(" "));
+  if (quoted?.length > 1) {
+    return force ? "`.avc force play` takes one file at a time." : handlePlayMany(ctx, session, quoted, deps);
+  }
+
   const query = cleanQuery(nameArgs.join(" "));
   if (!query) return force ? "Usage: `.avc force play <file name>`" : "Usage: `.avc play <file name>`";
   if (force) {
@@ -239,7 +281,8 @@ async function handleList(ctx, sortArg, { listPlayableFiles }) {
     return void (await ctx.reply(`Couldn't read the file list: ${err.message}`));
   }
   const pages = buildListPages(files, sort);
-  await (ctx.replyPages ? ctx.replyPages(pages) : ctx.reply(pagesAsText(pages)));
+  // `detail` is the complete list in plain text, for .aii (the pages cut long names).
+  await (ctx.replyPages ? ctx.replyPages(pages, { detail: buildFileListText(files, sort) }) : ctx.reply(pagesAsText(pages)));
 }
 
 function handleStatus(session) {

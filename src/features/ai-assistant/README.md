@@ -30,7 +30,10 @@ don't have permission.
    ``Ran `<command>` `` and then the command's own reply. Permissions and channel
    restrictions are enforced by the command itself, exactly as if the user typed
    it, and a refusal comes back to the model, which explains it in plain words.
-5. Up to 6 model rounds per request. Plain text from the model (an answer, a
+5. Up to 6 model rounds per request and 40 commands in total (so "add all songs by robin" can
+   list the files, then queue each match, but can't flood the channel). A command's reply is
+   handed to the model in full (up to 12,000 characters) — for `.avc list` that is every file's
+   complete name, which is how the model finds songs by artist or keyword. Plain text from the model (an answer, a
    question, an explanation of a failure) is posted; if it just ran commands
    successfully it stays quiet.
 

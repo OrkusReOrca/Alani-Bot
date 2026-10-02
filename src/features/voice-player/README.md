@@ -7,6 +7,7 @@ only — a bot can't share video, so a video file plays just its sound.
 ```
 .avc join                          join your voice channel (resumes the saved queue)
 .avc play FILE NAME                add a file to the END of the queue
+.avc play "NAME A" "NAME B"        add several at once (each full name in quotes)
 .avc force play FILE NAME          SongMaster: play it NEXT and skip the current track
 .avc pause                         pause (run again to resume)
 .avc skip
@@ -39,7 +40,9 @@ Every subcommand has a short form (the long names always work):
 
 e.g. `.avc p the brave`, `.avc q lp on`, `.avc sk`, `.avc l d`.
 
-Also works in plain language through `.aii` ("play the rain sounds in my call").
+Also works in plain language through `.aii` ("play the rain sounds in my call"). `.aii`
+reads the whole file list (full names) when it runs `.avc list`, so "add all songs by robin
+to the queue" lists the files, then queues every match.
 
 ## Who can do what
 
@@ -65,6 +68,14 @@ the pages, and the buttons go away after 2 idle minutes. Open to anyone in the s
 a name works if it identifies exactly one file. If several match, the bot lists them
 and asks you to be more specific. Sub-folders aren't searched. Anything Drive calls
 audio/video (or with a known audio/video extension) is playable.
+
+## Adding several songs at once
+
+`.avc play "Song A.mp3" "Song B.mp3" "Song C.mp3"` queues them in that order (quotes
+required; spaces between the quoted names are optional; up to 40 per command). Each
+name is matched like a single name (ignoring case/extension); files that aren't found,
+or match several files, are reported and skipped while the rest are added. It's meant
+for `.aii` ("add all songs by robin") but works for anyone. `force play` takes one file.
 
 ## The queue
 

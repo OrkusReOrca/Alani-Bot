@@ -289,6 +289,7 @@ const AVC_INFO = [
   "```",
   ".avc join                      join your voice channel",
   ".avc play FILE NAME            add to the end of the queue",
+  ".avc play \"A\" \"B\"             add several at once (each full name in quotes)",
   ".avc force play FILE NAME      SongMaster: play next, skip the current",
   ".avc pause                     pause (again to resume)",
   ".avc skip",
