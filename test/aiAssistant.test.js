@@ -141,7 +141,7 @@ test("a silent command, a crashing command, an unknown command and a non-command
   assert.match(results[0], /produced no reply/);
   assert.match(results[1], /crashed \(kaput\)/);
   assert.match(results[2], /no command "\.a nope"/);
-  assert.match(results[3], /must be a single line starting with "\.a"/);
+  assert.match(results[3], /must be a single line starting with "\.a" or "\.avc"/);
   assert.match(results[4], /must be a single line/);
 });
 
@@ -153,7 +153,7 @@ test("the model can't recurse into .aii or call tools that don't exist", async (
   );
   await run({ env, commands: fakeCommands().commands, llm });
   const results = llm.seen[1].filter((m) => m.role === "tool").map((m) => m.content);
-  assert.match(results[0], /must be a single line starting with "\.a"/);
+  assert.match(results[0], /must be a single line starting with "\.a" or "\.avc"/);
   assert.match(results[1], /only run_command/);
 });
 

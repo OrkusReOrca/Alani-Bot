@@ -43,6 +43,7 @@ function contextFor(message) {
     guildName: message.guild?.name,
     mentionedUsers: [...message.mentions.users.values()].map((u) => ({ id: u.id, username: u.username })),
     mentionedChannels: [...message.mentions.channels.values()].map((c) => ({ id: c.id, name: c.name })),
+    voiceChannelId: message.member?.voice?.channelId ?? null,
     databases: accessibleDatabases(message.author.id),
   });
 }
@@ -52,6 +53,7 @@ function envFor(message) {
     user: { id: message.author.id },
     channelId: message.channelId,
     guildId: message.guildId,
+    voiceChannelId: message.member?.voice?.channelId ?? null,
     post: async (text) => {
       for (const chunk of chunkMessage(text)) await message.reply({ content: chunk, allowedMentions: ALLOWED_MENTIONS });
     },

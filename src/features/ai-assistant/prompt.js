@@ -22,12 +22,12 @@ Rules:
 
 // commands: Map of name -> module with aiGuide.
 function describeCommands(commands) {
-  return [...commands.entries()].map(([name, command]) => `### .a ${name}\n${command.aiGuide.trim()}`).join("\n\n");
+  return [...commands.entries()].map(([name, command]) => `### ${name === "avc" ? ".avc" : `.a ${name}`}\n${command.aiGuide.trim()}`).join("\n\n");
 }
 
 // info: { now (ms), user: { id, username }, channelId, channelName?, guildId, guildName?,
 //         mentionedUsers: [{ id, username }], mentionedChannels: [{ id, name }],
-//         databases: [{ name, kind }] }
+//         databases: [{ name, kind }], voiceChannelId? }
 export function buildContext(info) {
   const { year, month, day, hour, minute } = ictParts(info.now);
   const weekday = WEEKDAYS[new Date(info.now + 7 * 3600 * 1000).getUTCDay()];
@@ -39,6 +39,7 @@ export function buildContext(info) {
       : `Location: a DM (channel ID ${info.channelId})`,
     `Users mentioned in the message: ${info.mentionedUsers.map((u) => `${u.username} = ${u.id}`).join(", ") || "none"}`,
     `Channels mentioned in the message: ${info.mentionedChannels.map((c) => `#${c.name} = ${c.id}`).join(", ") || "none"}`,
+    `Caller's voice channel: ${info.voiceChannelId ?? "not in a voice channel"}`,
     `Databases the caller can use: ${info.databases.map((d) => `${d.name} (${d.kind})`).join(", ") || "none"}`,
   ];
   return lines.join("\n");

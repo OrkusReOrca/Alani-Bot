@@ -5,14 +5,16 @@ Tags are capabilities attached to Discord user IDs.
 | Tag | Grants |
 |---|---|
 | `AIallowed` | using `.aii` (the AI assistant) and `.a emo` |
+| `SongMaster` | the privileged voice-player commands: `.avc force play` and `.avc removeall` |
 
 Bot owners (`DISCORD_OWNER_0` / `DISCORD_OWNER_1`) hold every tag implicitly and
 can't lose it. Only they can change tags:
 
 ```
-.a tag add AIallowed <user>      grant
-.a tag remove AIallowed <user>   revoke
-.a tag list AIallowed            who has it
+.a tag list                    every tag and what it unlocks
+.a tag <TAG> list              who has it (also: .a tag list <TAG>)
+.a tag add <TAG> <user>        grant
+.a tag remove <TAG> <user>     revoke
 ```
 
 `<user>` is a user ID, an @mention, or a username (searched in the current

@@ -16,7 +16,8 @@ import * as listDbCommand from "./features/db/listDbCommand.js";
 import * as emotionCommand from "./features/emotion-detect/command.js";
 import * as settingCommand from "./features/settings/command.js";
 import * as tagCommand from "./features/tags/command.js";
+import * as voiceCommand from "./features/voice-player/command.js";
 
 export const commands = new Map(
-  [infoCommand, fjamtrackCommand, dbCommand, listDbCommand, emotionCommand, settingCommand, tagCommand].map((c) => [c.data.name, c])
+  [infoCommand, fjamtrackCommand, dbCommand, listDbCommand, emotionCommand, settingCommand, tagCommand, voiceCommand].map((c) => [c.data.name, c])
 );

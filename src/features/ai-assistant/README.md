@@ -38,8 +38,8 @@ Safety:
 - **Destructive commands** (a command's `isDestructive(args)`: delete/drop/revoke/
   transfer, tag removal, answering a backup fault) wait for you to reply `yes`
   within 60 s; otherwise they're not run.
-- The model can only run commands in the registry (never `.aii` itself) and one
-  line at a time.
+- The model can only run commands in the registry (`.a ...` and `.avc ...`, never
+  `.aii` itself) and one line at a time.
 - Only user mentions can ping; the model's free text can never `@everyone` or tag a role.
 - Search results and command output are treated as data, not instructions.
 - One request per user at a time.

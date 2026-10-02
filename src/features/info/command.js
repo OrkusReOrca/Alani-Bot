@@ -22,6 +22,7 @@ export const aiGuide = `
 .a info emo      — explanation of emotion detection (private server only)
 .a info setting  — explanation of settings and cloud backup (private server only)
 .a info ai       — explanation of the .aii assistant (private server only)
+.a info avc      — explanation of the voice player
 Read-only.`;
 
 const PRIVATE_SERVER_ID = "1539132003109314572";
@@ -39,11 +40,15 @@ const COMMANDS = [
     private: true,
   },
   {
+    text: "**.avc join|play|pause|skip|queue|remove|status|leave ...** — Alani plays audio from a Google Drive folder in your voice call, with a saved queue, loop and shuffle. See `.a info avc`.",
+    private: false,
+  },
+  {
     text: "**.aii <request>** — tell Alani what to do in plain language and she runs the commands for you. Needs the AIallowed tag. See `.a info ai`.",
     private: true,
   },
   {
-    text: "**.a tag add|remove|list AIallowed <user>** — who may use `.aii` and `.a emo`. Owner-only.",
+    text: "**.a tag list | .a tag <TAG> list | .a tag add|remove <TAG> <user>** — tags (AIallowed, SongMaster) and who holds them. Owner-only.",
     private: true,
   },
   {
@@ -66,6 +71,10 @@ const FEATURES = [
     private: false,
   },
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
+  {
+    text: "**Voice player** — `.avc` plays audio files from a Google Drive folder in a voice call. Queue, loop and shuffle are saved per server. See `.a info avc`.",
+    private: false,
+  },
   {
     text: "**AI assistant** — `.aii` turns plain-language requests into commands (with web search), remembers recent turns, and logs everything to AIcommandHistory. See `.a info ai`.",
     private: true,
@@ -270,6 +279,39 @@ const AI_INFO = [
     "unlocks `.a emo`.",
 ].join("\n");
 
+// `.a info avc` — the voice player. Public (anyone in the bot's call may use it).
+// Source of truth: src/features/voice-player/README.md.
+const AVC_INFO = [
+  "**Voice player (`.avc`)**",
+  "",
+  "Alani joins your voice call and plays audio files from a Google Drive folder " +
+    "(sound only — a bot can't share video).",
+  "```",
+  ".avc join                      join your voice channel",
+  ".avc play FILE NAME            add to the end of the queue",
+  ".avc force play FILE NAME      SongMaster: play next, skip the current",
+  ".avc pause                     pause (again to resume)",
+  ".avc skip",
+  ".avc queue                     the queue with lengths",
+  ".avc queue loop on|off",
+  ".avc queue shuffle on|off      (shuffle also means loop)",
+  ".avc remove FILE NAME",
+  ".avc removeall                 SongMaster: clear the queue",
+  ".avc status",
+  ".avc leave                     the queue is kept",
+  "```",
+  "",
+  "**File names** ignore case and extension, and a partial name works if it " +
+    "matches exactly one file.",
+  "**Who**: anyone can view `queue`/`status`; everything else needs you to be in " +
+    "the bot's voice channel (`play`/`join` make it join yours). `force play` and " +
+    "`removeall` need the **SongMaster** tag.",
+  "**Queue**: finished tracks are removed, unless loop or shuffle is on (then " +
+    "they go to the back). The queue, loop and shuffle are saved per server, so " +
+    "`leave` then `join` resumes where you left off (from the start of the " +
+    "first track). The bot leaves by itself after 5 min idle or 1 min alone.",
+].join("\n");
+
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
 // need to know which one triggered it. See bot.js's
@@ -301,6 +343,13 @@ export async function execute(ctx, args = []) {
       return;
     }
     for (const chunk of chunkMessage(EMO_INFO)) {
+      await ctx.reply(chunk);
+    }
+    return;
+  }
+
+  if (args[0]?.toLowerCase() === "avc") {
+    for (const chunk of chunkMessage(AVC_INFO)) {
       await ctx.reply(chunk);
     }
     return;

@@ -6,6 +6,7 @@ import coreDb from "../db/store.js";
 import orkusInfoDb from "../orkus-info/db.js";
 import { settingsDb } from "../settings/store.js";
 import { historyDb } from "../ai-assistant/history.js";
+import { voiceDb } from "../voice-player/stateStore.js";
 
 export const BACKUP_GROUPS = [
   {
@@ -25,5 +26,10 @@ export const BACKUP_GROUPS = [
     id: "ai-history",
     label: "AIcommandHistory",
     databases: [{ name: "AIcommandHistory", db: historyDb }],
+  },
+  {
+    id: "voice",
+    label: "VoiceState",
+    databases: [{ name: "VoiceState", db: voiceDb }],
   },
 ];

@@ -12,11 +12,11 @@ export const RUN_COMMAND_TOOL = {
   type: "function",
   function: {
     name: "run_command",
-    description: "Run ONE Alani prefix command on behalf of the user, exactly as if they had typed it. Returns the command's reply.",
+    description: 'Run ONE Alani command (".a ..." or ".avc ...") on behalf of the user, exactly as if they had typed it. Returns the command reply.',
     parameters: {
       type: "object",
       properties: {
-        command: { type: "string", description: 'The full command on a single line, starting with ".a", e.g. ".a db list reminders".' },
+        command: { type: "string", description: 'The full command on a single line, starting with ".a" or ".avc", e.g. ".a db list reminders" or ".avc play rain".' },
       },
       required: ["command"],
     },

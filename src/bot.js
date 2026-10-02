@@ -39,7 +39,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 import { config } from "./common/config.js";
 import { setClient } from "./common/discordClient.js";
 import { commands } from "./commands.js";
-import { parsePrefixCommand } from "./common/commandParsing.js";
+import { parseCommandLine } from "./common/commandParsing.js";
 import { parseAiInvocation, handleAiMessage } from "./features/ai-assistant/handler.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
@@ -47,6 +47,7 @@ import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
 import { runScheduledBackup } from "./features/cloud-backup/index.js";
+import { onVoiceActivity } from "./features/voice-player/manager.js";
 
 if (!config.botToken) {
   console.error("Missing DISCORD_BOT_TOKEN — check your .env.");
@@ -63,6 +64,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates, // voice player: who is in which call
   ],
 });
 
@@ -79,6 +81,11 @@ client.once(Events.ClientReady, (readyClient) => {
   // Verify (and if needed save) a backup every time the bot comes online.
   runScheduledBackup().catch((err) => console.error("[cloud-backup] startup backup failed:", err));
   startLifecycleReporting(() => client.destroy()).catch((err) => console.error("[lifecycle] failed to start:", err));
+});
+
+// Someone joined/left a voice channel: the voice player leaves if it's left alone.
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  onVoiceActivity((newState.guild ?? oldState.guild).id);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -120,7 +127,7 @@ client.on(Events.MessageCreate, async (message) => {
     return;
   }
 
-  const parsed = parsePrefixCommand(message.content);
+  const parsed = parseCommandLine(message.content);
   if (!parsed) return;
   const { name: commandName, args } = parsed;
   const command = commands.get(commandName);
@@ -132,12 +139,13 @@ client.on(Events.MessageCreate, async (message) => {
     userId: message.author.id,
     channelId: message.channelId,
     guildId: message.guildId, // null in DMs
+    voiceChannelId: message.member?.voice?.channelId ?? null, // the voice channel the caller is in, if any
   };
 
   try {
     await command.execute(ctx, args);
   } catch (err) {
-    console.error(`Error handling "${PREFIX} ${commandName}":`, err);
+    console.error(`Error handling command "${commandName}":`, err);
     await message.reply("Something went wrong running that command.").catch(() => {});
   }
 });

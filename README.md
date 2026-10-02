@@ -129,8 +129,13 @@ you can trigger on a schedule).
   Alani commands and runs them as the caller; destructive ones ask first; recent
   turns are remembered; everything is logged to AIcommandHistory. Needs the
   AIallowed tag.
-- **[tags](src/features/tags/README.md)** - `.a tag add|remove|list AIallowed <user>`,
-  owner-only; AIallowed unlocks `.aii` and `.a emo`.
+- **[tags](src/features/tags/README.md)** - `.a tag list`, `.a tag <TAG> list`,
+  `.a tag add|remove <TAG> <user>`, owner-only; AIallowed unlocks `.aii` and
+  `.a emo`, SongMaster unlocks `.avc force play` and `.avc removeall`.
+- **[voice-player](src/features/voice-player/README.md)** - `.avc join|play|pause|skip|queue|
+  remove|status|leave ...`: plays audio files from a Google Drive folder in a voice
+  call, with a per-server saved queue, loop and shuffle (converted once to Opus and
+  cached; long files start while still converting).
 - **[settings](src/features/settings/README.md)** - `.a setting`, owner-only:
   turn routines on/off (`unitracker`, `fortnite`) and run the cloud backup by hand.
 - **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours and

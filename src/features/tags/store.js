@@ -1,17 +1,20 @@
-// Tags attached to Discord user IDs. A tag grants a capability; the only one
-// today is AIallowed (may use `.aii` and `.a emo`). Bot owners hold every tag
-// implicitly and can't be un-tagged. Stored in the settings database.
+// Tags attached to Discord user IDs. A tag grants a capability. Bot owners hold
+// every tag implicitly and can't be un-tagged. Stored in the settings database.
 
 import { settingsDb } from "../settings/store.js";
 import { isOwner } from "../../common/auth.js";
 
-export const TAGS = {
-  AIallowed: "AIallowed",
+// Every tag and what it unlocks (shown by `.a tag list`).
+export const TAG_DEFINITIONS = {
+  AIallowed: "use `.aii` (the AI assistant) and `.a emo`",
+  SongMaster: "use the privileged voice-player commands: `.avc force play` and `.avc removeall`",
 };
+
+export const TAGS = Object.fromEntries(Object.keys(TAG_DEFINITIONS).map((name) => [name, name]));
 
 // Case-insensitive lookup of a tag's canonical name, or null.
 export function canonicalTag(name) {
-  return Object.values(TAGS).find((tag) => tag.toLowerCase() === name?.toLowerCase()) ?? null;
+  return Object.keys(TAG_DEFINITIONS).find((tag) => tag.toLowerCase() === name?.toLowerCase()) ?? null;
 }
 
 export function hasTag(userId, tag) {

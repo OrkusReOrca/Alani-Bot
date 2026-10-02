@@ -14,17 +14,17 @@
 //   confirm(text) -> bool    ask the caller to confirm (destructive commands)
 // }
 
-import { parsePrefixCommand } from "../../common/commandParsing.js";
+import { parseCommandLine } from "../../common/commandParsing.js";
 import { limits } from "./config.js";
 
-const REFUSED_NOT_COMMAND = 'Error: the command must be a single line starting with ".a".';
+const REFUSED_NOT_COMMAND = 'Error: the command must be a single line starting with ".a" or ".avc".';
 
 const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}… [truncated]` : text);
 
 // Runs one `.a ...` line for the caller. Returns the text to hand back to the
 // model. Posts "Ran `...`" and the command's own replies to the channel as it goes.
 async function runCommandLine(line, { env, commands, recordEvent }) {
-  const parsed = !/[\r\n]/.test(line) && parsePrefixCommand(line.trim());
+  const parsed = !/[\r\n]/.test(line) && parseCommandLine(line);
   if (!parsed?.name) return REFUSED_NOT_COMMAND;
 
   const command = commands.get(parsed.name);
@@ -48,6 +48,7 @@ async function runCommandLine(line, { env, commands, recordEvent }) {
     userId: env.user.id,
     channelId: env.channelId,
     guildId: env.guildId,
+    voiceChannelId: env.voiceChannelId ?? null,
     viaAI: true,
     reply: async (text) => {
       replies.push(String(text));

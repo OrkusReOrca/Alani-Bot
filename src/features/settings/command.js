@@ -24,7 +24,7 @@ export const aiGuide = `
 .a setting routine <unitracker|fortnite> <setON|setOFF>  — switch a routine (unitracker = daily uni admissions post; fortnite = Fortnite shop post)
 .a setting cloud                            — status of the encrypted cloud backup
 .a setting cloud push                       — back up now
-.a setting cloud resume <cloud|host> [db|settings|ai-history] — answer a backup fault (command box channel only)
+.a setting cloud resume <cloud|host> [db|settings|ai-history|voice] — answer a backup fault (command box channel only)
 All owner-only.`;
 
 // Answering a backup fault discards one side's data.

@@ -17,6 +17,7 @@ It runs:
 | `db` ("DB Backup") | `db-core.db` (tiers, `.a db` reminders/events) and `orkus-info.db` (Main) |
 | `settings` ("Settings") | `settings.db` (settings and AIallowed tags) |
 | `ai-history` ("AIcommandHistory") | `AIcommandHistory.db` (every `.aii` request, command and reply) |
+| `voice` ("VoiceState") | `VoiceState.db` (every server's voice-player queue, loop and shuffle) |
 
 Each group is versioned independently: a settings change never creates a new
 copy of the databases.
