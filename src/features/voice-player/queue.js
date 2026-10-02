@@ -1,10 +1,10 @@
 // The queue rules, as pure functions over a plain state object:
 //
-//   { queue: [entry, ...], loop: boolean, shuffle: boolean, playCall: boolean }
+//   { queue: [entry, ...], loop: boolean, shuffle: boolean, playCall: boolean, persistent: boolean }
 //
-// playCall is not about the queue itself: it's the per-server switch for
-// "Now playing" messages, kept here because it's saved and shown alongside
-// loop and shuffle.
+// playCall ("Now playing" messages) and persistent (never auto-leave the call)
+// aren't about the queue itself: they're per-server switches kept here because
+// they're saved and shown alongside loop and shuffle.
 //
 // queue[0] is ALWAYS the current track — the one playing, or the one that
 // plays next. A track that finishes is removed, unless looping (or shuffling,
@@ -16,7 +16,7 @@
 export const isLooping = (state) => state.loop || state.shuffle;
 
 export function emptyState() {
-  return { queue: [], loop: false, shuffle: false, playCall: true };
+  return { queue: [], loop: false, shuffle: false, playCall: true, persistent: false };
 }
 
 export function enqueue(state, entry) {
@@ -63,3 +63,4 @@ export function clearQueue(state) {
 export const setLoop = (state, on) => ({ ...state, loop: on });
 export const setShuffle = (state, on) => ({ ...state, shuffle: on });
 export const setPlayCall = (state, on) => ({ ...state, playCall: on });
+export const setPersistent = (state, on) => ({ ...state, persistent: on });

@@ -292,3 +292,60 @@ test("PlayCall off silences only the 'Now playing' message — for that server a
   assert.deepEqual(reborn.announcements, []);
   assert.equal(store.loadState("quiet").playCall, false);
 });
+
+test("Persistent: the bot never leaves — not when the queue runs out, not when everyone leaves — and it's per server", async () => {
+  const store = memoryStore();
+  const stay = makeSession({ store, guildId: "stay" });
+  const leave = makeSession({ store, guildId: "leave" });
+  await stay.session.join("vc1");
+  await leave.session.join("vc1");
+
+  stay.session.setPersistent(true);
+  assert.equal(stay.timers.count(), 0); // the idle timer armed at join was cancelled
+
+  // The queue runs out: no idle timer for the persistent server, one for the other.
+  stay.session.add(track("A"));
+  leave.session.add(track("A"));
+  stay.output.finishTrack();
+  leave.output.finishTrack();
+  assert.equal(stay.timers.has(TIMING.idleLeaveMs), false);
+  assert.equal(leave.timers.has(TIMING.idleLeaveMs), true);
+
+  // Everyone leaves the call.
+  stay.output.setHumans(0);
+  stay.session.evaluateCompany();
+  assert.equal(stay.timers.has(TIMING.aloneLeaveMs), false);
+  assert.equal(stay.session.isConnected(), true);
+
+  assert.equal(stay.output.log.includes("leave"), false); // it never asked the output to leave
+});
+
+test("Persistent turned off re-applies the normal rules at once; turned on cancels a pending leave", async () => {
+  const t = makeSession();
+  await t.session.join("vc1"); // idle: the idle timer is pending
+  assert.equal(t.timers.has(TIMING.idleLeaveMs), true);
+
+  t.session.setPersistent(true);
+  assert.equal(t.timers.count(), 0);
+
+  t.output.setHumans(0); // alone while persistent: nothing happens
+  t.session.evaluateCompany();
+  assert.equal(t.timers.count(), 0);
+
+  t.session.setPersistent(false); // now both rules apply immediately
+  assert.equal(t.timers.has(TIMING.idleLeaveMs), true);
+  assert.equal(t.timers.has(TIMING.aloneLeaveMs), true);
+
+  t.session.setPersistent(true); // and back on cancels them again
+  assert.equal(t.timers.count(), 0);
+  assert.equal(t.session.isConnected(), true);
+});
+
+test("a persistent session still leaves when told to, and keeps its setting", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  t.session.setPersistent(true);
+  await t.session.leave();
+  assert.equal(t.session.isConnected(), false);
+  assert.equal(t.store.loadState("g1").persistent, true);
+});

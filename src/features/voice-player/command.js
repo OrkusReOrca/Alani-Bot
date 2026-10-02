@@ -9,6 +9,10 @@
 //   .avc queue loop on|off
 //   .avc queue shuffle on|off          (shuffle on also means looping)
 //   .avc queue playcall on|off         "Now playing" messages on/off (per server)
+//   .avc queue persistent on|off       never leave the call by itself (per server; bot owners only)
+//
+// Short forms: j p fp (or f p) pa sk q l/ls rm rma st lv, and under queue: lp sh pc ps
+// (e.g. ".avc p SONG", ".avc q lp on").
 //   .avc remove FILE NAME              take a track out of the queue
 //   .avc removeall                     SongMaster: clear the queue
 //   .avc list [a|d]                    every playable file, in pages (a = A-Z, d = newest first)
@@ -20,6 +24,7 @@
 // join also work when the bot isn't in a call yet — it joins yours). force play
 // and removeall need the SongMaster tag (bot owners always have it).
 
+import { isOwner } from "../../common/auth.js";
 import { hasTag, TAGS } from "../tags/store.js";
 import { describeQueue, describeSettings } from "./format.js";
 import { findPlayableFile, listPlayableFiles } from "./library.js";
@@ -43,12 +48,14 @@ export const aiGuide = `
 .avc queue                       — list the queue with each track's length
 .avc queue loop on|off           — loop the queue
 .avc queue shuffle on|off        — shuffle (also implies looping)
+.avc queue persistent on|off     — when on, the bot never leaves the call by itself (not when the queue empties, not when everyone leaves); default off, per server. BOT OWNERS ONLY (SongMaster is not enough)
 .avc queue playcall on|off       — whether the bot posts a "Now playing" message when a track starts (per server; errors and leave notices still post)
 .avc remove <file name>          — remove a track from the queue
 .avc removeall                   — clear the whole queue (SongMaster tag only)
 .avc list [a|d]                  — show every playable file in the Drive folder as pages with ⬅️ ➡️ buttons; a = alphabetical (default), d = newest first. Open to anyone; use it to find the exact file name for play.
-.avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall settings
+.avc status                      — whether the bot is in a call, what is playing, loop/shuffle/playcall/persistent settings
 .avc leave                       — leave the call (the queue is kept)
+Short forms (use them freely): j=join, p=play, fp or "f p"=force play, pa=pause, sk=skip, q=queue, l/ls=list, rm=remove, rma=removeall, st=status, lv=leave; under queue: lp=loop, sh=shuffle, pc=playcall, ps=persistent. Example: ".avc q lp on".
 Everything except queue/status needs the caller to be in the bot's voice channel (see "Caller's voice channel" in the context). Finished tracks are removed unless loop or shuffle is on.`;
 
 // Removing every track is the one thing here that can't be undone.
@@ -56,7 +63,7 @@ export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
   "Usage: `.avc join` · `.avc play <file>` · `.avc force play <file>` · `.avc pause` · `.avc skip`",
-  "`.avc list [a|d]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
+  "`.avc list [a|d]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
@@ -140,6 +147,31 @@ async function handlePlay(ctx, session, nameArgs, { force }, { prepareVoice, fin
   return startsNow ? `Playing **${entry.name}**.` : `Added **${entry.name}** to the queue (position ${position}).`;
 }
 
+// Short forms, so ".avc p song" works as well as ".avc play song". One table
+// per level; the long names always work too.
+const VERB_ALIASES = {
+  j: "join",
+  p: "play",
+  f: "force",
+  pa: "pause",
+  sk: "skip",
+  q: "queue",
+  l: "list",
+  ls: "list",
+  rm: "remove",
+  rma: "removeall",
+  st: "status",
+  lv: "leave",
+};
+// ".avc fp SONG" = ".avc force play SONG".
+const FORCE_PLAY_SHORTHAND = "fp";
+const SWITCH_ALIASES = { lp: "loop", sh: "shuffle", pc: "playcall", ps: "persistent" };
+
+const canonical = (word, aliases) => {
+  const lower = word?.toLowerCase();
+  return aliases[lower] ?? lower;
+};
+
 // The per-server switches that live next to the queue: how to set each one and
 // an optional extra note for the confirmation.
 const QUEUE_SWITCHES = {
@@ -150,17 +182,21 @@ const QUEUE_SWITCHES = {
   },
   shuffle: { label: "Shuffle", apply: (session, on) => session.setShuffle(on) },
   playcall: { label: "PlayCall", apply: (session, on) => session.setPlayCall(on) },
+  // Keeping the bot parked in a call forever is an owner decision: not even SongMaster may change it.
+  persistent: { label: "Persistent", ownerOnly: true, apply: (session, on) => session.setPersistent(on) },
 };
-const QUEUE_USAGE = "Usage: `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off`";
+const QUEUE_USAGE = "Usage: `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off`";
 
 function handleQueue(ctx, session, rest) {
   if (rest.length === 0) {
     return describeQueue(session.state(), { durationOf: (entry) => session.durationOf(entry), playing: session.isPlaying(), paused: session.isPaused() });
   }
 
-  const [setting, value] = rest.map((word) => word.toLowerCase());
+  const [setting, value] = [canonical(rest[0], SWITCH_ALIASES), rest[1]?.toLowerCase()];
   const switchDef = QUEUE_SWITCHES[setting];
   if (!switchDef || !(value in ON_OFF)) return QUEUE_USAGE;
+
+  if (switchDef.ownerOnly && !isOwner(ctx.userId)) return `Only a bot owner can change ${switchDef.label}.`;
 
   const denied = mustBeInBotsCall(ctx, session);
   if (denied) return denied;
@@ -217,6 +253,13 @@ function handleStatus(session) {
   ].join("\n");
 }
 
+// Turns the typed words into [canonical verb, remaining args].
+function resolveVerb(args) {
+  const [first, ...rest] = args;
+  if (first?.toLowerCase() === FORCE_PLAY_SHORTHAND) return ["force", ["play", ...rest]];
+  return [canonical(first, VERB_ALIASES), rest];
+}
+
 async function run(ctx, args, deps) {
   if (!ctx.guildId) {
     await ctx.reply("The voice player only works in a server.");
@@ -226,8 +269,7 @@ async function run(ctx, args, deps) {
   const session = deps.getSession(ctx.guildId);
   deps.setTextChannel(ctx.guildId, ctx.channelId);
 
-  const [sub, ...rest] = args;
-  const verb = sub?.toLowerCase();
+  const [verb, rest] = resolveVerb(args);
   let reply;
 
   switch (verb) {
@@ -238,7 +280,7 @@ async function run(ctx, args, deps) {
       reply = await handlePlay(ctx, session, rest, { force: false }, deps);
       break;
     case "force":
-      reply = rest[0]?.toLowerCase() === "play" ? await handlePlay(ctx, session, rest.slice(1), { force: true }, deps) : USAGE;
+      reply = canonical(rest[0], VERB_ALIASES) === "play" ? await handlePlay(ctx, session, rest.slice(1), { force: true }, deps) : USAGE;
       break;
     case "pause":
       reply = mustBeInBotsCall(ctx, session) ?? describePause(session.togglePause());

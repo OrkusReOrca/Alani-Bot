@@ -13,7 +13,7 @@
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
 
-import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall } from "./queue.js";
+import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent } from "./queue.js";
 
 export function createGuildSession({ guildId, store, getCache, output, announce, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let connected = false;
@@ -52,8 +52,10 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     announce(reason);
   }
 
+  // Persistent servers never auto-leave, so there's nothing to arm.
   function armIdleTimer() {
     clearTimer(idleTimer);
+    if (load().persistent) return;
     idleTimer = setTimer(() => leaveBecause(`Left the call — nothing was playing for ${Math.round(timing.idleLeaveMs / 60000)} minutes. The queue is kept.`), timing.idleLeaveMs);
   }
 
@@ -190,10 +192,29 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     setShuffle: (on) => save(setShuffle(load(), on)),
     setPlayCall: (on) => save(setPlayCall(load(), on)),
 
+    // Persistent: stay in the call whatever happens (empty queue, nobody else
+    // there). Switching it on cancels any pending auto-leave; switching it off
+    // re-applies the normal rules right away.
+    setPersistent(on) {
+      const state = save(setPersistent(load(), on));
+      if (on) {
+        clearTimers();
+      } else if (connected) {
+        if (!playing) armIdleTimer();
+        session.evaluateCompany();
+      }
+      return state;
+    },
+
     // Called when someone joins/leaves the call: leaves after a grace period
     // if the bot is left alone, and cancels that if someone comes back.
     evaluateCompany() {
       if (!connected) return;
+      if (load().persistent) {
+        clearTimer(aloneTimer);
+        aloneTimer = null;
+        return;
+      }
       if (output.humanCount() === 0) {
         if (!aloneTimer) aloneTimer = setTimer(() => leaveBecause("Left the call — everyone else left. The queue is kept."), timing.aloneLeaveMs);
       } else {

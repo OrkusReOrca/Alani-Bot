@@ -236,3 +236,66 @@ test("queue playcall on/off: per-server, needs the bot's call, shows in status, 
   assert.match(await t.run("queue playcall on"), /PlayCall is now \*\*on\*\*/);
   assert.match(await t.run("queue playcall maybe"), /Usage:.*playcall on\|off/);
 });
+
+test("queue persistent: bot owners only (not even SongMaster), needs the bot's call, shows in status", async () => {
+  const t = setup();
+  await t.run("play lofi");
+
+  assert.match(await t.run("queue persistent on"), /Only a bot owner can change Persistent/);
+  assert.match(await t.run("queue persistent on", { user: songMaster }), /Only a bot owner can change Persistent/);
+  assert.equal(t.store.loadState("g1").persistent, false);
+
+  assert.match(await t.run("queue persistent on", { user: OWNER, vc: "vc2" }), /need to be in my voice channel/);
+  assert.match(await t.run("queue persistent on", { user: OWNER }), /Persistent is now \*\*on\*\*\.\nLoop: .*Persistent: \*\*on\*\*/);
+  assert.equal(t.store.loadState("g1").persistent, true);
+  assert.match(await t.run("status", { vc: null }), /Persistent: \*\*on\*\*/);
+
+  assert.match(await t.run("queue persistent off", { user: songMaster }), /Only a bot owner/); // can't turn it off either
+  assert.match(await t.run("queue persistent off", { user: OWNER }), /Persistent is now \*\*off\*\*/);
+  assert.match(await t.run("queue persistent maybe", { user: OWNER }), /Usage:.*persistent on\|off/);
+});
+
+test("short forms: every subcommand and queue setting has one, and the long names still work", async () => {
+  const t = setup({ durations: { "Lofi Mix.wav": 60_000 } });
+
+  assert.match(await t.run("j"), /Joined <#vc1>/);
+  assert.match(await t.run("p lofi"), /Playing \*\*Lofi Mix\.wav\*\*/);
+  assert.match(await t.run("p rain sounds"), /Added \*\*Rain Sounds\.mp3\*\* to the queue/);
+  assert.match(await t.run("q"), /\*\*Queue\*\* \(2 tracks/);
+  assert.match(await t.run("st", { vc: null }), /Voice: connected/);
+  assert.match(await t.run("pa"), /Paused/);
+  assert.match(await t.run("pa"), /Resumed/);
+
+  assert.match(await t.run("q lp on"), /Loop is now \*\*on\*\*/);
+  assert.match(await t.run("q sh on"), /Shuffle is now \*\*on\*\*/);
+  assert.match(await t.run("q pc off"), /PlayCall is now \*\*off\*\*/);
+  assert.match(await t.run("q ps on", { user: OWNER }), /Persistent is now \*\*on\*\*/);
+  assert.match(await t.run("queue loop off"), /Loop is now \*\*off\*\*/); // long forms alongside short ones
+  assert.match(await t.run("QUEUE LP ON"), /Loop is now \*\*on\*\*/); // case-insensitive
+
+  assert.match(await t.run("sk"), /Skipped/);
+  assert.match(await t.run("rm rain"), /Removed \*\*Rain Sounds\.mp3\*\*/);
+  assert.match(await t.run("lv"), /Left the call/);
+});
+
+test("short forms of the privileged commands: fp / f p force play, rma removeall", async () => {
+  const t = setup();
+  await t.run("p lofi");
+  await t.run("p rain sounds");
+
+  assert.match(await t.run("fp rainbow"), /needs the SongMaster tag/);
+  assert.match(await t.run("fp rainbow road", { user: songMaster }), /Playing \*\*Rainbow Road\.mp3\*\* next/);
+  assert.match(await t.run("f p lofi", { user: songMaster }), /Playing \*\*Lofi Mix\.wav\*\* next/);
+  assert.match(await t.run("force p rain sounds", { user: songMaster }), /Playing \*\*Rain Sounds\.mp3\*\* next/);
+  assert.match(await t.run("fp", { user: songMaster }), /Usage/);
+  assert.match(await t.run("f", { user: songMaster }), /Usage/);
+
+  assert.match(await t.run("rma"), /needs the SongMaster tag/);
+  assert.match(await t.run("rma", { user: songMaster }), /Cleared the queue/);
+});
+
+test("list has short forms too, and unknown words still show usage", async () => {
+  const t = setup();
+  assert.match(await t.run("dance"), /Usage/);
+  assert.match(await t.run("pc"), /Usage/); // pc is a queue setting, not a top-level command
+});

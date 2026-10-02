@@ -297,19 +297,24 @@ const AVC_INFO = [
   ".avc queue loop on|off",
   ".avc queue shuffle on|off      (shuffle also means loop)",
   ".avc queue playcall on|off     \"Now playing\" messages on/off",
+  ".avc queue persistent on|off   never leave the call by itself (bot owners only)",
   ".avc remove FILE NAME",
   ".avc removeall                 SongMaster: clear the queue",
   ".avc status",
   ".avc leave                     the queue is kept",
   "```",
   "",
+  "**Short forms**: `j` join, `p` play, `fp` force play, `pa` pause, `sk` skip, " +
+    "`q` queue, `l` list, `rm` remove, `rma` removeall, `st` status, `lv` leave; " +
+    "under queue: `lp` loop, `sh` shuffle, `pc` playcall, `ps` persistent " +
+    "(e.g. `.avc q lp on`).",
   "**File names** ignore case and extension, and a partial name works if it " +
     "matches exactly one file.",
   "**Who**: anyone can view `queue`/`status`; everything else needs you to be in " +
     "the bot's voice channel (`play`/`join` make it join yours). `force play` and " +
     "`removeall` need the **SongMaster** tag.",
   "**Queue**: finished tracks are removed, unless loop or shuffle is on (then " +
-    "they go to the back). The queue, loop, shuffle and PlayCall (the \"Now playing\" messages) are saved per server, so " +
+    "they go to the back). The queue, loop, shuffle, PlayCall (the \"Now playing\" messages) are saved per server, so " +
     "`leave` then `join` resumes where you left off (from the start of the " +
     "first track). The bot leaves by itself after 5 min idle or 1 min alone.",
 ].join("\n");
