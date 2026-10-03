@@ -31,7 +31,7 @@ test("the queue is pinned in the cache so queued tracks are never evicted", asyn
   assert.deepEqual(t.cache.pinned, ["key-A", "key-B"]);
 });
 
-test("loop: a finished track goes to the back and the queue keeps cycling", async () => {
+test("loop: the list stays in the order added; only the current-song pointer moves, and it wraps", async () => {
   const t = makeSession();
   await t.session.join("vc1");
   t.session.add(track("A"));
@@ -39,22 +39,36 @@ test("loop: a finished track goes to the back and the queue keeps cycling", asyn
   t.session.setLoop(true);
 
   t.output.finishTrack();
-  assert.deepEqual(t.names(), ["B", "A"]);
+  assert.deepEqual(t.names(), ["A", "B"]); // never reordered
+  assert.equal(t.store.loadState("g1").cursor, 1);
   t.output.finishTrack();
   assert.deepEqual(t.names(), ["A", "B"]);
+  assert.equal(t.store.loadState("g1").cursor, 0);
   assert.deepEqual(t.cache.opened, ["A", "B", "A"]);
 });
 
-test("shuffle on (loop setting off) still loops, and picks the next track at random", async () => {
-  const t = makeSession({ random: () => 0.99 }); // always the last of the rest
+test("shuffle (loop setting off) still loops: the pointer jumps to a random other track and the list is NEVER reordered", async () => {
+  const t = makeSession({ random: () => 0.99 }); // always the last candidate
   await t.session.join("vc1");
   for (const n of ["A", "B", "C", "D"]) t.session.add(track(n));
   t.session.setShuffle(true);
 
   t.output.finishTrack();
-  assert.deepEqual(t.names(), ["D", "B", "C", "A"]);
-  assert.equal(t.store.loadState("g1").loop, false);
+  assert.equal(t.store.loadState("g1").cursor, 3); // D
   assert.equal(t.cache.opened.at(-1), "D");
+  t.output.finishTrack();
+  assert.equal(t.store.loadState("g1").cursor, 2); // random: last candidate among A, B, C
+  assert.deepEqual(t.names(), ["A", "B", "C", "D"]); // the list never changed
+  assert.equal(t.store.loadState("g1").loop, false);
+});
+
+test("without loop, a finished track is removed from the list (the one rule that does change it)", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  for (const n of ["A", "B", "C"]) t.session.add(track(n));
+  t.output.finishTrack();
+  assert.deepEqual(t.names(), ["B", "C"]);
+  assert.equal(t.store.loadState("g1").cursor, 0);
 });
 
 test("leaving and rejoining resumes the saved queue from the start of its first track", async () => {
@@ -84,7 +98,7 @@ test("adding while not in a call only saves; joining then starts it", async () =
   assert.deepEqual(t.cache.opened, ["A"]);
 });
 
-test("force plays the new track next and cuts the current one short — dropped without loop, to the back with loop", async () => {
+test("force plays the new track next and cuts the current one short — current dropped without loop, kept in place with loop", async () => {
   const t = makeSession();
   await t.session.join("vc1");
   t.session.add(track("A"));
@@ -94,17 +108,19 @@ test("force plays the new track next and cuts the current one short — dropped 
   assert.equal(t.cache.opened.at(-1), "X");
 
   t.session.setLoop(true);
-  t.session.force(track("Y"));
-  assert.deepEqual(t.names(), ["Y", "B", "X"]);
+  t.session.force(track("Y")); // inserted right after X (the current one), which stays in the list
+  assert.deepEqual(t.names(), ["X", "Y", "B"]);
+  assert.equal(t.store.loadState("g1").cursor, 1);
+  assert.equal(t.cache.opened.at(-1), "Y");
 });
 
-test("force during shuffle still plays the forced track, not a random one", async () => {
+test("force during shuffle still plays the forced track, not a random one, and doesn't reorder the list", async () => {
   const t = makeSession({ random: () => 0.99 });
   await t.session.join("vc1");
   for (const n of ["A", "B", "C"]) t.session.add(track(n));
   t.session.setShuffle(true);
   t.session.force(track("X"));
-  assert.equal(t.names()[0], "X");
+  assert.deepEqual(t.names(), ["A", "X", "B", "C"]);
   assert.equal(t.cache.opened.at(-1), "X");
 });
 
@@ -127,6 +143,67 @@ test("skip retires the current track by the same rules and starts the next", asy
   assert.deepEqual(t.names(), ["B"]);
   assert.equal(t.cache.opened.at(-1), "B");
   assert.equal(makeSession().session.skip(), null);
+});
+
+test("skipTo jumps to a position: with loop it only moves the pointer, without loop the tracks before it are dropped", async () => {
+  const looping = makeSession();
+  await looping.session.join("vc1");
+  for (const n of ["A", "B", "C", "D", "E"]) looping.session.add(track(n));
+  looping.session.setLoop(true);
+
+  assert.deepEqual(looping.session.skipTo(4), { entry: looping.store.loadState("g1").queue[3], dropped: 0 });
+  assert.deepEqual(looping.names(), ["A", "B", "C", "D", "E"]);
+  assert.equal(looping.store.loadState("g1").cursor, 3);
+  assert.equal(looping.cache.opened.at(-1), "D");
+  looping.session.skipTo(1); // going back works too while looping
+  assert.equal(looping.cache.opened.at(-1), "A");
+
+  const plain = makeSession();
+  await plain.session.join("vc1");
+  for (const n of ["A", "B", "C", "D", "E"]) plain.session.add(track(n));
+  const result = plain.session.skipTo(4);
+  assert.equal(result.entry.name, "D");
+  assert.equal(result.dropped, 3);
+  assert.deepEqual(plain.names(), ["D", "E"]);
+  assert.equal(plain.cache.opened.at(-1), "D");
+});
+
+test("skipTo refuses a position that isn't in the queue and changes nothing", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  t.session.add(track("A"));
+  t.session.add(track("B"));
+  for (const bad of [0, 3, -1, 1.5, NaN]) assert.equal(t.session.skipTo(bad), null, String(bad));
+  assert.deepEqual(t.names(), ["A", "B"]);
+  assert.equal(t.session.isPlaying(), true);
+  assert.deepEqual(t.cache.opened, ["A"]); // nothing restarted
+});
+
+test("the current-song pointer survives leaving and a brand-new session: rejoining resumes at that track", async () => {
+  const store = memoryStore();
+  const first = makeSession({ store });
+  await first.session.join("vc1");
+  for (const n of ["A", "B", "C"]) first.session.add(track(n));
+  first.session.setLoop(true);
+  first.output.finishTrack(); // now on B
+  first.output.finishTrack(); // now on C
+  await first.session.leave();
+
+  const second = makeSession({ store, cache: fakeCache() });
+  assert.deepEqual(await second.session.join("vc9"), { resumed: true });
+  assert.deepEqual(second.cache.opened, ["C"]);
+  assert.deepEqual(second.names(), ["A", "B", "C"]);
+});
+
+test("the queue ending leaves nothing current; a track added afterwards plays right away", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  t.session.add(track("A"));
+  t.output.finishTrack();
+  assert.equal(t.session.isPlaying(), false);
+
+  assert.deepEqual(t.session.add(track("B")), { position: 1, startsNow: true });
+  assert.deepEqual(t.cache.opened, ["A", "B"]);
 });
 
 test("pause toggles, and reports nothing when nothing is playing", async () => {
@@ -348,4 +425,22 @@ test("a persistent session still leaves when told to, and keeps its setting", as
   await t.session.leave();
   assert.equal(t.session.isConnected(), false);
   assert.equal(t.store.loadState("g1").persistent, true);
+});
+
+test("remove keeps the pointer on the same track: removing an earlier one shifts it, removing the current one moves on in place", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  for (const n of ["A", "B", "C", "D"]) t.session.add(track(n));
+  t.session.setLoop(true);
+  t.session.skipTo(3); // current: C
+
+  t.session.remove(0); // A, before the current one
+  assert.deepEqual(t.names(), ["B", "C", "D"]);
+  assert.equal(t.store.loadState("g1").cursor, 1); // still C
+  assert.equal(t.session.isPlaying(), true);
+  assert.equal(t.cache.opened.at(-1), "C"); // C was not restarted
+
+  t.session.remove(1); // the current track itself
+  assert.deepEqual(t.names(), ["B", "D"]);
+  assert.equal(t.cache.opened.at(-1), "D"); // D slid into its place and plays
 });

@@ -59,9 +59,9 @@ async function runCommandLine(line, { env, commands, recordEvent, budget }) {
       await env.post(String(text));
     },
     // The user sees the pages; the model gets `detail` (the full list, untruncated) if the command supplies one.
-    replyPages: async (pages, { detail } = {}) => {
+    replyPages: async (pages, { detail, ...options } = {}) => {
       replies.push(detail ?? `[showed a paged list of ${pages.length} page${pages.length === 1 ? "" : "s"}]`);
-      await env.postPages(pages);
+      await env.postPages(pages, options);
     },
     replyWithFile: async (buffer, filename) => {
       replies.push(`[sent the file ${filename}]`);

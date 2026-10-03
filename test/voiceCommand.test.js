@@ -36,7 +36,16 @@ function setup({ durations = {} } = {}) {
     await execute({ userId: user, channelId: "text1", guildId, voiceChannelId: vc, reply: async (t) => replies.push(t) }, words.split(" ").filter(Boolean));
     return replies.join("\n");
   };
-  return { ...world, run, textChannels };
+  // Like run, but for commands that reply with pages: returns { pages, options, plain }.
+  const runPages = async (words, { user = regular, vc = "vc1", guildId = "g1" } = {}) => {
+    const out = { pages: null, options: null, plain: [] };
+    await execute(
+      { userId: user, channelId: "text1", guildId, voiceChannelId: vc, reply: async (t) => out.plain.push(t), replyPages: async (pages, options) => Object.assign(out, { pages, options }) },
+      words.split(" ").filter(Boolean)
+    );
+    return out;
+  };
+  return { ...world, run, runPages, textChannels };
 }
 
 test("tags: SongMaster exists, `.a tag list` shows every tag, `.a tag <TAG> list` shows holders", async () => {
@@ -116,22 +125,109 @@ test("viewing the queue and status is open to anyone, even outside the call", as
   await t.run("play lofi");
   await t.run("play rain sounds");
 
-  const queue = await t.run("queue", { vc: null });
-  assert.match(queue, /\*\*Queue\*\* \(2 tracks, 1:02:05\)/);
-  assert.match(queue, /▶ 1\. Lofi Mix\.wav — 1:00:00/);
-  assert.match(queue, /2\. Rain Sounds\.mp3 — 2:05/);
+  const queue = await t.runPages("queue", { vc: null });
+  const [page] = queue.pages;
+  assert.equal(page.title, "Queue (2 tracks, 1:02:05)");
+  assert.match(page.description, /^▶ 1\. Lofi Mix\.wav — 1:00:00\nᛝ 2\. Rain Sounds\.mp3 — 2:05\n-{36}\n\*\*All queue:\*\*\n▶ 1\. Lofi Mix\.wav/);
+  assert.match(page.description, /Loop: \*\*off\*\* · Shuffle: \*\*off\*\* · PlayCall: \*\*on\*\* · Persistent: \*\*off\*\*$/);
+  assert.equal(queue.options.startPage, 0);
+  assert.match(queue.options.detail, /^2 tracks in the queue.*\n1\. Lofi Mix\.wav {2}<- current\n2\. Rain Sounds\.mp3$/s); // .aii gets the full queue
 
   const status = await t.run("status", { vc: null });
   assert.match(status, /Voice: connected to <#vc1>/);
-  assert.match(status, /Now playing: \*\*Lofi Mix\.wav\*\*/);
+  assert.match(status, /Now playing: \*\*Lofi Mix\.wav\*\* \(#1\)/);
   assert.match(status, /Queue: 2 tracks/);
   assert.match(status, /Loop: \*\*off\*\* · Shuffle: \*\*off\*\*/);
+});
+
+test("the queue view opens on the page that holds the current track", async () => {
+  const t = setup();
+  await t.run("join");
+  const many = Array.from({ length: 14 }, (_, i) => `"${i % 2 ? "Rain Sounds.mp3" : "Lofi Mix.wav"}"`).join(" ");
+  await t.run(`play ${many}`);
+  await t.run("q lp on"); // looping: skipping moves the pointer without dropping tracks
+
+  assert.equal((await t.runPages("queue")).options.startPage, 0);
+  await t.run("skip 9"); // position 9 is on the second page of six
+  const view = await t.runPages("q");
+  assert.equal(view.options.startPage, 1);
+  assert.equal(view.pages.length, 3); // 14 tracks, 6 per page
+  assert.match(view.pages[1].description, /▶ 9\. /);
+  assert.match(view.pages[1].description, /^ᛝ 8\. /); // previous track, then the current one
 });
 
 test("status when idle and empty", async () => {
   const t = setup();
   assert.match(await t.run("status", { vc: null }), /Voice: not in a call\nNothing is queued\./);
-  assert.match(await t.run("queue", { vc: null }), /The queue is empty/);
+  const empty = await t.runPages("queue", { vc: null });
+  assert.equal(empty.pages[0].title, "Queue (empty)");
+  assert.match(empty.pages[0].description, /^Nothing is queued\./);
+  assert.match(await t.run("queue list", { vc: null }), /The queue is empty/);
+});
+
+test("without replyPages (e.g. a slash context) the queue view falls back to text", async () => {
+  const t = setup();
+  await t.run("play lofi");
+  const text = await t.run("queue", { vc: null });
+  assert.match(text, /^\*\*Queue \(1 track, length unknown yet\)\*\*\n▶ 1\. Lofi Mix\.wav — length unknown yet/);
+});
+
+test("queue list and ql: the static order with ▶ on the current track only", async () => {
+  const t = setup({ durations: { "Lofi Mix.wav": 60_000, "Rain Sounds.mp3": 120_000 } });
+  await t.run("play lofi");
+  await t.run("play rain sounds");
+  await t.run("play rainbow road");
+
+  for (const words of ["queue list", "ql", "q l", "q ls", "QL"]) {
+    const text = await t.run(words, { vc: null });
+    assert.match(text, /^\*\*Queue\*\* \(3 tracks, 3:00\+\)/, words);
+    assert.match(text, /▶ 1\. Lofi Mix\.wav — 1:00\n {2}2\. Rain Sounds\.mp3 — 2:00\n {2}3\. Rainbow Road\.mp3 — length unknown yet/, words);
+    assert.match(text, /Loop: \*\*off\*\*/, words);
+  }
+});
+
+test("skip with no number moves to the next track; skip N jumps to that position", async () => {
+  const t = setup();
+  await t.run("play lofi");
+  await t.run("play rain sounds");
+  await t.run("play rainbow road");
+  await t.run("play lofi");
+
+  assert.match(await t.run("skip"), /Skipped \*\*Lofi Mix\.wav\*\*\./);
+  assert.deepEqual(t.names(), ["Rain Sounds.mp3", "Rainbow Road.mp3", "Lofi Mix.wav"]);
+
+  // Position 3 of the current queue is the last Lofi Mix; the 2 before it count as played and are dropped.
+  assert.match(await t.run("sk 3"), /Skipped to \*\*Lofi Mix\.wav\*\* \(#3\)\. \(the 2 before it were dropped from the queue\)/);
+  assert.deepEqual(t.names(), ["Lofi Mix.wav"]);
+  assert.equal(t.cache.opened.at(-1), "Lofi Mix.wav");
+});
+
+test("skip N with loop on only moves the pointer; nothing is dropped and no message about dropping", async () => {
+  const t = setup();
+  for (const f of ["lofi", "rain sounds", "rainbow road"]) await t.run(`play ${f}`);
+  await t.run("queue loop on");
+
+  const reply = await t.run("sk 3");
+  assert.equal(reply, "Skipped to **Rainbow Road.mp3** (#3).");
+  assert.deepEqual(t.names(), ["Lofi Mix.wav", "Rain Sounds.mp3", "Rainbow Road.mp3"]);
+  assert.equal(t.cache.opened.at(-1), "Rainbow Road.mp3");
+  assert.match(await t.run("skip 1"), /Skipped to \*\*Lofi Mix\.wav\*\* \(#1\)\.$/); // back to the first
+});
+
+test("skip N: bad numbers are explained, and it needs the bot's call like any control", async () => {
+  const t = setup();
+  assert.match(await t.run("skip 2"), /not in a voice call/);
+  await t.run("play lofi");
+  await t.run("play rain sounds");
+
+  assert.match(await t.run("skip 5"), /There's no track 5 — the queue has 2/);
+  assert.match(await t.run("skip 0"), /Usage/);
+  assert.match(await t.run("skip abc"), /Usage/);
+  assert.match(await t.run("skip -1"), /Usage/);
+  assert.match(await t.run("skip 1.5"), /Usage/);
+  assert.match(await t.run("skip 2", { vc: "vc2" }), /need to be in my voice channel/);
+  assert.deepEqual(t.names(), ["Lofi Mix.wav", "Rain Sounds.mp3"]); // none of those changed anything
+  assert.equal(t.cache.opened.length, 1);
 });
 
 test("loop and shuffle: shuffle on shows loop as on-through-shuffle, and turning loop off while shuffling says so", async () => {
@@ -261,7 +357,7 @@ test("short forms: every subcommand and queue setting has one, and the long name
   assert.match(await t.run("j"), /Joined <#vc1>/);
   assert.match(await t.run("p lofi"), /Playing \*\*Lofi Mix\.wav\*\*/);
   assert.match(await t.run("p rain sounds"), /Added \*\*Rain Sounds\.mp3\*\* to the queue/);
-  assert.match(await t.run("q"), /\*\*Queue\*\* \(2 tracks/);
+  assert.match((await t.runPages("q")).pages[0].title, /^Queue \(2 tracks/);
   assert.match(await t.run("st", { vc: null }), /Voice: connected/);
   assert.match(await t.run("pa"), /Paused/);
   assert.match(await t.run("pa"), /Resumed/);

@@ -198,3 +198,28 @@ test(".avc list rejects other sorts, reports a Drive failure, and falls back to 
   await broken({ userId: "u", channelId: "c", guildId: "g", reply: async (t2) => replies.push(t2) }, ["list"]);
   assert.match(replies[0], /Couldn't read the file list: Drive folder not found/);
 });
+
+test("a list can open on any page; the buttons start in the right state and the next press continues from there", async () => {
+  const message = fakeMessage();
+  await sendPaginated(message, buildListPages(manyFiles(40), "a"), { startPage: 1 });
+
+  const [payload] = message.replies;
+  assert.equal(payload.embeds[0].data.footer.text, "Page 2 / 3 · 40 files");
+  assert.deepEqual(buttonState(payload.components[0]).map((b) => b.disabled), [false, false]); // a middle page: both directions
+
+  const next = await press(message, "pages:next", message.author.id);
+  assert.match(next.updates[0].embeds[0].data.footer.text, /Page 3 \/ 3/);
+  const back = await press(message, "pages:previous", message.author.id);
+  assert.match(back.updates[0].embeds[0].data.footer.text, /Page 2 \/ 3/);
+
+  const last = fakeMessage();
+  await sendPaginated(last, buildListPages(manyFiles(40), "a"), { startPage: 2 });
+  assert.deepEqual(buttonState(last.replies[0].components[0]).map((b) => b.disabled), [false, true]); // opened on the last page
+});
+
+test("every list embed has Alani's orange bar: RGB 218, 133, 82", async () => {
+  const message = fakeMessage();
+  await sendPaginated(message, buildListPages(manyFiles(3), "a"));
+  assert.equal(message.replies[0].embeds[0].data.color, (218 << 16) | (133 << 8) | 82);
+  assert.equal(message.replies[0].embeds[0].data.color, 0xda8552);
+});

@@ -1,4 +1,4 @@
-// One server's voice player: connects/disconnects, plays queue[0], moves on when
+// One server's voice player: connects/disconnects, plays the current track, moves on when
 // a track ends, and applies the queue rules (queue.js). The queue itself lives
 // in the database (stateStore.js) and is loaded/saved around every change, never
 // held here, so a backup restore can't leave a stale copy in memory.
@@ -13,7 +13,7 @@
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
 
-import { advance, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent } from "./queue.js";
+import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent } from "./queue.js";
 
 export function createGuildSession({ guildId, store, getCache, output, announce, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let connected = false;
@@ -66,9 +66,9 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     output.stopPlayback();
   }
 
-  // Starts queue[0] (or goes idle if the queue is empty).
+  // Starts the current track (or goes idle if the queue has ended).
   function startCurrent() {
-    const [entry] = load().queue;
+    const entry = currentEntry(load());
     clearTimer(idleTimer);
     if (!entry || !connected) {
       if (connected) armIdleTimer();
@@ -106,7 +106,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     console.error(`[voice-player] couldn't play "${entry.name}" in ${guildId}:`, err);
     announce(`Couldn't play **${entry.name}**: ${err.message} — skipping it.`);
     const state = load();
-    save(state.queue[0]?.key === entry.key ? removeAt(state, 0) : state);
+    save(currentEntry(state)?.key === entry.key ? removeAt(state, state.cursor) : state);
     startCurrent();
   }
 
@@ -118,15 +118,16 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     humanCount: () => output.humanCount(),
     state: () => load(),
 
-    // Joins (or moves to) a voice channel and resumes the queue from its first
-    // track. Throws if the connection can't be made.
+    // Joins (or moves to) a voice channel and resumes the queue at its current
+    // track, from the start of that track. Throws if the connection can't be made.
     async join(channelId) {
       await output.join(channelId);
       connected = true;
       clearTimers();
-      if (load().queue.length > 0) startCurrent();
+      const resumed = currentEntry(load()) !== null;
+      if (resumed) startCurrent();
       else armIdleTimer();
-      return { resumed: load().queue.length > 0 };
+      return { resumed };
     },
 
     async leave() {
@@ -140,7 +141,8 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     add(entry) {
       const state = save(enqueue(load(), entry));
       if (connected && !playing) startCurrent();
-      return { position: state.queue.length, startsNow: connected && state.queue.length === 1 };
+      // It starts now when it became the current track (the queue was empty or had ended).
+      return { position: state.queue.length, startsNow: connected && state.cursor === state.queue.length - 1 };
     },
 
     // Plays this track next and cuts the current one short. When nothing is
@@ -156,14 +158,28 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
       if (connected) startCurrent();
     },
 
-    // Returns the skipped entry, or null if the queue was empty.
+    // Returns the skipped entry, or null if there was nothing to skip.
     skip() {
-      const [current] = load().queue;
+      const current = currentEntry(load());
       if (!current) return null;
       stopPlayback();
       save(advance(load(), random));
       startCurrent();
       return current;
+    },
+
+    // Jumps to the track at `position` (1-based, as numbered in the queue list).
+    // Returns { entry, dropped } — dropped is how many tracks were removed
+    // because looping is off (they count as played) — or null if there's no such
+    // position. Jumping to the current track's own position restarts it.
+    skipTo(position) {
+      const state = load();
+      const index = position - 1;
+      if (!Number.isInteger(position) || index < 0 || index >= state.queue.length) return null;
+      stopPlayback();
+      save(jumpTo(state, index));
+      startCurrent();
+      return { entry: state.queue[index], dropped: state.loop || state.shuffle ? 0 : index };
     },
 
     // Toggles; returns "paused" | "resumed" | null (nothing playing).
@@ -176,7 +192,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
 
     // Removes the track at `index` outright; removing the current one moves on.
     remove(index) {
-      const removingCurrent = index === 0 && playing;
+      const removingCurrent = index === load().cursor && playing;
       if (removingCurrent) stopPlayback();
       save(removeAt(load(), index));
       if (removingCurrent) startCurrent();

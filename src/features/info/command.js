@@ -292,9 +292,10 @@ const AVC_INFO = [
   ".avc play \"A\" \"B\"             add several at once (each full name in quotes)",
   ".avc force play FILE NAME      SongMaster: play next, skip the current",
   ".avc pause                     pause (again to resume)",
-  ".avc skip",
+  ".avc skip [NUMBER]              next track, or jump to that queue position",
   ".avc list [a|d|m]              files you can play (A-Z / newest first / grouped by media), paged",
-  ".avc queue                     the queue with lengths",
+  ".avc queue                     current track + neighbours, all tracks in pages",
+  ".avc queue list                the whole queue as one list (ql)",
   ".avc queue loop on|off",
   ".avc queue shuffle on|off      (shuffle also means loop)",
   ".avc queue playcall on|off     \"Now playing\" messages on/off",
@@ -309,7 +310,7 @@ const AVC_INFO = [
     "`.avc list m` (columns, A-Z; single-song media and names without a media " +
     "part go under Others).",
   "**Short forms**: `j` join, `p` play, `fp` force play, `pa` pause, `sk` skip, " +
-    "`q` queue, `l` list, `rm` remove, `rma` removeall, `st` status, `lv` leave; " +
+    "`q` queue, `ql` queue list, `l` list, `rm` remove, `rma` removeall, `st` status, `lv` leave; " +
     "under queue: `lp` loop, `sh` shuffle, `pc` playcall, `ps` persistent " +
     "(e.g. `.avc q lp on`).",
   "**File names** ignore case and extension, and a partial name works if it " +
@@ -317,8 +318,9 @@ const AVC_INFO = [
   "**Who**: anyone can view `queue`/`status`; everything else needs you to be in " +
     "the bot's voice channel (`play`/`join` make it join yours). `force play` and " +
     "`removeall` need the **SongMaster** tag.",
-  "**Queue**: finished tracks are removed, unless loop or shuffle is on (then " +
-    "they go to the back). The queue, loop, shuffle, PlayCall (the \"Now playing\" messages) are saved per server, so " +
+  "**Queue**: a static list in the order added. Finished tracks are removed " +
+    "unless loop or shuffle is on (then only the pointer moves — the list is " +
+    "never reordered; shuffle jumps to a random track). The queue, loop, shuffle, PlayCall (the \"Now playing\" messages) are saved per server, so " +
     "`leave` then `join` resumes where you left off (from the start of the " +
     "first track). The bot leaves by itself after 5 min idle or 1 min alone.",
 ].join("\n");

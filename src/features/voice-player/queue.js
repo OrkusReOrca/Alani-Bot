@@ -1,63 +1,84 @@
 // The queue rules, as pure functions over a plain state object:
 //
-//   { queue: [entry, ...], loop: boolean, shuffle: boolean, playCall: boolean, persistent: boolean }
+//   { queue: [entry, ...], cursor: number, loop, shuffle, playCall, persistent }
+//
+// The queue is a STATIC list, in the order tracks were added. `cursor` is the
+// index of the current track — the one playing, or the one that plays next.
+// Moving on while looping (or shuffling, which implies looping) only moves the
+// cursor; the list itself is never reordered or rewritten. That keeps the saved
+// state (and its change log, which feeds the cloud backup) tiny: a track change
+// is one small number.
+//
+// Without looping, a track that has been played is dropped from the list as
+// the queue moves on, along with anything before it (it was played or skipped),
+// so the cursor is 0 whenever it moves on. cursor === queue.length means "the
+// queue has ended"; a track added then becomes the current one.
 //
 // playCall ("Now playing" messages) and persistent (never auto-leave the call)
 // aren't about the queue itself: they're per-server switches kept here because
 // they're saved and shown alongside loop and shuffle.
-//
-// queue[0] is ALWAYS the current track — the one playing, or the one that
-// plays next. A track that finishes is removed, unless looping (or shuffling,
-// which implies looping): then it goes to the back of the queue instead. With
-// shuffle on, the next track is picked at random from the rest.
 //
 // Every function returns a NEW state and never mutates its input.
 
 export const isLooping = (state) => state.loop || state.shuffle;
 
 export function emptyState() {
-  return { queue: [], loop: false, shuffle: false, playCall: true, persistent: false };
+  return { queue: [], cursor: 0, loop: false, shuffle: false, playCall: true, persistent: false };
 }
+
+// The track that is playing / plays next, or null when the queue has ended.
+export const currentEntry = (state) => state.queue[state.cursor] ?? null;
 
 export function enqueue(state, entry) {
   return { ...state, queue: [...state.queue, entry] };
 }
 
-// Puts `entry` right after the current track.
+// Puts `entry` right after the current track (or at the end if there is none).
 export function insertNext(state, entry) {
-  const [current, ...rest] = state.queue;
-  return { ...state, queue: current ? [current, entry, ...rest] : [entry] };
+  const at = Math.min(state.cursor + 1, state.queue.length);
+  return { ...state, queue: [...state.queue.slice(0, at), entry, ...state.queue.slice(at)] };
 }
 
-// Puts `entry` at the very front (it becomes the current/next track).
+// Makes `entry` the current track (it takes the cursor's place).
 export function enqueueFront(state, entry) {
-  return { ...state, queue: [entry, ...state.queue] };
+  const at = Math.min(state.cursor, state.queue.length);
+  return { ...state, queue: [...state.queue.slice(0, at), entry, ...state.queue.slice(at)] };
 }
 
-// The current track is over (finished or skipped): retire it and move on.
+// Moves the cursor to `index` (0-based, must be inside the queue). Looping:
+// just the cursor. Otherwise everything before `index` is dropped as played.
+export function jumpTo(state, index) {
+  return isLooping(state) ? { ...state, cursor: index } : { ...state, queue: state.queue.slice(index), cursor: 0 };
+}
+
+// The current track is over (finished or skipped): move on.
 // `random` is () => number in [0, 1), injectable for tests. inOrder: take the
-// next track in queue order even when shuffling (used when a specific track
+// next track in list order even when shuffling (used when a specific track
 // was just placed next, i.e. force play).
 export function advance(state, random = Math.random, { inOrder = false } = {}) {
-  if (state.queue.length === 0) return state;
-  const [finished, ...rest] = state.queue;
-  if (!isLooping(state)) return { ...state, queue: rest };
+  if (!currentEntry(state)) return state;
 
-  if (state.shuffle && !inOrder && rest.length > 1) {
-    const pick = Math.floor(random() * rest.length);
-    const [chosen] = rest.splice(pick, 1);
-    return { ...state, queue: [chosen, ...rest, finished] };
+  if (!isLooping(state)) return { ...state, queue: state.queue.slice(state.cursor + 1), cursor: 0 };
+
+  if (state.shuffle && !inOrder && state.queue.length > 1) {
+    const others = state.queue.map((_, i) => i).filter((i) => i !== state.cursor);
+    return { ...state, cursor: others[Math.floor(random() * others.length)] };
   }
-  return { ...state, queue: [...rest, finished] };
+  return { ...state, cursor: (state.cursor + 1) % state.queue.length };
 }
 
-// Removes the track at `index` outright (no looping — it's gone).
+// Removes the track at `index` outright. The cursor follows: tracks after the
+// removed one slide into its place, and a cursor left past the end wraps to the
+// start when looping (otherwise the queue has ended).
 export function removeAt(state, index) {
-  return { ...state, queue: state.queue.filter((_, i) => i !== index) };
+  const queue = state.queue.filter((_, i) => i !== index);
+  let cursor = index < state.cursor ? state.cursor - 1 : state.cursor;
+  if (cursor >= queue.length) cursor = queue.length > 0 && isLooping(state) ? 0 : queue.length;
+  return { ...state, queue, cursor };
 }
 
 export function clearQueue(state) {
-  return { ...state, queue: [] };
+  return { ...state, queue: [], cursor: 0 };
 }
 
 export const setLoop = (state, on) => ({ ...state, loop: on });

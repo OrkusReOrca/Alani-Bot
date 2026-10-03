@@ -138,7 +138,7 @@ client.on(Events.MessageCreate, async (message) => {
   const ctx = {
     reply: (text) => message.reply(text),
     replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
-    replyPages: (pages) => sendPaginated(message, pages), // multi-page embed with ⬅️ ➡️ buttons
+    replyPages: (pages, options) => sendPaginated(message, pages, options), // multi-page embed with ⬅️ ➡️ buttons
     userId: message.author.id,
     channelId: message.channelId,
     guildId: message.guildId, // null in DMs

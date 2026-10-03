@@ -58,7 +58,7 @@ function envFor(message) {
     post: async (text) => {
       for (const chunk of chunkMessage(text)) await message.reply({ content: chunk, allowedMentions: ALLOWED_MENTIONS });
     },
-    postPages: (pages) => sendPaginated(message, pages),
+    postPages: (pages, options) => sendPaginated(message, pages, options),
     postFile: (buffer, name) => message.reply({ files: [{ attachment: buffer, name }], allowedMentions: ALLOWED_MENTIONS }),
     confirm: async (prompt) => {
       await message.reply({ content: prompt, allowedMentions: ALLOWED_MENTIONS });

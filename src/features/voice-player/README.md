@@ -10,9 +10,10 @@ only — a bot can't share video, so a video file plays just its sound.
 .avc play "NAME A" "NAME B"        add several at once (each full name in quotes)
 .avc force play FILE NAME          SongMaster: play it NEXT and skip the current track
 .avc pause                         pause (run again to resume)
-.avc skip
+.avc skip [NUMBER]                 next track, or jump to that position in the queue
 .avc list [a|d|m]                  every playable file, in pages (a = A–Z, d = newest first, m = by media)
-.avc queue                         the queue, with each track's length
+.avc queue                         current track + neighbours, and every track in pages
+.avc queue list                    the whole queue as one plain list (ql)
 .avc queue loop on|off
 .avc queue shuffle on|off          shuffle on also means looping
 .avc queue playcall on|off         "Now playing" messages on/off
@@ -36,7 +37,7 @@ Every subcommand has a short form (the long names always work):
 | `skip` | `sk` | | `queue shuffle` | `q sh` |
 | `queue` | `q` | | `queue playcall` | `q pc` |
 | `list` | `l` or `ls` | | `queue persistent` | `q ps` |
-| `remove` | `rm` | | | |
+| `remove` | `rm` | | `queue list` | `ql` or `q l` |
 
 e.g. `.avc p the brave`, `.avc q lp on`, `.avc sk`, `.avc l d`.
 
@@ -90,16 +91,44 @@ for `.aii` ("add all songs by robin") but works for anyone. `force play` takes o
 
 ## The queue
 
-`queue[0]` is always the current track — the one playing, or the next to play.
+The queue is a **static list, in the order tracks were added**, plus one saved pointer to the
+**current track**. Nothing is ever reordered:
 
-- `play` adds to the end. `force play` puts the file next and cuts the current track short.
-- A track that finishes is **removed**, unless looping: then it goes to the back.
-- **Shuffle** picks the next track at random and implies looping, but the two
-  settings are stored separately (`status` shows "Loop: on (because shuffle is on)").
-- `remove` on the playing track stops it and moves on; it isn't looped back.
+- `play` adds to the end. `force play` puts the file right after the current track and jumps to it.
+- **Without loop**, a track that finishes is **removed** (along with anything before it, which
+  was played or skipped), so the current track is always the first one.
+- **With loop**, nothing is removed — the pointer just moves to the next track and wraps around.
+- **Shuffle** implies looping and moves the pointer to a **random other track**; the list itself
+  keeps the order you added things in. (The two settings are stored separately: `status` shows
+  "Loop: on (because shuffle is on)".) With shuffle on, the "next" tracks shown are just the
+  neighbours in the list, since the real next one is picked at random.
+- `skip` moves on by the rules above. **`skip 16`** jumps straight to the 16th track in the queue
+  (the numbers `.avc queue` shows): with loop on only the pointer moves; with loop off the tracks
+  before it count as played and are dropped. `skip` to the current track's own number restarts it.
+- `remove` takes a track out for good; if it was the current one, the next track slides in and plays.
+
+### Viewing it
+
+`.avc queue` (`.avc q`) shows an orange embed with, on every page, a top part — the previous
+track, the **current track (▶)** and the next two (`ᛝ`) — and the loop/shuffle/PlayCall/Persistent
+line at the bottom. Between them is **All queue**: every track in the order added, 6 per page,
+numbered, with ⬅️ ➡️ buttons. Only that middle part changes between pages, and the view opens on
+the page that holds the current track.
+
+`.avc queue list` (`.avc ql`) is the whole queue as one plain message, with ▶ on the current track.
+
+### Saved state and the cloud backup
+
+The queue and switches live in `guild_voice_state` and the **pointer lives in its own tiny table**,
+`guild_voice_cursor`. A track change therefore writes (and change-logs) a single small number, never
+a copy of the queue — so playing music doesn't bloat the backup. A save only writes what actually
+changed. A server that was saved before the pointer existed resumes at its first track.
+
+### More queue behaviour
+
 - A track that can't be played is announced and dropped, and the next one starts.
-- **Leaving and rejoining resumes the queue as it was** (from the start of the first
-  track). The same after a bot restart.
+- **Leaving and rejoining resumes the queue as it was**, at the same current track (from the start
+  of that track). The same after a bot restart.
 - The bot leaves by itself after 5 minutes with nothing playing, or 1 minute after
   everyone else has left the call. The queue is kept either way.
 - **Persistent** (`.avc queue persistent on|off`, default off, per server, **bot owners

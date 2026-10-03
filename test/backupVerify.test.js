@@ -163,3 +163,29 @@ test("diffData reports rows only on one side and rows whose fields differ", () =
   assert.ok(diffs.some((d) => d.table === "reminders" && d.a && d.b));
   assert.ok(diffs.some((d) => d.table === "reminders" && d.a && !d.b));
 });
+
+test("adding the voice cursor table after a backup is a schema change, not a fault — and cursor-only changes verify cleanly", () => {
+  const dir = makeWorkDir();
+  const db = new DatabaseSync(path.join(dir, "voice.db"));
+  db.exec(`CREATE TABLE guild_voice_state (guild_id TEXT PRIMARY KEY, queue_json TEXT NOT NULL, loop INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)`);
+  installChangeLog(db);
+  db.prepare(`INSERT INTO guild_voice_state VALUES ('g1', '["a","b"]', 0, 'x')`).run();
+  const { cloudPath } = uploadSnapshot(db, dir, "old-version"); // the backup made before the cursor existed
+
+  // The bot is updated: a new table appears, and tracks start changing.
+  db.exec(`CREATE TABLE guild_voice_cursor (guild_id TEXT PRIMARY KEY, current_index INTEGER NOT NULL)`);
+  installChangeLog(db);
+  db.prepare(`INSERT INTO guild_voice_cursor VALUES ('g1', 1)`).run();
+  db.prepare(`UPDATE guild_voice_cursor SET current_index = 0 WHERE guild_id = 'g1'`).run();
+
+  const result = compareWithCloudCopy("voice", liveCopy(db, dir), cloudPath, dir);
+  assert.deepEqual(result.problems, []);
+  assert.equal(result.changed, true);
+
+  const { cloudPath: second } = uploadSnapshot(db, dir, "new-version");
+  db.prepare(`UPDATE guild_voice_cursor SET current_index = 1 WHERE guild_id = 'g1'`).run(); // a track ended
+  const next = compareWithCloudCopy("voice", liveCopy(db, dir), second, dir);
+  assert.deepEqual(next.problems, []);
+  assert.equal(next.changed, true);
+  assert.ok(readLogTail(db, 0).filter((e) => e.tbl === "guild_voice_cursor").every((e) => (e.row ?? "").length < 80)); // tiny entries
+});

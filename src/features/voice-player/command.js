@@ -5,8 +5,9 @@
 //   .avc play "NAME A" "NAME B"        add several at once (each full name in quotes)
 //   .avc force play FILE NAME          SongMaster: play it next and cut the current track short
 //   .avc pause                         pause / resume
-//   .avc skip
-//   .avc queue                         list the queue with lengths
+//   .avc skip [NUMBER]                 skip to the next track, or to that position in the queue
+//   .avc queue                         the queue: current track, neighbours, and every track in pages
+//   .avc queue list                    the whole queue as one plain list (ql)
 //   .avc queue loop on|off
 //   .avc queue shuffle on|off          (shuffle on also means looping)
 //   .avc queue playcall on|off         "Now playing" messages on/off (per server)
@@ -28,7 +29,8 @@
 
 import { isOwner } from "../../common/auth.js";
 import { hasTag, TAGS } from "../tags/store.js";
-import { describeQueue, describeSettings } from "./format.js";
+import { describeSettings, buildQueuePages, queuePageOf, describeQueueList, describeQueueForModel } from "./format.js";
+import { currentEntry } from "./queue.js";
 import { findPlayableFile, listPlayableFiles } from "./library.js";
 import { buildListPages, buildFileListText, SORTS } from "./listPages.js";
 import { pagesAsText } from "../../common/pagination.js";
@@ -46,8 +48,9 @@ export const aiGuide = `
 .avc play <file name>            — add a file to the END of the queue. SEVERAL files in one command: .avc play "Full Name One.mp3" "Full Name Two.mp3" (each full name in double quotes, up to 40) — prefer this over many separate play commands (joins the caller's call if the bot isn't in one). Name matching ignores case and extension; a unique partial name works.
 .avc force play <file name>      — play it NEXT and skip the current track (SongMaster tag only)
 .avc pause                       — pause; run again to resume
-.avc skip                        — skip the current track
-.avc queue                       — list the queue with each track's length
+.avc skip [number]               — skip the current track; with a number (e.g. .avc skip 16) jump straight to that position in the queue (positions are the numbers .avc queue shows)
+.avc queue                       — show the queue: the current track with its neighbours, and all tracks (6 per page, opening on the current track's page) with lengths and the loop/shuffle settings. Its result to you is the full queue in order.
+.avc queue list                  — (ql) the whole queue as one plain list, ▶ on the current track
 .avc queue loop on|off           — loop the queue
 .avc queue shuffle on|off        — shuffle (also implies looping)
 .avc queue persistent on|off     — when on, the bot never leaves the call by itself (not when the queue empties, not when everyone leaves); default off, per server. BOT OWNERS ONLY (SongMaster is not enough)
@@ -64,8 +67,8 @@ Everything except queue/status needs the caller to be in the bot's voice channel
 export const isDestructive = (args) => args[0]?.toLowerCase() === "removeall";
 
 const USAGE = [
-  "Usage: `.avc join` · `.avc play <file>` (or several: `.avc play \"name 1\" \"name 2\"`) · `.avc force play <file>` · `.avc pause` · `.avc skip`",
-  "`.avc list [a|d|m]` · `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
+  "Usage: `.avc join` · `.avc play <file>` (or several: `.avc play \"name 1\" \"name 2\"`) · `.avc force play <file>` · `.avc pause` · `.avc skip [number]`",
+  "`.avc list [a|d|m]` · `.avc queue` · `.avc queue list` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off` · `.avc remove <file>` · `.avc removeall` · `.avc status` · `.avc leave`",
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
@@ -115,7 +118,8 @@ async function ensureInCallerChannel(ctx, session) {
 async function handleJoin(ctx, session) {
   const problem = await ensureInCallerChannel(ctx, session);
   if (problem) return problem;
-  const queueLength = session.state().queue.length;
+  const state = session.state();
+  const queueLength = currentEntry(state) ? state.queue.length - state.cursor : 0;
   return queueLength > 0 ? `Joined ${channelMention(ctx.voiceChannelId)} and resumed the queue (${queueLength} track${queueLength === 1 ? "" : "s"}).` : `Joined ${channelMention(ctx.voiceChannelId)}.`;
 }
 
@@ -206,8 +210,8 @@ const VERB_ALIASES = {
   st: "status",
   lv: "leave",
 };
-// ".avc fp SONG" = ".avc force play SONG".
-const FORCE_PLAY_SHORTHAND = "fp";
+// Two-word shorthands: ".avc fp SONG" = ".avc force play SONG", ".avc ql" = ".avc queue list".
+const COMPOUND_SHORTHANDS = { fp: ["force", "play"], ql: ["queue", "list"] };
 const SWITCH_ALIASES = { lp: "loop", sh: "shuffle", pc: "playcall", ps: "persistent" };
 
 const canonical = (word, aliases) => {
@@ -228,12 +232,24 @@ const QUEUE_SWITCHES = {
   // Keeping the bot parked in a call forever is an owner decision: not even SongMaster may change it.
   persistent: { label: "Persistent", ownerOnly: true, apply: (session, on) => session.setPersistent(on) },
 };
-const QUEUE_USAGE = "Usage: `.avc queue` · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off`";
+const QUEUE_USAGE = "Usage: `.avc queue` · `.avc queue list` (or `.avc ql`) · `.avc queue loop on|off` · `.avc queue shuffle on|off` · `.avc queue playcall on|off` · `.avc queue persistent on|off`";
 
-function handleQueue(ctx, session, rest) {
+// What the queue views need from the live session.
+const queueView = (session) => ({ durationOf: (entry) => session.durationOf(entry), playing: session.isPlaying(), paused: session.isPaused() });
+
+// Replies itself for the views (returns null); returns text for settings and errors.
+async function handleQueue(ctx, session, rest) {
+  const word = rest[0]?.toLowerCase();
+
   if (rest.length === 0) {
-    return describeQueue(session.state(), { durationOf: (entry) => session.durationOf(entry), playing: session.isPlaying(), paused: session.isPaused() });
+    const state = session.state();
+    const pages = buildQueuePages(state, queueView(session));
+    // .aii also gets the complete queue (the pages cut long names).
+    const options = { startPage: queuePageOf(state.cursor), detail: describeQueueForModel(state) };
+    await (ctx.replyPages ? ctx.replyPages(pages, options) : ctx.reply(pagesAsText(pages)));
+    return null;
   }
+  if (["list", "l", "ls"].includes(word)) return describeQueueList(session.state(), queueView(session));
 
   const [setting, value] = [canonical(rest[0], SWITCH_ALIASES), rest[1]?.toLowerCase()];
   const switchDef = QUEUE_SWITCHES[setting];
@@ -288,19 +304,38 @@ async function handleList(ctx, sortArg, { listPlayableFiles }) {
 
 function handleStatus(session) {
   const state = session.state();
-  const [current] = state.queue;
+  const current = currentEntry(state);
+  const upcoming = current ? state.queue.length - state.cursor : 0;
   return [
     session.isConnected() ? `Voice: connected to ${channelMention(session.channelId())}` : "Voice: not in a call",
-    current ? `Now playing: **${current.name}**${session.isPlaying() ? (session.isPaused() ? " (paused)" : "") : " (waiting — not in a call)"}` : "Nothing is queued.",
-    `Queue: ${state.queue.length} track${state.queue.length === 1 ? "" : "s"}`,
+    current ? `Now playing: **${current.name}** (#${state.cursor + 1})${session.isPlaying() ? (session.isPaused() ? " (paused)" : "") : " (waiting — not in a call)"}` : "Nothing is queued.",
+    `Queue: ${state.queue.length} track${state.queue.length === 1 ? "" : "s"}${current && upcoming < state.queue.length ? ` (${upcoming} from the current one on)` : ""}`,
     describeSettings(state),
   ].join("\n");
+}
+
+// ".avc skip" = next track; ".avc skip 16" = jump to the 16th track in the queue.
+function handleSkip(session, positionArg) {
+  if (positionArg === undefined) {
+    const skipped = session.skip();
+    return skipped ? `Skipped **${skipped.name}**.` : "Nothing to skip.";
+  }
+
+  const position = Number(positionArg);
+  const total = session.state().queue.length;
+  if (!Number.isInteger(position) || position < 1) return "Usage: `.avc skip` or `.avc skip <position>` (the number shown in `.avc queue`)";
+  const jumped = session.skipTo(position);
+  if (!jumped) return total === 0 ? "The queue is empty." : `There's no track ${position} — the queue has ${total}.`;
+
+  const dropped = jumped.dropped > 0 ? ` (the ${jumped.dropped} before it ${jumped.dropped === 1 ? "was" : "were"} dropped from the queue)` : "";
+  return `Skipped to **${jumped.entry.name}** (#${position}).${dropped}`;
 }
 
 // Turns the typed words into [canonical verb, remaining args].
 function resolveVerb(args) {
   const [first, ...rest] = args;
-  if (first?.toLowerCase() === FORCE_PLAY_SHORTHAND) return ["force", ["play", ...rest]];
+  const compound = COMPOUND_SHORTHANDS[first?.toLowerCase()];
+  if (compound) return [compound[0], [compound[1], ...rest]];
   return [canonical(first, VERB_ALIASES), rest];
 }
 
@@ -329,16 +364,11 @@ async function run(ctx, args, deps) {
     case "pause":
       reply = mustBeInBotsCall(ctx, session) ?? describePause(session.togglePause());
       break;
-    case "skip": {
-      reply = mustBeInBotsCall(ctx, session);
-      if (!reply) {
-        const skipped = session.skip();
-        reply = skipped ? `Skipped **${skipped.name}**.` : "Nothing to skip.";
-      }
+    case "skip":
+      reply = mustBeInBotsCall(ctx, session) ?? handleSkip(session, rest[0]);
       break;
-    }
     case "queue":
-      reply = handleQueue(ctx, session, rest);
+      reply = await handleQueue(ctx, session, rest);
       break;
     case "remove":
       reply = handleRemove(ctx, session, rest);
@@ -370,7 +400,7 @@ async function run(ctx, args, deps) {
       reply = USAGE;
   }
 
-  await ctx.reply(reply);
+  if (reply) await ctx.reply(reply);
 }
 
 // `deps` is what the command needs from the outside world; tests pass fakes.

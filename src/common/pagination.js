@@ -7,7 +7,9 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder } from "discord.js";
 
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
-const EMBED_COLOR = 0x5865f2;
+// Alani's orange (RGB 218, 133, 82) — the bar down the left side of every list embed.
+// (Discord only lets a bot colour that bar; the box behind the text is the viewer's own theme.)
+const EMBED_COLOR = 0xda8552;
 const PREVIOUS = "pages:previous";
 const NEXT = "pages:next";
 
@@ -35,16 +37,17 @@ export function pagesAsText(pages) {
 }
 
 // Replies to `message` with the first page and wires up the buttons.
-// `userId` is who may turn the pages (default: the message's author).
-export async function sendPaginated(message, pages, { userId = message.author.id, idleMs = IDLE_TIMEOUT_MS } = {}) {
+// `userId` is who may turn the pages (default: the message's author); `startPage`
+// is the 0-based page shown first.
+export async function sendPaginated(message, pages, { userId = message.author.id, idleMs = IDLE_TIMEOUT_MS, startPage = 0 } = {}) {
   const sent = await message.reply({
-    embeds: [toEmbed(pages[0])],
-    components: pages.length > 1 ? [buttonRow(0, pages.length)] : [],
+    embeds: [toEmbed(pages[startPage])],
+    components: pages.length > 1 ? [buttonRow(startPage, pages.length)] : [],
     allowedMentions: { repliedUser: false },
   });
   if (pages.length < 2) return sent;
 
-  let index = 0;
+  let index = startPage;
   const collector = sent.createMessageComponentCollector({ componentType: ComponentType.Button, idle: idleMs });
 
   collector.on("collect", async (interaction) => {
