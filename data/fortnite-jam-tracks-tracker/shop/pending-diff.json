@@ -1,14 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_252",
-      "title": "Never Back Down",
-      "artist": "NickEh30",
-      "image": "https://cdn.fortnite-api.com/tracks/5118aab9c5606449.jpg",
-      "price": 500,
-      "inDate": "2026-10-01T00:00:00Z",
-      "outDate": "2026-10-03T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
