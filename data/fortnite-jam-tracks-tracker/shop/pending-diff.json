@@ -1,4 +1,41 @@
 {
   "newTracks": [],
-  "leftTracks": []
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_906",
+      "title": "yes baby",
+      "artist": "Madison Beer",
+      "image": "https://cdn.fortnite-api.com/tracks/a7ac8f21b74ed64b.jpg",
+      "price": 500,
+      "inDate": "2026-09-25T00:00:00Z",
+      "outDate": "2026-10-04T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_598",
+      "title": "Make You Mine",
+      "artist": "Madison Beer",
+      "image": "https://cdn.fortnite-api.com/tracks/acbc11c9713d4bd9.jpg",
+      "price": 500,
+      "inDate": "2026-09-25T00:00:00Z",
+      "outDate": "2026-10-04T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_908",
+      "title": "complexity",
+      "artist": "Madison Beer",
+      "image": "https://cdn.fortnite-api.com/tracks/a23eb5872c04d31d.jpg",
+      "price": 500,
+      "inDate": "2026-09-25T00:00:00Z",
+      "outDate": "2026-10-04T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_907",
+      "title": "bittersweet",
+      "artist": "Madison Beer",
+      "image": "https://cdn.fortnite-api.com/tracks/ac6b58e08dc2d37e.jpg",
+      "price": 500,
+      "inDate": "2026-09-25T00:00:00Z",
+      "outDate": "2026-10-04T23:59:59.999Z"
+    }
+  ]
 }
