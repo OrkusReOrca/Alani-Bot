@@ -1,4 +1,23 @@
 {
   "newTracks": [],
-  "leftTracks": []
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_930",
+      "title": "Life Will Change",
+      "artist": "Lyn, ATLUS Sound Team, ATLUS GAME MUSIC",
+      "image": "https://cdn.fortnite-api.com/tracks/5d8e262c1f111f3d.jpg",
+      "price": 500,
+      "inDate": "2026-09-26T00:00:00Z",
+      "outDate": "2026-10-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_34",
+      "title": "Mi Gente",
+      "artist": "J Balvin & Willy William",
+      "image": "https://cdn.fortnite-api.com/tracks/6f90537ce93d25dd.jpg",
+      "price": 1800,
+      "inDate": "2026-10-02T00:00:00Z",
+      "outDate": "2026-10-05T23:59:59.999Z"
+    }
+  ]
 }
