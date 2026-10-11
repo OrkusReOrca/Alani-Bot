@@ -38,6 +38,8 @@ Tracker
 | `.at pill addpill "Full name"/"alias" recuring:daily at:T21:00` | add a pill with its own schedule |
 | `.at pill removepill\|pills\|list\|export\|delete` | pill management and logs |
 | `.at list` | your trackers (and this server's) |
+| `.at help` | every command with how to use it (no tag needed to read) |
+| `.at type list` | the tracker types and how to use each |
 
 Put `server` right after `.at` (`.at server bp list`) for the server's tracker,
 or a user ID/@mention to use a tracker whose owner granted you permission.
@@ -63,6 +65,7 @@ with a plain `y` / `n` (`pillReply.js`, valid for 12 h).
 | File | Purpose |
 | --- | --- |
 | `command.js` | the `.at` command (`createExecute(deps)`) |
+| `help.js` | the text of `.at help`, `.at type list` and `.a info at` |
 | `types.js`, `parse.js`, `schedule.js`, `format.js` | pure helpers |
 | `storeFactory.js`, `store.js` | Tracker.db access |
 | `reminders.js`, `reminderState.js`, `pillReply.js` | reminder engine |

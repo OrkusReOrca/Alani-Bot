@@ -10,6 +10,7 @@
 // Everywhere else (other servers, DMs), only the public entries show.
 
 import { chunkMessage } from "../../common/discordApi.js";
+import { HELP_TEXT, typeListText } from "../tracker/help.js";
 
 export const data = {
   name: "info",
@@ -23,7 +24,7 @@ export const aiGuide = `
 .a info setting  — explanation of settings and cloud backup (private server only)
 .a info ai       — explanation of the .aii assistant (private server only)
 .a info avc      — explanation of the voice player
-.a info at       — explanation of the trackers (blood pressure, pills, activities)
+.a info at       — explanation of the trackers (blood pressure, pills, activities); also ".at help"
 Read-only.`;
 
 const PRIVATE_SERVER_ID = "1539132003109314572";
@@ -46,7 +47,7 @@ const COMMANDS = [
   },
   {
     text: "**.at create|setting|logadd|bp|pill|list ...** (in a DM just `t ...`) — blood pressure, pill and activity trackers with reminders. Needs the Tracker tag. See `.a info at`.",
-    private: true,
+    private: false,
   },
   {
     text: "**.aii <request>** — tell Alani what to do in plain language and she runs the commands for you. Needs the AIallowed tag. See `.a info ai`.",
@@ -82,7 +83,7 @@ const FEATURES = [
   },
   {
     text: "**Trackers** — `.at` logs blood pressure and pills and sends scheduled reminders (daily/weekly/monthly/yearly) by DM or in a channel; activity trackers are reminders only. Saved to Tracker.db and backed up. See `.a info at`.",
-    private: true,
+    private: false,
   },
   {
     text: "**DM shortcut** — in a DM with Alani you can leave the `.a` off: `info`, `t bp list`, `vc status`.",
@@ -338,33 +339,10 @@ const AVC_INFO = [
     "first track). The bot leaves by itself after 5 min idle or 1 min alone.",
 ].join("\n");
 
-// `.a info at` — the trackers. Private (needs the Tracker tag).
-// Source of truth: src/features/tracker/README.md.
-const AT_INFO = [
-  "**Trackers (`.at`)** — in a DM just `t ...`",
-  "",
-  "A tracker belongs to you (`me`, the default) or to a server (`server`). Types: " +
-    "`Bloodpressure tracker` and `Pill tracker` (one each per owner), `Activity tracker` (as many as you like, each named).",
-  "```",
-  ".at create type:\"Bloodpressure tracker\" [me|server]",
-  ".at create type:\"Activity tracker\" name:\"Fortnite karaoke weekly\"",
-  ".at enable|disable \"NAME\"",
-  ".at permission grant|revoke USER",
-  ".at setting \"NAME\" recuring:daily at:T21:00 to:\"text\" tz:GMT+7 tag:a,b sent:dm|CHANNEL_ID",
-  ".at setting \"NAME\" recuring:weekly friday,sunday at:T19:30 ...",
-  ".at la bp 120 80                       log a reading now",
-  ".at bp list | export RANGE | delete RANGE",
-  ".at pill addpill \"Full name\"/\"alias\" recuring:daily at:T21:00",
-  ".at la p bpl,fl y                      log pills taken (y) or not (n)",
-  ".at pill list|export|delete|pills|removepill",
-  ".at server bp list                     the server's tracker",
-  ".at list",
-  "```",
-  "**Ranges**: `all`, `latest14`, `oldest5`, `2026/10/1`, `2026/10/1-2026/11/13`.",
-  "**Reminders**: blood pressure and pill reminders are skipped when that day's reading/dose is already logged. A pill reminder DM can be answered with a plain `y`/`n`.",
-  "**Schedules**: daily · weekly with weekday names · monthly with days or `last` · yearly `at:MONTH,DAY,Thh:mm`. Times are 24-hour, default GMT+7.",
-  "**Access**: you need the **Tracker** tag. A server's logs are visible only to its owner and users given `permission grant`.",
-].join("\n");
+// `.a info at` — the trackers: the same text as `.at help` and `.at type list`.
+const AT_INFO = `${HELP_TEXT}
+
+${typeListText()}`;
 
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
@@ -410,10 +388,6 @@ export async function execute(ctx, args = []) {
   }
 
   if (args[0]?.toLowerCase() === "at") {
-    if (!showPrivate) {
-      await execute(ctx, []);
-      return;
-    }
     for (const chunk of chunkMessage(AT_INFO)) {
       await ctx.reply(chunk);
     }

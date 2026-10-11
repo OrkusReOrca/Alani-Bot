@@ -557,3 +557,17 @@ test("unknown input shows the usage", async () => {
   assert.match((await w.run("")).text, /\*\*Trackers\*\*/);
   assert.ok(NOW > 0);
 });
+
+// ---------- help ----------
+test("help and type list are open to everyone and list every command / type", async () => {
+  const w = await makeWorld();
+  const help = await w.run("help", { user: IDS.stranger }); // no Tracker tag needed to read the docs
+  assert.match(help.text, /\.at create type:/);
+  assert.match(help.text, /\.at la bp 120 80/);
+  assert.match(help.text, /addpill/);
+
+  const types = await w.run("type list", { user: IDS.stranger });
+  for (const name of ["Bloodpressure tracker", "Pill tracker", "Activity tracker", "Health tracker", "Routine tracker"]) assert.ok(types.text.includes(name), name);
+  assert.equal((await w.run("type", { user: IDS.stranger })).text, types.text);
+  assert.equal(w.store.listTrackers("user", IDS.stranger).length, 0); // read-only
+});

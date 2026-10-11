@@ -14,6 +14,8 @@
 
 import { isOwner } from "../../common/auth.js";
 import { pagesAsText } from "../../common/pagination.js";
+import { chunkMessage } from "../../common/discordApi.js";
+import { HELP_TEXT, typeListText } from "./help.js";
 import { TYPES, resolveType, creatableTypeNames } from "./types.js";
 import { tokenize, optionsOf, wordsOf, quotedOf, splitList, parseTimezone, formatTimezone, parseRange, selectLogs, describeRange } from "./parse.js";
 import { parseSchedule, describeSchedule, nextOccurrence } from "./schedule.js";
@@ -38,6 +40,8 @@ Types (create only these): "Bloodpressure tracker" (one per owner), "Pill tracke
 .at bp list | .at bp export <range> | .at bp delete <range>          — range: latest14, oldest5, 2026/10/1-2026/11/13, all
 .at pill addpill "Full name"/"alias" recuring:daily at:T21:00          — add a pill with its own reminder schedule
 .at pill removepill <name|alias> · .at pill pills · .at pill list [pill] · .at pill export [pill] <range> · .at pill delete <pill> <range>
+.at help                                                              — every command with how to use it
+.at type list                                                         — the tracker types and how to use each
 .at list                                                              — your trackers (and this server's)
 Blood pressure and pill reminders are skipped if that day's reading / dose is already logged.`;
 
@@ -47,7 +51,7 @@ export const isDestructive = (args) => args.slice(0, 4).some((word) => ["delete"
 const SCOPE_WORDS = ["me", "server"];
 const USER_ID = /^<@!?(\d{15,20})>$|^(\d{15,20})$/;
 
-const VERBS = { create: "create", enable: "enable", disable: "disable", permission: "permission", perm: "permission", setting: "setting", set: "setting", list: "list", ls: "list", logadd: "logadd", la: "logadd", bp: "bp", bloodpressure: "bp", pill: "pill", p: "pill", pills: "pills", help: "help" };
+const VERBS = { create: "create", enable: "enable", disable: "disable", permission: "permission", perm: "permission", setting: "setting", set: "setting", list: "list", ls: "list", logadd: "logadd", la: "logadd", bp: "bp", bloodpressure: "bp", pill: "pill", p: "pill", pills: "pills", help: "help", type: "type", types: "type" };
 const LOG_TARGETS = { bp: "bloodpressure", bloodpressure: "bloodpressure", p: "pill", pill: "pill", pills: "pill" };
 const SETTING_KEYS = {
   bloodpressure: ["recurring", "at", "to", "tz", "tag", "sent"],
@@ -481,6 +485,13 @@ const cleanName = (words) => words.join(" ").trim().replace(/^["'`](.*)["'`]$/, 
 // ---------- dispatch ----------
 
 async function run(ctx, args, deps) {
+  // Documentation is open to everyone; only using the trackers needs the tag.
+  const topic = VERBS[lower(args[0])];
+  if (topic === "help" || (topic === "type" && (args.length === 1 || lower(args[1]) === "list"))) {
+    for (const chunk of chunkMessage(topic === "help" ? HELP_TEXT : typeListText())) await ctx.reply(chunk);
+    return;
+  }
+
   if (!deps.hasTrackerTag(ctx.userId)) {
     await ctx.reply("You don't have permission to use `.at` — it needs the Tracker tag, which only a bot owner can grant (`.a tag add Tracker <user>`).");
     return;
