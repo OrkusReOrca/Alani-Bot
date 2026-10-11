@@ -23,6 +23,7 @@ export const aiGuide = `
 .a info setting  — explanation of settings and cloud backup (private server only)
 .a info ai       — explanation of the .aii assistant (private server only)
 .a info avc      — explanation of the voice player
+.a info at       — explanation of the trackers (blood pressure, pills, activities)
 Read-only.`;
 
 const PRIVATE_SERVER_ID = "1539132003109314572";
@@ -44,11 +45,15 @@ const COMMANDS = [
     private: false,
   },
   {
+    text: "**.at create|setting|logadd|bp|pill|list ...** (in a DM just `t ...`) — blood pressure, pill and activity trackers with reminders. Needs the Tracker tag. See `.a info at`.",
+    private: true,
+  },
+  {
     text: "**.aii <request>** — tell Alani what to do in plain language and she runs the commands for you. Needs the AIallowed tag. See `.a info ai`.",
     private: true,
   },
   {
-    text: "**.a tag list | .a tag <TAG> list | .a tag add|remove <TAG> <user>** — tags (AIallowed, SongMaster) and who holds them. Owner-only.",
+    text: "**.a tag list | .a tag <TAG> list | .a tag add|remove <TAG> <user>** — tags (AIallowed, SongMaster, Tracker) and who holds them. Owner-only.",
     private: true,
   },
   {
@@ -73,6 +78,14 @@ const FEATURES = [
   { text: "**orkus-info** — the admin tier's database specifically: SQLite-backed, synced to Google Calendar, duplicate/overlap detection. See `.a db`.", private: true },
   {
     text: "**Voice player** — `.avc` plays audio files from a Google Drive folder in a voice call. Queue, loop and shuffle are saved per server. See `.a info avc`.",
+    private: false,
+  },
+  {
+    text: "**Trackers** — `.at` logs blood pressure and pills and sends scheduled reminders (daily/weekly/monthly/yearly) by DM or in a channel; activity trackers are reminders only. Saved to Tracker.db and backed up. See `.a info at`.",
+    private: true,
+  },
+  {
+    text: "**DM shortcut** — in a DM with Alani you can leave the `.a` off: `info`, `t bp list`, `vc status`.",
     private: false,
   },
   {
@@ -325,6 +338,34 @@ const AVC_INFO = [
     "first track). The bot leaves by itself after 5 min idle or 1 min alone.",
 ].join("\n");
 
+// `.a info at` — the trackers. Private (needs the Tracker tag).
+// Source of truth: src/features/tracker/README.md.
+const AT_INFO = [
+  "**Trackers (`.at`)** — in a DM just `t ...`",
+  "",
+  "A tracker belongs to you (`me`, the default) or to a server (`server`). Types: " +
+    "`Bloodpressure tracker` and `Pill tracker` (one each per owner), `Activity tracker` (as many as you like, each named).",
+  "```",
+  ".at create type:\"Bloodpressure tracker\" [me|server]",
+  ".at create type:\"Activity tracker\" name:\"Fortnite karaoke weekly\"",
+  ".at enable|disable \"NAME\"",
+  ".at permission grant|revoke USER",
+  ".at setting \"NAME\" recuring:daily at:T21:00 to:\"text\" tz:GMT+7 tag:a,b sent:dm|CHANNEL_ID",
+  ".at setting \"NAME\" recuring:weekly friday,sunday at:T19:30 ...",
+  ".at la bp 120 80                       log a reading now",
+  ".at bp list | export RANGE | delete RANGE",
+  ".at pill addpill \"Full name\"/\"alias\" recuring:daily at:T21:00",
+  ".at la p bpl,fl y                      log pills taken (y) or not (n)",
+  ".at pill list|export|delete|pills|removepill",
+  ".at server bp list                     the server's tracker",
+  ".at list",
+  "```",
+  "**Ranges**: `all`, `latest14`, `oldest5`, `2026/10/1`, `2026/10/1-2026/11/13`.",
+  "**Reminders**: blood pressure and pill reminders are skipped when that day's reading/dose is already logged. A pill reminder DM can be answered with a plain `y`/`n`.",
+  "**Schedules**: daily · weekly with weekday names · monthly with days or `last` · yearly `at:MONTH,DAY,Thh:mm`. Times are 24-hour, default GMT+7.",
+  "**Access**: you need the **Tracker** tag. A server's logs are visible only to its owner and users given `permission grant`.",
+].join("\n");
+
 // ctx: { reply, guildId, ... } — a uniform interface over both a
 // slash-command interaction and a prefix-command message, so this doesn't
 // need to know which one triggered it. See bot.js's
@@ -363,6 +404,17 @@ export async function execute(ctx, args = []) {
 
   if (args[0]?.toLowerCase() === "avc") {
     for (const chunk of chunkMessage(AVC_INFO)) {
+      await ctx.reply(chunk);
+    }
+    return;
+  }
+
+  if (args[0]?.toLowerCase() === "at") {
+    if (!showPrivate) {
+      await execute(ctx, []);
+      return;
+    }
+    for (const chunk of chunkMessage(AT_INFO)) {
       await ctx.reply(chunk);
     }
     return;

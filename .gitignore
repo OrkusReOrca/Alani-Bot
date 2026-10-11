@@ -27,3 +27,6 @@ emotion-service/data/
 # machine-local, like the databases above.
 data/cloud-backup/
 data/status/
+
+# Tracker runtime state (which reminders already fired); the tracker DATABASE is *.db above.
+data/tracker/

@@ -131,11 +131,19 @@ you can trigger on a schedule).
   AIallowed tag.
 - **[tags](src/features/tags/README.md)** - `.a tag list`, `.a tag <TAG> list`,
   `.a tag add|remove <TAG> <user>`, owner-only; AIallowed unlocks `.aii` and
-  `.a emo`, SongMaster unlocks `.avc force play` and `.avc removeall`.
+  `.a emo`, SongMaster unlocks `.avc force play` and `.avc removeall`, Tracker
+  unlocks `.at`.
 - **[voice-player](src/features/voice-player/README.md)** - `.avc join|play|pause|skip|queue|
   remove|status|leave ...`: plays audio files from a Google Drive folder in a voice
   call, with a per-server saved queue, loop and shuffle (converted once to Opus and
   cached; long files start while still converting).
+- **[tracker](src/features/tracker/README.md)** - `.at create|setting|logadd|bp|pill|list ...`
+  (in a DM just `t ...`): blood-pressure, pill and activity trackers owned by a
+  user or a server, with scheduled reminders (DM or channel), a log you can
+  list/export/delete, and `y`/`n` replies to pill reminders. Needs the Tracker
+  tag. Saved in `Tracker.db` and backed up.
+- **DM shortcut** - in a DM with the bot the leading `.a` can be dropped
+  (`info`, `t bp list`, `vc status`, `ii ...`).
 - **[settings](src/features/settings/README.md)** - `.a setting`, owner-only:
   turn routines on/off (`unitracker`, `fortnite`) and run the cloud backup by hand.
 - **[cloud-backup](src/features/cloud-backup/README.md)** - every 6 hours and

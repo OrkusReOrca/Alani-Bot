@@ -6,6 +6,7 @@ Tags are capabilities attached to Discord user IDs.
 |---|---|
 | `AIallowed` | using `.aii` (the AI assistant) and `.a emo` |
 | `SongMaster` | the privileged voice-player commands: `.avc force play` and `.avc removeall` |
+| `Tracker` | using the `.at` trackers (blood pressure, pills, activities) |
 
 Bot owners (`DISCORD_OWNER_0` / `DISCORD_OWNER_1`) hold every tag implicitly and
 can't lose it. Only they can change tags:

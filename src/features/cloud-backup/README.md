@@ -18,6 +18,7 @@ It runs:
 | `settings` ("Settings") | `settings.db` (settings and AIallowed tags) |
 | `ai-history` ("AIcommandHistory") | `AIcommandHistory.db` (every `.aii` request, command and reply) |
 | `voice` ("VoiceState") | `VoiceState.db` (every server's voice-player queue, loop and shuffle) |
+| `tracker` ("Tracker") | `Tracker.db` — ONE file for every kind of tracker: their settings, permissions and all logged data |
 
 Each group is versioned independently: a settings change never creates a new
 copy of the databases.

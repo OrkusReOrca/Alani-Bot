@@ -18,7 +18,7 @@
 import { parseCommandLine } from "../../common/commandParsing.js";
 import { limits } from "./config.js";
 
-const REFUSED_NOT_COMMAND = 'Error: the command must be a single line starting with ".a" or ".avc".';
+const REFUSED_NOT_COMMAND = 'Error: the command must be a single line starting with ".a", ".avc" or ".at".';
 
 const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}… [truncated]` : text);
 

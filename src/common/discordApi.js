@@ -96,12 +96,14 @@ export async function sendViaDM(botToken, userId, message) {
   }
 }
 
-export async function sendViaBotChannel(botToken, channelId, message) {
+// allowedMentions: Discord's allowed_mentions object (e.g. { parse: ["users"] } to
+// ping people but never @everyone); omitted = Discord's default behavior.
+export async function sendViaBotChannel(botToken, channelId, message, { allowedMentions } = {}) {
   const chunks = chunkMessage(message);
   for (const content of chunks) {
     await discordApi(botToken, `/channels/${channelId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, ...(allowedMentions && { allowed_mentions: allowedMentions }) }),
     });
   }
 }

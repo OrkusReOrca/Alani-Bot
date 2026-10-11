@@ -8,6 +8,7 @@ import { isOwner } from "../../common/auth.js";
 export const TAG_DEFINITIONS = {
   AIallowed: "use `.aii` (the AI assistant) and `.a emo`",
   SongMaster: "use the privileged voice-player commands: `.avc force play` and `.avc removeall`",
+  Tracker: "use the `.at` trackers (blood pressure, pills, activities)",
 };
 
 export const TAGS = Object.fromEntries(Object.keys(TAG_DEFINITIONS).map((name) => [name, name]));

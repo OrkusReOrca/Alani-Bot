@@ -7,6 +7,7 @@ import orkusInfoDb from "../orkus-info/db.js";
 import { settingsDb } from "../settings/store.js";
 import { historyDb } from "../ai-assistant/history.js";
 import { voiceDb } from "../voice-player/stateStore.js";
+import { trackerDb } from "../tracker/store.js";
 
 export const BACKUP_GROUPS = [
   {
@@ -31,5 +32,10 @@ export const BACKUP_GROUPS = [
     id: "voice",
     label: "VoiceState",
     databases: [{ name: "VoiceState", db: voiceDb }],
+  },
+  {
+    id: "tracker",
+    label: "Tracker",
+    databases: [{ name: "Tracker", db: trackerDb }],
   },
 ];

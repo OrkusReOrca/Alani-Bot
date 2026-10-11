@@ -12,6 +12,10 @@
 // `canvas` native module, which bot-hosting.net's script policy blocks from
 // building (see common/dailyJobs.js's comment for the full story).
 //
+// In a DM with the bot the leading ".a" can be dropped ("info", "t bp list" — see
+// common/commandParsing.js), and a plain yes/no answers a pill reminder
+// (features/tracker/pillReply.js).
+//
 // Every command is reachable as a prefix command (.a <name> [args...]) and, in
 // plain language, through ".aii <request>" (features/ai-assistant/),
 // dispatched to command.js's execute(ctx, args) via the ctx-adapter each
@@ -42,6 +46,7 @@ import { setClient } from "./common/discordClient.js";
 import { commands } from "./commands.js";
 import { parseCommandLine } from "./common/commandParsing.js";
 import { sendPaginated } from "./common/pagination.js";
+import { awaitConfirmation } from "./common/confirm.js";
 import { parseAiInvocation, handleAiMessage } from "./features/ai-assistant/handler.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
@@ -50,6 +55,10 @@ import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
 import { runScheduledBackup } from "./features/cloud-backup/index.js";
 import { onVoiceActivity } from "./features/voice-player/manager.js";
+import { engine as trackerEngine, reminderState as trackerState } from "./features/tracker/runtime.js";
+import { store as trackerStore } from "./features/tracker/store.js";
+import { startReminderEngine } from "./features/tracker/reminders.js";
+import { handlePillReply } from "./features/tracker/pillReply.js";
 
 if (!config.botToken) {
   console.error("Missing DISCORD_BOT_TOKEN — check your .env.");
@@ -80,6 +89,7 @@ client.once(Events.ClientReady, (readyClient) => {
   startGenReminderScheduler();
   startBridgeServer();
   startDailyJobs();
+  startReminderEngine(trackerEngine);
   // Verify (and if needed save) a backup every time the bot comes online.
   runScheduledBackup().catch((err) => console.error("[cloud-backup] startup backup failed:", err));
   startLifecycleReporting(() => client.destroy()).catch((err) => console.error("[lifecycle] failed to start:", err));
@@ -119,8 +129,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
+  const dm = message.guildId === null;
 
-  const aiText = parseAiInvocation(message.content);
+  // A plain "yes"/"no" in a DM answers the latest pill reminder.
+  if (dm && (await handlePillReply(message, { state: trackerState, store: trackerStore }).catch((err) => console.error("Error handling a pill reply:", err)))) return;
+
+  const aiText = parseAiInvocation(message.content, { dm });
   if (aiText !== null) {
     await handleAiMessage(message, aiText).catch((err) => {
       console.error("Error handling .aii:", err);
@@ -129,7 +143,7 @@ client.on(Events.MessageCreate, async (message) => {
     return;
   }
 
-  const parsed = parseCommandLine(message.content);
+  const parsed = parseCommandLine(message.content, { dm });
   if (!parsed) return;
   const { name: commandName, args } = parsed;
   const command = commands.get(commandName);
@@ -139,6 +153,7 @@ client.on(Events.MessageCreate, async (message) => {
     reply: (text) => message.reply(text),
     replyWithFile: (buffer, filename) => message.reply({ files: [{ attachment: buffer, name: filename }] }),
     replyPages: (pages, options) => sendPaginated(message, pages, options), // multi-page embed with ⬅️ ➡️ buttons
+    confirm: (prompt) => awaitConfirmation(message, prompt), // asks for a yes; true if they said so
     userId: message.author.id,
     channelId: message.channelId,
     guildId: message.guildId, // null in DMs

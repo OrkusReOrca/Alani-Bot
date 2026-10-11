@@ -5,6 +5,7 @@
 import { isOwner } from "../../common/auth.js";
 import { chunkMessage } from "../../common/discordApi.js";
 import { sendPaginated } from "../../common/pagination.js";
+import { awaitConfirmation } from "../../common/confirm.js";
 import { hasTag, TAGS } from "../tags/store.js";
 import * as dbStore from "../db/store.js";
 import { commands } from "../../commands.js";
@@ -15,16 +16,17 @@ import { buildContext, buildSystemPrompt } from "./prompt.js";
 import { runAssistant } from "./assistant.js";
 
 const TRIGGER = ".aii";
-const YES = /^(y|yes|yep|confirm|ok|sure|do it)\b/i;
+const DM_TRIGGER = "ii"; // in a DM the leading ".a" may be dropped
 // Only user mentions may ping — the model's free text can never @everyone or tag a role.
 const ALLOWED_MENTIONS = { parse: ["users"], repliedUser: false };
 
 const inFlight = new Set(); // user IDs with a request still running
 
-// The request text after ".aii", or null if `content` isn't an .aii message.
-export function parseAiInvocation(content) {
+// The request text after ".aii" (or "ii" in a DM), or null if `content` isn't an .aii message.
+export function parseAiInvocation(content, { dm = false } = {}) {
   const [first, ...rest] = content.trim().split(/\s+/);
-  return first.toLowerCase() === TRIGGER ? rest.join(" ") : null;
+  const word = first.toLowerCase();
+  return word === TRIGGER || (dm && word === DM_TRIGGER) ? rest.join(" ") : null;
 }
 
 function accessibleDatabases(userId) {
@@ -60,15 +62,7 @@ function envFor(message) {
     },
     postPages: (pages, options) => sendPaginated(message, pages, options),
     postFile: (buffer, name) => message.reply({ files: [{ attachment: buffer, name }], allowedMentions: ALLOWED_MENTIONS }),
-    confirm: async (prompt) => {
-      await message.reply({ content: prompt, allowedMentions: ALLOWED_MENTIONS });
-      const answers = await message.channel.awaitMessages({
-        filter: (m) => m.author.id === message.author.id,
-        max: 1,
-        time: limits.confirmTimeoutMs,
-      });
-      return YES.test(answers.first()?.content.trim() ?? "");
-    },
+    confirm: (prompt) => awaitConfirmation(message, prompt, { timeoutMs: limits.confirmTimeoutMs, allowedMentions: ALLOWED_MENTIONS }),
   };
 }
 
