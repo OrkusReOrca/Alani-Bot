@@ -8,13 +8,33 @@ video clips sitting in a Google Drive folder, reproducing the VLM
 emotion-recognition pipeline from the user's JAIST thesis
 (Qwen3-VL-8B-Instruct, circumplex model: PA/NA/ND/PD). `.a emo resend
 <all|recent|<filename>>` re-sends already-computed results with no
-recompute at all — see "Resend" below.
+recompute at all — see "Resend" below. `.a emo web` replies with the link to the
+**emotion web dashboard** (see "Web dashboard" below).
 
 Needs the `AIallowed` tag (bot owners always have it; see
 `../tags/README.md`; also runnable through `.aii`), and only responds inside the one dedicated channel
 (`DISCORD_EMOTION_CHANNEL`) — silent everywhere else, since this is a
 slow, resource-heavy command (real video preprocessing + two VLM calls
 per clip), not something meant to be discoverable broadly.
+
+## Web dashboard
+
+The thesis demo runs from a password-protected web page served by the same Python
+process as Alani Emotion — see `../../../emotion-service/README.md` and
+`../../../ALANI_EMOTION_WEBBOARD.txt` for how it works. From this side there are two things:
+
+- `.a emo web` (same AIallowed tag + emotion channel as the rest) replies with the
+  dashboard link (`EMOTION_WEB_URL`, the slot's HTTPS address) and whether
+  `/api/health` answers. It never prints the password.
+- `POST /emotion/web-save` (bridge route, same `EMOTION_SERVICE_SECRET`): the dashboard's
+  "Save to Discord" button. It posts one finished web run to the emotion channel — the
+  annotated image with a summary (file, prediction, modalities, clip length, raw model
+  answers), a timing breakdown, the transcript, and both prompts.
+
+**One way at a time.** While the dashboard is on (`DEMO_PASSWORD` set on the slot), the slot
+answers the Drive runs (`run1`/`runany`/`runall`, `resend`) with 503 and this command tells
+the user so. Unset `DEMO_PASSWORD` there to go back to the Drive flow — its code is kept
+as the backup way.
 
 ## Command shape
 

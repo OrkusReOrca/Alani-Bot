@@ -5,6 +5,10 @@
 // here, never from the Python side, matching this repo's convention that
 // only Alani-Bot ever talks to Discord directly.
 //
+// The web dashboard's "Save to Discord" button arrives here too
+// (POST /emotion/web-save): one finished run — image, prediction, modalities,
+// timings, transcript, prompts — posted to the same channel.
+//
 // Registers into the shared bridge server (see common/bridgeServer.js),
 // same pattern as db/voiceApi.js and uni-application-updater/pushApi.js —
 // its own secret, so a leak here can only ever post messages to this one
@@ -100,6 +104,79 @@ async function handleResult(req, res) {
   sendJson(res, 200, { message: "posted" });
 }
 
+const STAGE_LABELS = {
+  truncating: "Check the video",
+  frames: "Sample frames",
+  face: "Face (action units, gaze, head pose)",
+  audio: "Extract audio",
+  transcript: "Transcript",
+  voice: "Voice features",
+  vlm_valence: "Model: valence",
+  vlm_arousal: "Model: arousal",
+  finalizing: "Annotated frame",
+  total: "Total",
+};
+
+// A name or label that ends up in normal message text must not be able to ping anyone.
+const defang = (text) => String(text ?? "").replace(/@/g, "@​").slice(0, 200);
+
+function formatClipLength(seconds) {
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// The headline of a saved web run: file, prediction, what it used, how it was cut.
+export function formatWebSaveSummary(payload) {
+  const modalities = Array.isArray(payload.modalities) ? payload.modalities.map(defang).join(" + ") : "unknown";
+  const lines = [`**${defang(payload.fileName)}** → **${defang(payload.prediction)}**`];
+  lines.push(`Modalities: **${modalities}**${payload.cacheMode === "d" ? " (all five cached)" : ""} · from the web dashboard`);
+  if (typeof payload.clipSeconds === "number") {
+    lines.push(`Analysed: ${payload.truncated ? "the first " : ""}${formatClipLength(payload.clipSeconds)} of the clip`);
+  }
+  if (payload.valenceRaw || payload.arousalRaw) {
+    lines.push(`Model answers: valence \`${defang(payload.valenceRaw)}\`, arousal \`${defang(payload.arousalRaw)}\``);
+  }
+  return lines.join("\n");
+}
+
+export function formatWebSaveTimings(timings) {
+  const entries = Object.entries(timings ?? {}).filter(([, seconds]) => typeof seconds === "number");
+  if (entries.length === 0) return null;
+  const rows = entries
+    .sort(([a], [b]) => (a === "total") - (b === "total"))
+    .map(([stage, seconds]) => `• ${STAGE_LABELS[stage] ?? defang(stage)}: ${seconds.toFixed(1)} s`);
+  return ["**Timing**", ...rows].join("\n");
+}
+
+async function handleWebSave(req, res) {
+  const payload = await readJsonBody(req);
+  if (!payload.fileName || !payload.prediction) return sendJson(res, 400, { error: "fileName and prediction are required" });
+
+  try {
+    const summary = formatWebSaveSummary(payload);
+    if (payload.imageBase64) {
+      await sendFileViaBotChannel(
+        botConfig.botToken,
+        config.channelId,
+        Buffer.from(payload.imageBase64, "base64"),
+        String(payload.imageName ?? "result.jpg").replace(/[^\w.-]/g, "_"),
+        summary
+      );
+    } else {
+      await sendViaBotChannel(botConfig.botToken, config.channelId, summary);
+    }
+    const timings = formatWebSaveTimings(payload.timings);
+    if (timings) await sendViaBotChannel(botConfig.botToken, config.channelId, timings);
+    if (payload.transcript) await sendPromptMessages("Transcript", String(payload.transcript));
+    if (payload.valencePrompt) await sendPromptMessages("Valence prompt", String(payload.valencePrompt));
+    if (payload.arousalPrompt) await sendPromptMessages("Arousal prompt", String(payload.arousalPrompt));
+  } catch (err) {
+    console.error("[emotionApi] failed to post web result:", err);
+    return sendJson(res, 502, { error: "Couldn't post to Discord" });
+  }
+  sendJson(res, 200, { message: "posted" });
+}
+
 async function handleBatchDone(req, res) {
   const payload = await readJsonBody(req);
 
@@ -127,4 +204,5 @@ export function registerEmotionRoutes(registerRoute) {
 
   registerRoute("POST", "/emotion/result", config.serviceSecret, handleResult);
   registerRoute("POST", "/emotion/batch-done", config.serviceSecret, handleBatchDone);
+  registerRoute("POST", "/emotion/web-save", config.serviceSecret, handleWebSave);
 }

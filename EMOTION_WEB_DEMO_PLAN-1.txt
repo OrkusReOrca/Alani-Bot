@@ -1,0 +1,552 @@
+================================================================================
+ALANI EMOTION - WEB DEMO DASHBOARD
+Implementation plan & spec (hand-off for the implementing Claude Code session)
+================================================================================
+
+Repo:   OrkusReOrca/Alani-Bot        Target dir: emotion-service/
+Status: PLAN ONLY. Nothing in the repo has been changed yet.
+Author context: planned in a read-only session after reading emotion-service/*
+and src/features/emotion-detect/*.
+
+--------------------------------------------------------------------------------
+0. GOAL IN ONE PARAGRAPH
+--------------------------------------------------------------------------------
+Add a password-protected web dashboard, served by the SAME Python process that
+already runs on the bot-hosting.net "Alani Emotion" slot (emotion-service/main.py),
+so the user can open it from any computer (e.g. a university PC) during their
+thesis defense: log in, upload (or pick) a short video of themselves, watch
+processing progress, then see a polished results page (circumplex quadrant,
+annotated frame, AU bars, transcript, voice/gaze/head stats, timings, prompts).
+It must work with ZERO infrastructure change: same slot, same startup file
+(emotion-service/main.py), same env-var mechanism, same requirements.txt style.
+The existing Discord flow (".a emo ...", POST /run, POST /resend) must keep
+working exactly as it does today.
+
+The thesis is no longer "real-time". A run finishing within ~10 minutes is fine
+(user records at the start of the talk, presents, checks results at the end).
+
+--------------------------------------------------------------------------------
+1. HARD CONSTRAINTS (do not violate)
+--------------------------------------------------------------------------------
+C1. No new infrastructure: no new hosts, no tunnel, no database server, no
+    reverse proxy, no second slot. Everything runs inside the existing
+    main.py process, storing data on the slot's own disk (EMOTION_DATA_DIR).
+C2. No native-compile dependencies (bot-hosting.net's build wall; see root
+    README "Daily jobs" and emotion-service/README.md "Why no OpenFace").
+    Prefer ZERO new pip deps. If one is truly needed it must be pure-Python /
+    prebuilt-wheel. Preferred design below needs none.
+C3. bot-hosting.net serves plain http://IP:PORT. NO HTTPS. Consequences:
+    - Browser getUserMedia/MediaRecorder will NOT work (needs secure context).
+      So do NOT build an in-page "Record" button as the primary path.
+      Primary path = file upload. On phones/tablets, <input type="file"
+      accept="video/*" capture="user"> opens the native camera app and works
+      over http. On desktop it is a normal file picker (user records with
+      Windows Camera / phone, then uploads).
+    - Do NOT set the "Secure" cookie flag (cookie would never be sent).
+    - Passwords travel in cleartext. Acceptable for a throwaway demo password;
+      document that the user must use a unique demo password, not one reused
+      anywhere else.
+C4. The uni network may block CDNs / non-standard ports. The frontend must be
+    fully self-contained: no CDN scripts, no Google Fonts, no external images.
+    Charts are hand-written inline SVG/CSS. No build step (no npm, no bundler).
+C5. Python version on the host is unknown (dev container here is 3.13). Stdlib
+    `cgi` was removed in 3.13, so DO NOT rely on cgi.FieldStorage. Do not use
+    3.12+-only syntax either. (See upload design in 4.2: raw-body upload, no
+    multipart parsing at all.)
+C6. RAM is the main risk (torch + py-feat + faster-whisper + openSMILE in one
+    small slot). Therefore: exactly ONE heavy job at a time, process-wide
+    (shared with Discord-triggered runs). Never load a second detector.
+C7. Keep the repo's existing style: heavy explanatory docstrings, small
+    modules, plain config.py env reading via _required(), stdlib http.server
+    (no Flask/FastAPI unless unavoidable).
+
+--------------------------------------------------------------------------------
+2. WHAT EXISTS TODAY (facts verified by reading the code)
+--------------------------------------------------------------------------------
+main.py       ThreadingHTTPServer, only do_POST. Routes /run and /resend, both
+              guarded by "Authorization: Bearer <EMOTION_SERVICE_SECRET>".
+              Refuses to start if EMOTION_SERVICE_SECRET unset.
+pipeline.py   resolve_clips(run_mode) (Drive listing) and run_clips(...).
+              _process_clip(...) is the real work, but it is TIED to Drive and
+              Discord: it downloads from Drive, truncates to 120 s, extracts
+              up to 32 frames, runs ONE shared py-feat pass (detector.py) for
+              AU + gaze + head pose, extracts audio, faster-whisper transcript,
+              openSMILE voice string, builds the two ValAro prompts
+              (prompt.py), calls OpenRouter twice (openrouter_client.classify,
+              frames as image_url blocks, max_tokens=8), combines to a
+              quadrant (PA/NA/ND/PD), writes cache JSON + CSV row, renames the
+              Drive file DONE_*, then POSTs a callback to Alani-Bot.
+store.py      Per-clip JSON cache keyed by Drive fileId in DATA_DIR/clips/,
+              first-frame JPG, append-only CSV DATA_DIR/clips_log.csv.
+prompt.py     build_prompt_valence/arousal, parse_*, combine(), SHORT_CODE.
+              Quadrant only - there is NO continuous valence/arousal score.
+visualize.py  render_annotated_frame(detection_row, dest) via py-feat
+              plot_detections (box, landmarks, AU bars, pose, gaze).
+config.py     LISTEN_PORT (EMOTION_LISTEN_PORT or SERVER_PORT or 8000),
+              MAX_CLIP_SECONDS=120, MAX_VLM_FRAMES=32, WHISPER_MODEL=small.
+video.py      truncate_if_needed, extract_frames, make_thumbnail, extract_audio.
+Modalities    AU, T (transcript), VO (voice), ET (eye gaze), HT (head pose).
+Cache modes   "d" = extract+cache all 5 regardless; "s" = only requested.
+No Python tests exist in the repo.
+
+--------------------------------------------------------------------------------
+3. ARCHITECTURE OVERVIEW
+--------------------------------------------------------------------------------
+Browser (uni PC)  --http-->  main.py (same process, same port)
+   GET  /                    -> redirect to /app (or login)
+   GET  /app/*               -> static files from emotion-service/web/
+   POST /api/login           -> sets signed session cookie
+   POST /api/upload          -> raw-body video upload -> creates a Job
+   GET  /api/jobs            -> list jobs (newest first)
+   GET  /api/jobs/<id>       -> job status + result (poll every ~1.5 s)
+   POST /api/jobs/<id>/rerun -> re-run VLM step with other modalities
+   POST /api/jobs/<id>/pin   -> pin / unpin (exempt from auto-delete)
+   DELETE /api/jobs/<id>     -> delete job + its files
+   GET  /api/jobs/<id>/media/<name> -> frame/annotated image, video (auth'd)
+   POST /api/warmup          -> background-load models
+   GET  /api/health          -> unauthenticated, tiny {"ok":true} (reachability test)
+   POST /run, /resend        -> UNCHANGED (bearer secret, used by Alani-Bot)
+
+One global JobRunner thread + queue.Queue executes jobs sequentially. The
+Discord-triggered pipeline.run_clips ALSO takes the same global lock so the two
+paths can never overlap (C6).
+
+--------------------------------------------------------------------------------
+4. DETAILED SPEC
+--------------------------------------------------------------------------------
+
+4.1 New / changed files (all under emotion-service/)
+----------------------------------------------------
+config.py        ADD env vars (see 4.9).
+main.py          Add do_GET / do_DELETE, route table, static serving; keep the
+                 existing /run and /resend code path byte-for-byte equivalent in
+                 behavior. Start JobRunner on startup. Web routes enabled only if
+                 DEMO_PASSWORD is set (otherwise /app and /api/* return 404 and
+                 print one log line). Existing "refuse to start without
+                 EMOTION_SERVICE_SECRET" stays.
+web_auth.py      NEW. Password check, signed cookie, rate limiting.
+web_jobs.py      NEW. Job model, persistence, queue, runner, retention.
+web_api.py       NEW. Route handlers for /api/* (keeps main.py small).
+core.py          NEW (or inside pipeline.py). Source-agnostic processing core,
+                 see 4.3.
+pipeline.py      REFACTOR minimally: _process_clip becomes a thin Drive wrapper
+                 around core.process(); behavior identical.
+web/             NEW static frontend: index.html, login.html, app.css, app.js,
+                 plus small modules if wanted (charts.js). No external assets.
+fake_pipeline.py NEW. Dev/test stand-in (see 4.10).
+tests/           NEW minimal unittest suite (stdlib unittest, no pytest dep).
+README.md        UPDATE: new env vars, routes, demo-day checklist.
+../.gitignore    ADD data/web/ if the existing emotion data ignore rule does not
+                 already cover it (check the Python/emotion section).
+
+4.2 Upload design (no multipart, no new deps)
+---------------------------------------------
+Client: fetch/XHR POST /api/upload with the raw File as body.
+  Headers: Content-Type: application/octet-stream
+           X-Filename: <encodeURIComponent(original name)>
+           X-Modalities: "AU.T.VO.ET.HT" (dot list, same grammar as Discord)
+           X-Cache-Mode: d|s
+  Use XMLHttpRequest (not fetch) so upload progress events drive a progress bar.
+Server: read exactly Content-Length bytes in 1 MiB chunks, streaming to
+  DATA_DIR/web/jobs/<jobid>/input.<ext>. Reject:
+    - missing/oversized Content-Length (limit EMOTION_WEB_MAX_UPLOAD_MB,
+      default 300) -> 413
+    - extension not in drive._VIDEO_EXTS (.mov .mp4 .avi .mkv .webm) -> 415
+    - not authenticated -> 401
+  Sanitize filename (basename only, strip control chars, cap 120 chars); the
+  on-disk name is always input.<ext>, the original name is only metadata.
+  After the upload: ffprobe-equivalent sanity check via video.get_duration_and_
+  frame_count; if unreadable -> job fails fast with a friendly error.
+  Truncation to MAX_CLIP_SECONDS (120) is applied exactly as today and the UI
+  must SAY so ("Only the first 2:00 of your clip is analysed").
+Return 201 {"jobId": "...", "queuePosition": n}.
+Persist the uploaded input.<ext> so reruns/toggles do not require re-upload.
+
+4.3 Source-agnostic core (the only real refactor)
+-------------------------------------------------
+Extract from pipeline._process_clip a function:
+
+  core.process(clip_id, src_path, modalities, cache_mode, more_info,
+               progress, work_dir) -> dict result
+
+It performs everything from "truncate -> frames -> detection -> audio ->
+transcript/voice -> prompts -> 2 VLM calls -> combine -> persist cache" and
+returns a result dict containing at least:
+  prediction (e.g. "Positive_Activate"), short ("PA"), valence, arousal,
+  valence_raw, arousal_raw, valence_prompt, arousal_prompt,
+  au_string, transcript, voice_string, eye_string, head_string,
+  modalities_used, stage_timings {stage: seconds}, total_seconds,
+  frame_count, clip_seconds, truncated(bool),
+  files: {first_frame, annotated (optional)}
+`progress(stage, detail=None)` is called at stage boundaries. Stage ids (fixed,
+the UI maps them to labels):
+  queued, truncating, frames, face (py-feat AU+gaze+pose), audio,
+  transcript, voice, vlm_valence, vlm_arousal, finalizing, done, error
+Rules:
+  - core must NOT touch Drive, Discord callbacks, or rename anything.
+  - The Drive path (pipeline._process_clip) keeps doing: download, call core,
+    store.append_log_row, drive.mark_done, callback.post_result - identical
+    observable behavior to today. Do a manual regression with ".a emo run1".
+  - Web jobs use clip_id = "web_<jobid>" so store.py's per-clip JSON cache
+    works unchanged and cannot collide with Drive fileIds.
+  - For the web the annotated frame is ALWAYS produced (more_info=True
+    equivalent) because the dashboard shows it; visualize failure still falls
+    back to the plain frame.
+  - Persist the 32 extracted frames (jpg) under the job dir so a rerun with
+    different modalities skips frame extraction and detection entirely. Frame
+    jpgs are small; keep them. (Today they are deleted with work_dir.)
+  - Record per-stage wall-clock timings (time.monotonic) for the UI.
+  - Detection result: py-feat dataframe is not JSON-friendly; the AU/pose
+    strings in cache are what reruns need, so no dataframe persistence needed.
+    Additionally persist a small JSON of numeric AU intensities, gaze and
+    head-pose angles (for the dashboard bars/gauges) - add a helper in
+    extract_au.py/extract_pose.py that returns the raw numbers it already
+    computes before formatting them into strings (check what those functions
+    return; reuse, do not recompute).
+
+4.4 Jobs: model, persistence, runner
+------------------------------------
+Job JSON at DATA_DIR/web/jobs/<jobid>/job.json (atomic write: temp file +
+os.replace). Fields:
+  id, created_at (UTC ISO), original_filename, size_bytes, status
+  (queued|running|done|error|interrupted), stage, stage_detail, modalities
+  (list), cache_mode, parent_id (for reruns, else null), pinned (bool),
+  result (dict from 4.3 or null), error (string or null), runs: [ ... ]
+Reruns: POST /api/jobs/<id>/rerun {modalities:[...]} creates a NEW job whose
+  parent_id=<id>, copying (hard link or copy) input + frames from the parent so
+  only missing modalities are extracted and the VLM steps re-run. The UI shows
+  all runs of the same source clip together as a comparison table
+  (modalities -> prediction), which doubles as a live ablation demo.
+Runner: single daemon thread, queue.Queue, global threading.Lock
+  `heavy_lock` (in a shared module, e.g. runtime.py) acquired around core.process
+  AND around pipeline.run_clips's per-clip work for Discord runs.
+  On startup: scan jobs; any with status running/queued -> mark "interrupted"
+  (UI offers a "Re-run" button). Never silently drop.
+Errors: catch everything per job, store str(e) + short traceback tail
+  (trimmed, no secrets), status=error. A failed job never kills the runner.
+Retention: on startup and every hour, delete unpinned jobs older than
+  EMOTION_WEB_RETENTION_HOURS (default 24) - uploaded face videos are
+  personal data; the UI also has a "Delete this run" button and a footer note
+  saying uploads are auto-deleted. Pinned jobs are exempt.
+Spend guard: cap new jobs per rolling hour (EMOTION_WEB_MAX_JOBS_PER_HOUR,
+  default 20) -> 429 with a friendly message. Prevents a leaked password from
+  burning OpenRouter credits.
+Disk guard: refuse upload (507) if free space on DATA_DIR < 2x upload size.
+
+4.5 Auth (web_auth.py)
+----------------------
+- Env DEMO_PASSWORD. Unset -> web UI disabled (404), log once.
+- POST /api/login {password}: compare with hmac.compare_digest. On success set
+  cookie  `emo_session=<payload>.<sig>`  where payload = base64url(JSON
+  {iat, exp}) and sig = HMAC-SHA256(key, payload). Key = EMOTION_WEB_SESSION_KEY
+  if set, else derived from DEMO_PASSWORD + EMOTION_SERVICE_SECRET (so changing
+  either logs everyone out). Attributes: HttpOnly; SameSite=Strict; Path=/;
+  Max-Age=EMOTION_WEB_SESSION_HOURS (default 12). NO Secure flag (C3).
+- Rate limit failed logins per client IP: 5 failures / 60 s -> 429 with
+  Retry-After for 60 s. Use the socket peer address (also read X-Forwarded-For
+  only if the first hop is clearly a proxy; otherwise ignore it). Small sleep
+  (~0.5 s) on every failure.
+- Every /api/* route except /api/login and /api/health requires a valid
+  cookie. Static login page is public; the app shell requires auth (redirect to
+  /app/login.html).
+- POST /api/logout clears the cookie.
+- CSRF: SameSite=Strict + require the custom X-Filename/Content-Type headers on
+  state-changing routes; additionally reject state-changing requests whose
+  Origin header is present and not equal to the request Host.
+- Media route must also require the cookie (no public image URLs).
+- Never log the password or cookie. Never echo secrets in errors.
+- Bearer-secret routes /run and /resend are unchanged and independent of the
+  cookie (and cookies must NOT grant access to them).
+
+4.6 Frontend (web/)  - the "good looking, presentable" part
+-----------------------------------------------------------
+Single-page app, vanilla JS + CSS, mobile- and projector-friendly, dark theme
+by default with a light toggle, large type (it will be projected). Respect
+prefers-reduced-motion. Keyboard accessible. All assets same-origin.
+
+Screens:
+ 1. Login: password field, "Enter", error + lockout message.
+ 2. Home / New analysis:
+    - Big drop zone: drag & drop or click; <input type=file accept="video/*,
+      .mov,.mp4,.avi,.mkv,.webm" capture="user"> so phones open the camera.
+    - Modality chips (AU, T, VO, ET, HT) with one-line tooltips; presets:
+      "Full (all 5)", "Face only (AU)", "Face + speech (AU+T)".
+    - Cache mode toggle ("Cache all modalities" default on = "d").
+    - Notice: "First 2:00 is analysed. First run after the server wakes can
+      take several minutes."
+    - Upload progress bar (XHR), then auto-navigate to the job page.
+    - "Saved demos" row (pinned jobs) and "Recent runs" list below.
+ 3. Job page (processing): vertical stepper with the stages from 4.3
+    (Upload, Extract frames, Face analysis [AU/gaze/pose], Audio, Transcribe,
+    Voice features, Valence, Arousal, Done). Active stage animates, finished
+    stages show seconds taken, skipped stages (modality not requested/cached)
+    show "cached" or "skipped". Elapsed timer. Queue position if waiting.
+    Poll GET /api/jobs/<id> every 1.5 s (back off to 4 s after 5 min).
+    Friendly text for long steps ("Warming up the face model - first run only").
+    Cancel is OUT OF SCOPE (cannot safely interrupt torch); show "Delete" once
+    finished/errored.
+ 4. Result page (the money shot):
+    - Hero: quadrant label big ("Positive - Active", code PA) with a colour per
+      quadrant (keep colours colour-blind safe and also encode with icon/text).
+    - Circumplex plot (inline SVG): 2x2 grid, x=Valence (neg->pos),
+      y=Arousal (deactivate->active), quadrant PA/NA/ND/PD labelled; the
+      predicted quadrant is highlighted and a marker sits at its centre.
+      IMPORTANT: the model only outputs a quadrant, so do NOT fabricate a
+      continuous coordinate or confidence value. Caption: "Quadrant
+      prediction (binary valence x binary arousal)".
+    - Annotated frame (py-feat) with click-to-zoom; a filmstrip of the sampled
+      frames (thumbnails) in order.
+    - AU panel: horizontal bars of the AU intensities (from the numeric JSON),
+      sorted desc, top ~8 with names (e.g. "AU12 Lip corner puller").
+      Provide a small static AU-name map in app.js.
+    - Gaze + head pose: simple yaw/pitch/roll readouts (numbers + small SVG
+      dial or arrow), no external libs.
+    - Transcript card (with "if garbled, disregard" note, as the prompt says),
+      voice-feature summary card (the formatted voice_string).
+    - "What the model saw" collapsible: the exact valence + arousal prompts and
+      the raw one-word answers (matches the existing `mif` transparency).
+    - Timing breakdown: horizontal stacked bar of stage_timings + total.
+    - Modality toggle bar: change the modality set and press "Re-analyse";
+      creates a rerun job (fast: VLM only when everything is cached). Below,
+      the "Runs for this clip" comparison table: modalities -> prediction ->
+      time. Optional stretch: "Run ablation presets" button that queues
+      [AU], [AU+T], [AU+T+VO], [all] reruns.
+    - Actions: Pin as demo, Download result JSON, Download annotated PNG,
+      Delete. Print-friendly CSS (@media print) for screenshots.
+ 5. Footer on every page: uploads auto-deleted after N hours; "Prediction from
+    Qwen3-VL-8B via OpenRouter, circumplex model (ValAro two-step prompting)".
+All user-controlled strings (filename, transcript) MUST be inserted with
+textContent / escaped - the transcript is model/ASR output, treat as untrusted.
+
+4.7 API contracts (JSON; all errors {"error":"message"} with proper status)
+---------------------------------------------------------------------------
+POST /api/login        {password} -> 200 {ok:true} | 401 | 429
+POST /api/logout       -> 200
+GET  /api/health       -> 200 {ok:true}   (no auth; for reachability checks)
+GET  /api/config       -> {maxUploadMb, maxClipSeconds, retentionHours,
+                           modalities:["AU","T","VO","ET","HT"], modelName}
+POST /api/upload       (see 4.2) -> 201 {jobId, queuePosition}
+GET  /api/jobs         -> {jobs:[{id, created_at, original_filename, status,
+                           stage, prediction?, short?, pinned, parent_id}]}
+GET  /api/jobs/<id>    -> full job (including result when done)
+POST /api/jobs/<id>/rerun   {modalities:[...]} -> 201 {jobId}
+POST /api/jobs/<id>/pin     {pinned:bool} -> 200
+DELETE /api/jobs/<id>  -> 200 (404 if missing; refuse if running -> 409)
+GET  /api/jobs/<id>/media/<name>  name in a fixed allow-list:
+                       annotated.png, first_frame.jpg, frames/<NNN>.jpg,
+                       input video (for optional playback). Validate against
+                       the allow-list/regex; NEVER join user input into a path
+                       without resolving and checking it stays inside the job
+                       dir (path traversal guard).
+POST /api/warmup       -> 202; loads detector + whisper in the background (needs
+                       heavy_lock; no-op if already loaded).
+Status values & stage ids are the fixed enums from 4.3/4.4.
+
+4.8 Models warm-up (runtime reality)
+------------------------------------
+Cold start dominates the first run (torch import, py-feat weights - possibly a
+first-time download -, whisper weights). Provide:
+  - Optional env EMOTION_WARMUP_ON_START=1 -> background warm-up thread at boot.
+    Off by default (RAM spike on boot; user may prefer manual).
+  - "Warm up models" button on Home (calls /api/warmup) and a status badge
+    ("Models: cold / warming / ready") driven by a flag in runtime.py.
+  - Demo-day instruction: warm up + run one throwaway clip before presenting.
+Expected runtimes (ESTIMATES for a CPU-only shared slot, NOT measured; the
+implementer/user should replace them with real numbers from one `mif` run):
+  warm, 2-min clip, all modalities: ~3-6 min
+  cold first run: ~4-8 min (+ model load / downloads)
+  rerun with cached modalities: ~20-60 s (2 VLM calls with up to 32 images)
+  shorter clip (30-60 s) roughly halves the heavy stages.
+The UI must never imply a fixed ETA; show elapsed time and per-stage actuals.
+
+4.9 Config additions (config.py via _required(), all optional except password)
+-------------------------------------------------------------------------------
+DEMO_PASSWORD                    enables the web UI (required for web)
+EMOTION_WEB_SESSION_KEY          optional HMAC key (see 4.5)
+EMOTION_WEB_SESSION_HOURS        default 12
+EMOTION_WEB_MAX_UPLOAD_MB        default 300
+EMOTION_WEB_RETENTION_HOURS      default 24
+EMOTION_WEB_MAX_JOBS_PER_HOUR    default 20
+EMOTION_WARMUP_ON_START          default off
+EMOTION_FAKE_PIPELINE            dev/test only: use fake_pipeline (see 4.10)
+Document all of them in emotion-service/README.md's env table.
+Existing env vars unchanged. Do NOT require GOOGLE_SERVICE_ACCOUNT_KEY or
+OPENROUTER... for the server to boot (OpenRouter key is needed only when a job
+actually reaches the VLM step; fail that job with a clear message if missing).
+ALANI_BOT_URL is not needed by web jobs (no Discord callback for them).
+
+4.10 Development without the heavy stack
+----------------------------------------
+The cloud/dev container does not have torch/py-feat/whisper. Make the web layer
+importable and testable WITHOUT them: keep heavy imports lazy (they already are
+inside detector/extractors) and add fake_pipeline.py selected by
+EMOTION_FAKE_PIPELINE=1, which sleeps a few seconds per stage, calls progress()
+exactly like the real core, and returns a canned result (include a generated
+placeholder frame + annotated image, fake AU numbers, sample transcript). This
+lets the UI, auth, queue, upload, rerun, retention and polling be developed and
+verified end-to-end locally (python3 main.py with env vars, then drive it with
+curl and a headless Chromium via Playwright; Chromium is preinstalled in the
+cloud environment at /opt/pw-browsers - do not run `playwright install`).
+Take screenshots of login, home, processing, result at desktop and phone width
+to verify the design.
+
+4.11 Tests (stdlib unittest, run with `python3 -m unittest discover -s
+emotion-service/tests`)
+-----------------------------------------------------------------
+ - web_auth: cookie sign/verify, expiry, tamper rejection, rate limit.
+ - upload: size cap, extension filter, filename sanitisation, partial body.
+ - media route: path-traversal attempts (../, encoded, absolute) all rejected.
+ - jobs: persistence round-trip, interrupted-on-restart, retention skips pinned,
+   per-hour cap, delete refuses running job.
+ - heavy_lock: a Discord-style call and a web job never run concurrently.
+ - API with fake pipeline: upload -> poll -> done -> rerun -> delete.
+ - Regression guard: POST /run without bearer -> 401; with cookie only -> 401.
+
+--------------------------------------------------------------------------------
+5. IMPLEMENTATION PHASES (each ends in a working, reviewable state)
+--------------------------------------------------------------------------------
+Phase 1 - Foundation (no UI yet)
+  config additions; runtime.py (heavy_lock, warm flags); web_auth.py; route
+  table in main.py with /api/health, /api/login, /api/logout; /run & /resend
+  untouched. Tests for auth.
+  DONE WHEN: server boots with and without DEMO_PASSWORD; login works via curl;
+  /run still behaves exactly as before.
+
+Phase 2 - Core refactor
+  core.process() extracted; pipeline._process_clip becomes a wrapper; stage
+  progress hooks; per-stage timings; persisted frames + numeric AU/pose JSON.
+  DONE WHEN: reading the diff shows the Drive path's behavior is unchanged and
+  (if the user can) one real ".a emo run1 mAU.T d mif" still works end to end.
+
+Phase 3 - Jobs, queue, upload, API
+  web_jobs.py, web_api.py, upload streaming, media route, rerun/pin/delete,
+  retention, spend/disk guards, fake_pipeline. Tests.
+  DONE WHEN: full API flow works with EMOTION_FAKE_PIPELINE=1 under curl.
+
+Phase 4 - Frontend
+  login, home/upload, job stepper, result page, comparison table, print CSS.
+  Playwright screenshots at 1440px and 390px for each screen.
+  DONE WHEN: flows work in headless Chromium against the fake pipeline and the
+  screenshots look presentable on a projector (contrast, font size).
+
+Phase 5 - Hardening & docs
+  security review pass (auth, path traversal, upload limits, XSS via
+  transcript/filename, log hygiene), README update, demo-day checklist, pin
+  demo workflow, optional warm-up flag. Run the repo's /security-review style
+  checklist on the diff.
+
+Phase 6 (stretch, only if time) - ablation presets button; result JSON export;
+  side-by-side compare of two runs.
+
+--------------------------------------------------------------------------------
+6. DEMO-DAY CHECKLIST (put in README)
+--------------------------------------------------------------------------------
+ [ ] From the actual uni computer/network: open http://<slot-ip>:<port>/api/health
+     - if it does not load, the port is blocked; use phone hotspot or ask IT.
+ [ ] DEMO_PASSWORD set to a throwaway value, shared with nobody.
+ [ ] Open /app, log in, press "Warm up models", then run one short test clip.
+ [ ] Record the real clip (30-60 s is plenty; < 2:00 hard cap) with the
+     phone/Windows Camera at 720p-1080p; upload it at the START of the talk.
+ [ ] Pin the finished run as a saved demo; keep a screen-recording of a
+     successful run as an offline fallback.
+ [ ] After the talk: delete runs containing your/other people's faces.
+ [ ] Watch slot RAM/disk in the panel during the first full run.
+
+--------------------------------------------------------------------------------
+7. RISKS & OPEN QUESTIONS
+--------------------------------------------------------------------------------
+R1  RAM on the slot may be insufficient for torch+py-feat+whisper together.
+    Mitigation: single heavy lock; whisper small/int8 already default; if it OOMs
+    consider modality presets (AU+T) and unloading whisper after use (do not
+    implement unless OOM is observed).
+R2  Uni network may block the slot's port. Mitigation: health URL check, hotspot,
+    recorded fallback. (No tunnel allowed by constraint C1.)
+R3  Slot or proxy may cap request body size/time below 300 MB - recommend
+    compressed 720p/1080p clips; make EMOTION_WEB_MAX_UPLOAD_MB lowerable.
+R4  Slot restarts (bot-hosting.net) would kill an in-flight job: handled via
+    "interrupted" status + rerun button; persisted inputs make this cheap.
+R5  Runtime numbers are estimates. First action of the implementer/user:
+    run one real clip and record real per-stage timings, then update 4.8.
+R6  Cleartext password over http: use a throwaway demo password.
+R7  Needs user input before/while building: (a) slot RAM/disk figures,
+    (b) whether the hosting panel exposes the port publicly to arbitrary IPs
+    (Alani-Bot reaches it today, but from inside the same hosting network -
+    browser reachability from the internet must be confirmed with the health
+    URL), (c) preferred UI language (English assumed), (d) any branding.
+
+--------------------------------------------------------------------------------
+8. ACCEPTANCE CRITERIA (overall)
+--------------------------------------------------------------------------------
+A1. With DEMO_PASSWORD unset, behavior is identical to today (web disabled).
+A2. With it set, an unauthenticated browser can reach only /api/health and the
+    login page; everything else 401/redirect.
+A3. A logged-in user can upload a video and see live staged progress, then a
+    results page containing every element listed in 4.6.
+A4. Changing modalities and re-analysing reuses cached work and finishes fast.
+A5. Only one heavy job runs at a time even when mixed with Discord runs.
+A6. ".a emo run1/runany/runall" and ".a emo resend" still work unchanged.
+A7. No new native-build dependencies; no external network assets in the UI.
+A8. Uploaded videos are auto-deleted per retention; Delete button works.
+A9. Unit tests pass; Playwright screenshots exist for all screens at desktop
+    and phone widths; README documents env vars + demo-day checklist.
+A10. Wrong password lockout, path traversal, oversized upload and bad extension
+    are all rejected with the correct status codes.
+
+================================================================================
+END
+================================================================================
+
+================================================================================
+ADDENDUM 2026-10-12 - DECISIONS TAKEN AFTER THE PLAN WAS WRITTEN
+(these override the sections they mention; the implementation follows them)
+================================================================================
+A1. HTTPS IS AVAILABLE (overrides C3 and parts of 4.5 / 4.6 / R2 / R6).
+    The bot-hosting.net panel's "Domains" tab gives the slot a public HTTPS
+    address (https://alaniemotion.apps.bot-hosting.cloud) with a certificate,
+    proxied to the app's port. So:
+    - the session cookie is flagged Secure whenever X-Forwarded-Proto is https
+      (still not on plain http, so local development works);
+    - getUserMedia / MediaRecorder work, so the home page has a "Record with
+      camera" button next to file upload (upload stays the fallback);
+    - the uni network is unlikely to block it (normal HTTPS port).
+    The throwaway-password advice stays.
+A2. PASSWORD. DEMO_PASSWORD is set in the slot's Env tab only - never in the
+    repo, never in docs.
+A3. ONE WAY AT A TIME (overrides "Discord flow must keep working" in section 0
+    and A6). While DEMO_PASSWORD is set the old POST /run and /resend answer 503
+    with an explanation. Unset DEMO_PASSWORD to get the Discord/Drive flow back.
+    EMOTION_KEEP_DISCORD_FLOW=1 keeps both (sharing the one heavy lock). The Drive
+    and Discord code stays in the repo as the backup way. Nothing else in the
+    Alani Discord bot is affected.
+A4. SAVE TO DISCORD (overrides 4.9 "no Discord callback for web jobs"). A "Save to
+    Discord" button on a finished run posts to the same channel as the old
+    emotion command: annotated image, prediction, modalities, timings,
+    transcript, prompts. Slot -> bot route POST /emotion/web-save (same bearer
+    secret). Pin (keep past retention) is a separate button.
+A5. ".a emo web" (Node bot) replies with the dashboard link (env EMOTION_WEB_URL)
+    and whether /api/health answers.
+A6. LOADING BAR WITH DESCRIPTIONS. The job page shows an overall progress bar and
+    percentage, the current step's title and a plain-language sentence about what
+    it is doing, an elapsed timer, and a step list with the real seconds of each
+    finished step ("already computed"/"not needed" for steps that do not run).
+    The percentage comes from the stages that are actually going to run; the bar
+    also creeps inside long steps. No fixed time estimate is shown.
+A7. THEME. Mostly white background with the orange accent #da8552 (the orange the
+    Discord bot's paged embeds use), not Alani's own theme colour. No dark mode.
+    Quadrants also have a shape (circle/triangle/square/diamond), not only colour.
+A8. CSRF. Instead of the Origin/Host comparison of 4.5 (which can break behind a
+    proxy that rewrites Host), state-changing requests need the header
+    "X-Requested-With: alani-web" plus SameSite=Strict.
+A9. FRONTEND is one page (index.html + app.css + app.js) with login, home and job
+    views switched by the URL hash; GET /app/ is the public shell, all data
+    routes need the cookie. Frame files are frames/frame_NNN.jpg.
+A10. STRUCTURE CHANGES. core.py has process(); stages.py holds the stage list and
+    the "what still needs computing" plan (shared with fake_pipeline.py);
+    runtime.py holds heavy_lock and warm-up state. Clips (input video, frames,
+    annotated frame) live in web/clips/<clip>/ and are shared by all runs of that
+    clip; jobs in web/jobs/<job>/job.json. The sanity check of an unreadable
+    video happens in the first stage of the job (it fails there with a message)
+    instead of inside the upload request.
+A11. DOCUMENTATION. The system is documented for the thesis black book in
+    ALANI_EMOTION_WEBBOARD.txt (repo root); it is updated whenever the web board
+    changes.

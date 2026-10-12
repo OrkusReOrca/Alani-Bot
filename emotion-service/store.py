@@ -163,3 +163,13 @@ def find_resend_targets(target):
         for row in successful
         if row.get("filename", "").lower() in (target_lower, f"done_{target_lower}")
     ]
+
+
+def delete_clip(file_id):
+    """Forget one clip's cache JSON and saved first frame (used when a web
+    run's source clip is deleted)."""
+    for path in (_clip_json_path(file_id), _first_frame_path(file_id)):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass

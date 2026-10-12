@@ -1,0 +1,303 @@
+================================================================================
+ALANI EMOTION - WEB BOARD
+What it is, how it works, and why it is built this way
+(written to be handed to another session for the thesis "black book";
+ kept up to date as the system changes - see the CHANGE LOG at the bottom)
+================================================================================
+
+Repo:      OrkusReOrca/Alani-Bot, directory emotion-service/ (Python), plus a
+           small amount of Node code in src/features/emotion-detect/.
+Public:    the slot's HTTPS address, page at  <address>/app/
+Status:    implemented and tested locally with a simulated analysis. The real
+           models (py-feat, Whisper, openSMILE) and the real OpenRouter call
+           have NOT been run through the web board yet - they run on the slot.
+
+--------------------------------------------------------------------------------
+1. PURPOSE
+--------------------------------------------------------------------------------
+The thesis reproduces a VLM-based emotion-recognition pipeline (Qwen3-VL-8B-
+Instruct, circumplex model, "ValAro" two-step prompting) on video-call clips.
+The original way to run it on this project was a Discord command that picked
+video files out of a Google Drive folder. That is awkward for a live demo.
+
+The web board replaces it for the thesis defense: the presenter opens a web
+page from any computer, logs in with a password, uploads (or records) a short
+video of themselves, watches the analysis progress step by step, and sees a
+results page: the predicted circumplex quadrant, the annotated frame, facial
+action-unit bars, head-pose and gaze readouts, the transcript, voice
+features, per-step timings, and the exact prompts the model was given.
+
+The thesis is no longer "real time": a run finishing within a few minutes is
+fine (record at the start of the talk, present, read the result at the end).
+
+--------------------------------------------------------------------------------
+2. THE PREDICTION METHOD (unchanged from the thesis pipeline)
+--------------------------------------------------------------------------------
+2.1 Circumplex model.
+    Emotional state is placed on two axes: VALENCE (negative <-> positive)
+    and AROUSAL (deactivated <-> active). The result is one of four quadrants:
+        PA  Positive + Active        NA  Negative + Active
+        PD  Positive + Deactivated   ND  Negative + Deactivated
+    The model outputs ONLY a quadrant. There is no continuous coordinate and
+    no confidence value, and the web board deliberately does not invent one.
+
+2.2 Input signals ("modalities"). Up to five can be given to the model:
+    AU  Facial Action Units - which facial muscle movements are present.
+        Extracted with py-feat (xgb AU model). py-feat gives 0-1; it is
+        rescaled x5 to the 0-5 scale of OpenFace (what the thesis wording and
+        thresholds assume); "present" means >= 1.0. Averaged over the frames.
+    T   Transcript - what is said. faster-whisper (default model "small",
+        int8, CPU). Raw text is passed on with a "disregard if garbled" note.
+    VO  Voice - openSMILE eGeMAPSv02 functionals, summarised as pitch (Hz and
+        variation), loudness, speaking rate (voiced segments per second),
+        jitter and harmonics-to-noise ratio.
+    ET  Eye gaze - py-feat's L2CS gaze model, horizontal and vertical in
+        radians, described as centred / avoidant / shifting.
+    HT  Head pose - py-feat img2pose pitch / yaw / roll (degrees converted to
+        radians), described as lowered/raised, turned, tilted, and overall
+        movement (very still / moderate / active). Thresholds are the thesis's.
+
+2.3 Frames. Up to 32 frames are sampled uniformly across the first two
+    minutes of the clip (longer clips are cut to 2:00 with a stream copy) and
+    sent to the model as images.
+
+2.4 Two-step prompting ("ValAro"). Two separate questions, each answered with
+    ONE word (max 8 output tokens):
+      Step 1  "Is the person's emotional tone positive or negative?"
+      Step 2  "Given the tone is POSITIVE/NEGATIVE, is the energy level
+               active or deactivate?"
+    The answer to step 1 is written into the prompt of step 2. Both prompts
+    contain the frames plus a text block for each selected modality. The two
+    words are combined into the quadrant. The model is Qwen3-VL-8B-Instruct,
+    called through OpenRouter (a hosted endpoint; it accepts images, not
+    video, hence the sampled frames).
+
+2.5 Modality selection. The user chooses which modalities go into the prompt
+    ("what should the model use?"). Choosing fewer modalities is a live
+    ablation: the same clip can be re-analysed with, e.g., only AU, then AU+T,
+    then all five, and the comparison table on the results page shows how the
+    prediction changes.
+
+--------------------------------------------------------------------------------
+3. SYSTEM OVERVIEW
+--------------------------------------------------------------------------------
+3.1 Where it runs.
+    One Python process (emotion-service/main.py, standard-library http.server,
+    no web framework) on a bot-hosting.net slot ("Alani Emotion"). The same
+    process serves the web page and does the analysis. The host's panel gives
+    the slot a public HTTPS address (a "Domains" feature: the host terminates
+    TLS and forwards to the process's port), so the browser connection is
+    encrypted and uses the normal HTTPS port. No tunnel, no second server, no
+    database server: data lives on the slot's own disk.
+
+3.2 Two modes, ONE at a time.
+    - WEB BOARD MODE: when the env var DEMO_PASSWORD is set on the slot.
+      The old Discord/Drive routes (POST /run, /resend) answer 503 with an
+      explanation. (EMOTION_KEEP_DISCORD_FLOW=1 can keep both on; they then
+      share one lock and never run together.)
+    - DISCORD/DRIVE MODE: when DEMO_PASSWORD is not set. The original flow:
+      ".a emo run1|runany|runall ..." makes the Discord bot (Alani-Bot) call
+      the slot, which downloads clips from Google Drive, analyses them, renames
+      them DONE_..., and reports back to a Discord channel. That code is kept,
+      unchanged in behaviour, as the backup way.
+    The rest of the Alani Discord bot (Node) is not affected by either mode.
+
+3.3 Files (emotion-service/).
+    main.py          HTTP entry point; routes GET/HEAD/DELETE to the web layer
+                     and keeps the original POST /run and /resend.
+    core.py          The analysis itself, independent of where the video came
+                     from: cut to 2 min -> sample frames -> one py-feat pass
+                     (AU + gaze + head pose) -> audio -> transcript + voice ->
+                     two model calls -> quadrant. Reports progress and times.
+    pipeline.py      Drive wrapper around core.py (the backup flow).
+    stages.py        The fixed list of stages and a "plan": which stages still
+                     need to run given what is already cached.
+    runtime.py       The single "heavy work" lock and the model warm-up state.
+    web_jobs.py      Jobs (one analysis run each): queue, worker, persistence,
+                     clean-up of old runs.
+    web_api.py       The HTTP routes of the web board (page, JSON API, upload,
+                     media, save-to-Discord, warm-up).
+    web_auth.py      Password check, signed login cookie, brute-force lock-out.
+    web/             The page: index.html, app.css, app.js. No libraries, no
+                     external fonts/scripts/images (works on a restricted
+                     network). Charts are hand-written SVG/CSS.
+    fake_pipeline.py A stand-in for core.py used only in development/tests.
+    tests/           36 automated tests (python -m unittest discover ...).
+    In the Node bot: src/features/emotion-detect/ (the .a emo command, with
+    ".a emo web", and emotionApi.js which receives "Save to Discord").
+
+--------------------------------------------------------------------------------
+4. HOW ONE ANALYSIS FLOWS
+--------------------------------------------------------------------------------
+ 1. LOGIN. The page asks for the password. The server compares it in constant
+    time and sets a signed cookie (details in section 6).
+ 2. UPLOAD. The page sends the video file as the raw request body (plus the
+    chosen modalities and cache mode in headers) so the browser can show real
+    upload progress. Limits: 300 MB by default, extensions .mp4 .mov .avi .mkv
+    .webm. On HTTPS the page can also RECORD from the camera and microphone
+    (MediaRecorder) and uploads that recording the same way.
+ 3. JOB. The server stores the video as clips/<id>/input.<ext>, creates a job
+    (queued) and a worker thread picks jobs one at a time.
+ 4. LOCK. The worker takes the process-wide heavy-work lock. This is what
+    guarantees only ONE heavy analysis runs at a time on the slot (torch +
+    py-feat + Whisper + openSMILE are RAM-hungry). While another analysis
+    holds it, the job shows "Waiting for any other analysis to finish".
+ 5. STAGES (fixed vocabulary; each is shown on the page):
+      truncating   check the video, cut to the first 2:00
+      frames       sample up to 32 frames
+      face         one py-feat pass: action units, gaze, head pose
+      audio        extract the audio track
+      transcript   Whisper
+      voice        openSMILE
+      vlm_valence  ask the model: tone
+      vlm_arousal  ask the model: energy
+      finalizing   draw the annotated frame (py-feat's own plot)
+    A stage that is not needed (modality not requested, or already computed)
+    is shown as "not needed" / "already computed" and does not run.
+ 6. PROGRESS. After every stage the worker records: the current stage, a
+    plain-language sentence describing what it is doing, an overall percentage
+    and the seconds each finished stage took. The page polls every 1.5 s and
+    shows a loading bar, the sentence, an elapsed timer, and a step list. The
+    percentage is the share of the work that is actually going to run (stage
+    weights are rough: face 30, transcript 20, each model call 12, ...); the
+    bar also creeps smoothly inside a long stage so it never looks frozen. It
+    is deliberately NOT a time estimate - real step times are shown after the
+    fact.
+ 7. RESULT. The result (quadrant, prompts, raw one-word answers, AU numbers,
+    pose numbers, transcript, voice summary, timings) is saved with the job.
+ 8. RE-ANALYSE. Choosing different modalities and pressing "Re-analyse" makes a
+    new job on the SAME stored clip. Frames, detections and every previously
+    computed modality are reused, so usually only the two model calls run (tens
+    of seconds). All runs of a clip appear in a comparison table.
+
+--------------------------------------------------------------------------------
+5. WHAT THE RESULTS PAGE SHOWS
+--------------------------------------------------------------------------------
+ - Hero: quadrant name and code (PA/NA/ND/PD) with a colour AND a shape
+   (circle/triangle/square/diamond) so it never relies on colour alone.
+ - Circumplex diagram (2x2 grid, predicted quadrant highlighted).
+ - Annotated frame (face box, landmarks, AU bars, pose, gaze) + a filmstrip of
+   the sampled frames. Click to enlarge.
+ - Top eight action units as bars (0-5 scale, with names).
+ - Head pose and gaze as dials (degrees).
+ - Transcript (with a note that machine transcription can be wrong), voice
+   features.
+ - "What the model saw": both prompts exactly as sent and the raw answers.
+ - Timing: stacked bar of seconds per stage and the total.
+ - "Try other modalities" and the runs comparison table.
+ - Actions: Save to Discord, Pin as demo, download result JSON, download the
+   annotated frame, print, delete.
+ - If the clip was longer than 2:00 the page says so ("Only the first 2:00 of
+   your M:SS clip was analysed").
+ Theme: white background, orange accent #da8552 (the orange used by the Discord
+ bot's paged embeds), large type for projectors, a print stylesheet.
+
+--------------------------------------------------------------------------------
+6. SECURITY MODEL
+--------------------------------------------------------------------------------
+ - Transport: HTTPS from the host's proxy. The service itself listens on plain
+   http behind it; it trusts X-Forwarded-Proto only to decide whether to flag
+   the cookie Secure.
+ - Password: one shared demo password in the slot's env (DEMO_PASSWORD), never
+   in the repo. Compared with hmac.compare_digest. Use a throwaway password.
+ - Session: cookie "emo_session" = base64url(JSON{iat,exp}) + "." + HMAC-SHA256
+   signature. HttpOnly, SameSite=Strict, Secure when on HTTPS, 12 h by default.
+   Nothing is stored server-side, so a restart does not log anyone out;
+   changing the password or the shared secret does.
+ - Brute force: 5 wrong passwords in 60 s lock that address out for 60 s (429
+   with Retry-After), plus a short delay on each failure. The address is the
+   one the proxy reports (last X-Forwarded-For entry), trusted only when the
+   direct peer is a private/loopback address.
+ - CSRF: SameSite=Strict, plus every state-changing request must carry the
+   header "X-Requested-With: alani-web" (a cross-site page cannot send a custom
+   header without a CORS preflight, which this server never approves).
+ - Access: every API route except health / session / login needs the cookie.
+   The media route (images and the uploaded video) needs it too and only serves
+   an allow-list of names (annotated.png, first_frame.jpg, frames/frame_NNN.jpg,
+   input) and checks the resolved path stays inside the clip folder.
+ - The old bearer-secret routes /run and /resend never look at the cookie, and
+   the cookie never opens them.
+ - XSS: file names, transcripts and prompts are model/ASR/user text; the page
+   inserts them with textContent only, and sends a Content-Security-Policy that
+   allows scripts only from the same origin.
+ - Spend and disk guards: at most 20 analyses per hour (stops a leaked password
+   from burning OpenRouter credit); uploads refused if free disk is under twice
+   the upload size; size and type limits on uploads.
+ - Privacy: uploaded face videos are deleted automatically after 24 hours
+   (checked hourly) unless the run is pinned; there is a Delete button; the page
+   footer says so.
+
+--------------------------------------------------------------------------------
+7. DATA ON DISK (slot, under EMOTION_DATA_DIR, default ./data)
+--------------------------------------------------------------------------------
+  web/clips/<clip>/   input.<ext>, frames/frame_NNN.jpg, first_frame.jpg,
+                      annotated.png            (shared by all runs of a clip)
+  web/jobs/<job>/job.json   status, stage, progress, modalities, result
+                      (written atomically; a restart marks unfinished jobs
+                      "interrupted" and offers Re-run - never silently lost)
+  clips/web_<clip>.json     the per-modality cache (AU string and numbers,
+                      transcript, voice string, gaze/head strings, last answers)
+  Discord/Drive mode keeps using clips/<driveFileId>.json and clips_log.csv.
+
+--------------------------------------------------------------------------------
+8. SAVE TO DISCORD
+--------------------------------------------------------------------------------
+The "Save to Discord" button makes the slot call the Alani Discord bot
+(ALANI_BOT_URL, same shared secret as everything else) on POST /emotion/web-save.
+The bot posts, in the same channel the old emotion command used: the annotated
+image with a summary (file, prediction, modalities, clip length, the model's raw
+answers), a timing breakdown, the transcript, and the valence and arousal
+prompts. The annotated image is shrunk first so the small Node container is not
+overloaded. If the bot refuses or is unreachable the page shows the error.
+
+In Discord, ".a emo web" replies with the link and whether the board is online.
+
+--------------------------------------------------------------------------------
+9. CONFIGURATION (slot env vars; full table in emotion-service/README.md)
+--------------------------------------------------------------------------------
+  DEMO_PASSWORD (turns the web board on), EMOTION_SERVICE_SECRET, ALANI_BOT_URL,
+  OPENROUTER_API_KEY, optional EMOTION_WEB_SESSION_KEY / _SESSION_HOURS /
+  _MAX_UPLOAD_MB / _RETENTION_HOURS / _MAX_JOBS_PER_HOUR, EMOTION_WARMUP_ON_START,
+  EMOTION_KEEP_DISCORD_FLOW, EMOTION_WHISPER_MODEL. In the Discord bot's env:
+  EMOTION_WEB_URL (the slot's HTTPS address, used by ".a emo web").
+
+--------------------------------------------------------------------------------
+10. TESTING
+--------------------------------------------------------------------------------
+  python -m unittest discover -s emotion-service/tests     (36 tests)
+  They run the real HTTP server and the real job queue with a stand-in analysis
+  (fake_pipeline.py), and exercise core.py with the heavy parts replaced. They
+  cover: login, lock-out, cookie tampering/expiry, CSRF header, upload limits and
+  type/name handling, short uploads, re-analysis reuse, media path traversal,
+  pin/delete/retention, the hourly cap, "Discord and web never run together",
+  failing jobs, restart handling, save-to-Discord, and that the Drive wrapper
+  still logs, renames and calls back as before.
+  Node side: test/emotionWeb.test.js (the ".a emo web" command, the 503 message,
+  and the Save-to-Discord message formatting).
+  NOT tested automatically: the real py-feat / Whisper / openSMILE / OpenRouter
+  run, and real browser camera recording.
+
+--------------------------------------------------------------------------------
+11. KNOWN LIMITS AND ESTIMATES
+--------------------------------------------------------------------------------
+  - Run time on the CPU-only slot is NOT measured yet. Rough guesses: a warm
+    2-minute clip with all five modalities a few minutes; the first run after
+    the server wakes longer (model loading); re-analysis with everything cached
+    tens of seconds. Replace these with real numbers from one real run.
+  - The first run loads torch, py-feat and Whisper weights (possibly downloading
+    them). "Warm up models" on the home page loads them ahead of time.
+  - The model gives a quadrant only (no score). One clip, one person.
+  - A restart of the slot kills a run in progress; it is marked interrupted and
+    can be re-run (the upload is kept).
+  - If the host's proxy limits upload size or time, lower EMOTION_WEB_MAX_UPLOAD_MB
+    and use a compressed 720p clip.
+  - Browser recording needs HTTPS and a camera/microphone permission.
+
+--------------------------------------------------------------------------------
+CHANGE LOG
+--------------------------------------------------------------------------------
+2026-10-12  First version: web board implemented (login, upload/record, staged
+            progress bar with descriptions, results page, re-analysis and
+            comparison, pin/delete/retention, Save to Discord, ".a emo web",
+            warm-up, mode switch against the Discord/Drive flow), core analysis
+            extracted from the Drive pipeline, 36 Python tests + 5 Node tests.

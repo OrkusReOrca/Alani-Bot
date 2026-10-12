@@ -11,6 +11,17 @@ def _required(name, default=None):
     return val if val else default
 
 
+def _number(name, default):
+    try:
+        return float(_required(name, default))
+    except ValueError:
+        return float(default)
+
+
+def _flag(name):
+    return (_required(name, "") or "").lower() in ("1", "true", "yes", "on")
+
+
 # bot-hosting.net sets SERVER_PORT automatically per-deployment — same
 # fallback convention as Alani-Bot's own VOICE_API_PORT.
 LISTEN_PORT = int(_required("EMOTION_LISTEN_PORT") or _required("SERVER_PORT") or "8000")
@@ -61,3 +72,27 @@ WHISPER_COMPUTE_TYPE = _required("EMOTION_WHISPER_COMPUTE_TYPE", "int8")
 
 MAX_CLIP_SECONDS = 120
 MAX_VLM_FRAMES = 32
+
+# ---------------------------------------------------------------------------
+# Web dashboard (web_*.py, web/). The dashboard is ON when DEMO_PASSWORD is set.
+# While it is on, the old Discord/Drive flow (POST /run, /resend) is switched
+# OFF — one way at a time on this slot — unless EMOTION_KEEP_DISCORD_FLOW=1.
+# Unset DEMO_PASSWORD and the service is exactly the old Discord/Drive one.
+# ---------------------------------------------------------------------------
+DEMO_PASSWORD = _required("DEMO_PASSWORD")
+KEEP_DISCORD_FLOW = _flag("EMOTION_KEEP_DISCORD_FLOW")
+
+# HMAC key for the login cookie; derived from the password + shared secret if unset
+# (so changing either one logs everybody out).
+WEB_SESSION_KEY = _required("EMOTION_WEB_SESSION_KEY")
+WEB_SESSION_HOURS = _number("EMOTION_WEB_SESSION_HOURS", 12)
+WEB_MAX_UPLOAD_MB = _number("EMOTION_WEB_MAX_UPLOAD_MB", 300)
+WEB_RETENTION_HOURS = _number("EMOTION_WEB_RETENTION_HOURS", 24)
+WEB_MAX_JOBS_PER_HOUR = int(_number("EMOTION_WEB_MAX_JOBS_PER_HOUR", 20))
+
+# Load py-feat / whisper in the background at boot (a RAM spike) instead of on
+# the dashboard's "Warm up models" button.
+WARMUP_ON_START = _flag("EMOTION_WARMUP_ON_START")
+
+# Dev/test only: a stand-in analysis that needs none of torch/py-feat/whisper.
+FAKE_PIPELINE = _flag("EMOTION_FAKE_PIPELINE")

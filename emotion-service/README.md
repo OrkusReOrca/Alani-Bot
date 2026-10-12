@@ -1,5 +1,16 @@
 # Alani Emotion
 
+**Two ways to use it, one at a time on the slot:**
+
+1. **Web dashboard** (the thesis demo) — set `DEMO_PASSWORD` and open `https://<slot>/app/`.
+   Upload or record a video, watch a live step-by-step progress bar, read the results.
+   How it works and why: [`../ALANI_EMOTION_WEBBOARD.txt`](../ALANI_EMOTION_WEBBOARD.txt).
+2. **Discord / Google Drive flow** (the original way, kept as the backup) — leave
+   `DEMO_PASSWORD` unset and `.a emo run1|runany|runall|resend` drive it exactly as before.
+
+While the dashboard is on, `POST /run` and `/resend` answer 503 (set
+`EMOTION_KEEP_DISCORD_FLOW=1` to keep both on; they still share one heavy-work lock).
+
 The Python half of the `.a emo` feature (see
 [`../src/features/emotion-detect/README.md`](../src/features/emotion-detect/README.md)
 for the Discord-facing command and overall architecture). Runs as its
@@ -31,6 +42,24 @@ Env vars (see each one's own comment in `config.py` for detail):
 | `EMOTION_DATA_DIR` | Where the per-clip cache JSONs + the status/history CSV live on disk. Defaults to `./data`. |
 | `EMOTION_WHISPER_MODEL` / `EMOTION_WHISPER_COMPUTE_TYPE` | faster-whisper model size/precision — defaults to `small`/`int8` (same tier voice-Alani already runs proven on CPU). The original thesis pipeline used a much larger Thai-finetuned model on an HPC GPU node; bump this if transcript quality matters more than speed for a given demo. |
 
+Web dashboard variables (all optional except `DEMO_PASSWORD`; read in `config.py`):
+
+| Variable | What it's for |
+|---|---|
+| `DEMO_PASSWORD` | Turns the dashboard on and is its login password. Use a throwaway, unique one. |
+| `EMOTION_KEEP_DISCORD_FLOW` | `1` keeps `/run` and `/resend` working while the dashboard is on. Default off. |
+| `EMOTION_WEB_SESSION_KEY` | HMAC key for the login cookie. If unset it is derived from the password + `EMOTION_SERVICE_SECRET`, so changing either logs everyone out. |
+| `EMOTION_WEB_SESSION_HOURS` | Login lifetime. Default 12. |
+| `EMOTION_WEB_MAX_UPLOAD_MB` | Upload size limit. Default 300 — lower it if the host's proxy cuts long uploads. |
+| `EMOTION_WEB_RETENTION_HOURS` | Unpinned runs (and their uploaded videos) are deleted after this. Default 24. |
+| `EMOTION_WEB_MAX_JOBS_PER_HOUR` | Spend guard against a leaked password. Default 20. |
+| `EMOTION_WARMUP_ON_START` | `1` loads the heavy models at boot instead of on the dashboard's "Warm up models" button. |
+| `EMOTION_FAKE_PIPELINE` | Dev/test only: a stand-in analysis that needs none of torch / py-feat / whisper (`fake_pipeline.py`). |
+
+`ALANI_BOT_URL` + `EMOTION_SERVICE_SECRET` are also what the dashboard's "Save to Discord" uses.
+`OPENROUTER_API_KEY` is only needed when a job reaches the model step (the job fails with a
+clear message if it is missing); `GOOGLE_SERVICE_ACCOUNT_KEY` is not needed for the dashboard.
+
 **Startup file for the bot-hosting.net slot:** `emotion-service/main.py`.
 The panel's Startup File field defaults to just `main.py` (looked for at
 the repo root) — set it explicitly to `emotion-service/main.py`, same as
@@ -41,7 +70,14 @@ at the repo root.
 
 ## Routes
 
-Two, both under `POST`, both requiring `Authorization: Bearer
+**Web dashboard** (only when `DEMO_PASSWORD` is set; everything except `/app/*`, `/api/health`,
+`/api/session` and `/api/login` needs the signed login cookie):
+`GET /app/` (the page) · `GET /api/health` · `GET /api/session` · `POST /api/login|logout` ·
+`GET /api/config|status` · `POST /api/warmup` · `POST /api/upload` (raw video body) ·
+`GET /api/jobs` · `GET|DELETE /api/jobs/<id>` · `POST /api/jobs/<id>/rerun|pin|save` ·
+`GET /api/jobs/<id>/media/<annotated.png|first_frame.jpg|frames/frame_NNN.jpg|input>`.
+
+**Discord / Drive flow** — two, both under `POST`, both requiring `Authorization: Bearer
 <EMOTION_SERVICE_SECRET>`:
 
 - **`/run`** `{runMode, modalities, cacheMode, moreInfo, invokedBy}` —
@@ -60,6 +96,31 @@ Two, both under `POST`, both requiring `Authorization: Bearer
   `store.py`'s own records. `target` is `"all"`, `"recent"` (last 24h),
   or a filename. See `../src/features/emotion-detect/README.md`'s own
   "Resend" section for why this exists.
+
+## Code layout
+
+`core.py` is the source-agnostic analysis (video in, prediction out, with progress
+reporting and per-step timings); `pipeline.py` is the Drive wrapper around it;
+`web_jobs.py` / `web_api.py` / `web_auth.py` / `web/` are the dashboard; `stages.py`
+(stage vocabulary + the "what still needs computing" plan), `runtime.py` (the one heavy-work
+lock, model warm-up state) and `fake_pipeline.py` (dev stand-in) are shared.
+
+## Tests
+
+No torch / py-feat / whisper / ffmpeg needed (they are stubbed or faked):
+
+```bash
+python -m unittest discover -s emotion-service/tests
+```
+
+## Demo-day checklist
+
+- [ ] Slot env has `DEMO_PASSWORD`, `EMOTION_SERVICE_SECRET`, `ALANI_BOT_URL`, `OPENROUTER_API_KEY`; the panel's Domains tab shows an active HTTPS address.
+- [ ] From the presenting machine open `https://<slot>/api/health` — it must say `{"ok": true}`.
+- [ ] Log in at `/app/`, press **Warm up models**, then run one short test clip (this also shows the real step times).
+- [ ] Record or upload the real clip at the start of the talk (30–60 s is plenty; only the first 2:00 is analysed).
+- [ ] **Pin** the finished run and keep a screen recording of a good run as an offline fallback.
+- [ ] After the talk delete runs showing faces; watch the slot's RAM/disk during the first full run.
 
 ## Why no OpenFace, and no local model weights
 

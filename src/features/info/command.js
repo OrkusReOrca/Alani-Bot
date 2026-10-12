@@ -38,7 +38,7 @@ const COMMANDS = [
   },
   { text: "**.a list db** — which database(s) you can see and use.", private: false },
   {
-    text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips. Needs the AIallowed tag, one dedicated channel. See `.a info emo`.",
+    text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips; **.a emo web** links the emotion web dashboard. Needs the AIallowed tag, one dedicated channel. See `.a info emo`.",
     private: true,
   },
   {
@@ -206,6 +206,11 @@ const EMO_INFO = [
     "are separate messages, followed by a timeline (upload time and command " +
     "time in GMT+7, then T+X for preprocess done, VLM done, final message " +
     "sent). Left off = today's lighter result.",
+  "",
+  "**Web dashboard**: `.a emo web` replies with the link to the emotion web " +
+    "dashboard (upload or record a video, watch it analysed step by step, read the " +
+    "results, save them to this channel) and whether it is online. While the " +
+    "dashboard is on, the Drive runs above are switched off on the service.",
   "",
   "Example: `.a emo runany mAU.T d` — process every pending clip using " +
     "AU + transcript in the prompt, caching all five for later.",

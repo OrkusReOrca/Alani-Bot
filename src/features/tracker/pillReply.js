@@ -22,7 +22,7 @@ export async function handlePillReply(message, { state, store, now = Date.now })
 
   const pills = prompt.pillIds.map((id) => store.getPill(id)).filter(Boolean); // a pill removed since is just skipped
   if (pills.length === 0) return false;
-  for (const pill of pills) store.addPillLog(pill.id, taken, message.author.id, "reply");
+  for (const pill of pills) store.addPillLog(pill.id, taken, message.author.id, "reply", new Date(now()));
 
   const names = pills.map((pill) => `**${pill.name}**`).join(", ");
   await message.reply({ content: taken ? `✅ Logged ${names} as taken.` : `📝 Logged ${names} as not taken. You can still log it later with \`.at la p <pill> y\`.`, allowedMentions: { repliedUser: false } });

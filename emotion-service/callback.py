@@ -63,3 +63,30 @@ def post_result(
     else:
         payload["error"] = error
     return post("/emotion/result", payload)
+
+
+def post_web_save(payload):
+    """The web dashboard's "Save to Discord": one finished run (image, prediction,
+    modalities, timings, transcript, prompts) for Alani-Bot to post in the same
+    channel the Discord flow uses. Returns (ok, message) — unlike post() this
+    reports a rejection, because the user is waiting on the button."""
+    if not config.ALANI_BOT_URL or not config.SHARED_SECRET:
+        return False, "Saving to Discord is not set up on the server (ALANI_BOT_URL / EMOTION_SERVICE_SECRET)"
+    last_error = "Alani-Bot did not answer"
+    for attempt in range(2):
+        try:
+            response = requests.post(
+                f"{config.ALANI_BOT_URL.rstrip('/')}/emotion/web-save",
+                headers={"Authorization": f"Bearer {config.SHARED_SECRET}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=30,
+            )
+            if response.ok:
+                return True, "posted"
+            last_error = f"Alani-Bot answered {response.status_code}"
+            if response.status_code < 500:
+                break
+        except Exception as e:
+            last_error = f"Could not reach Alani-Bot ({type(e).__name__})"
+        time.sleep(2)
+    return False, last_error

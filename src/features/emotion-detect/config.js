@@ -14,4 +14,8 @@ export const config = {
   // party here that should only reach one direction.
   serviceUrl: readEnv("EMOTION_SERVICE_URL"),
   serviceSecret: readEnv("EMOTION_SERVICE_SECRET"),
+  // The web dashboard's public HTTPS address (the slot's Domains tab, e.g.
+  // "https://alaniemotion.apps.bot-hosting.cloud") — what ".a emo web" links to
+  // and health-checks. Not a secret.
+  webUrl: readEnv("EMOTION_WEB_URL"),
 };

@@ -1,7 +1,14 @@
 // ".a emo <run1|runany|runall> m<AU|T|VO|ET|HT dot-list|all> <d|s> [mif]"
 // ".a emo resend <all|recent|<filename>>"
+// ".a emo web"
 //
-//   run1    — process exactly one pending (not "DONE_"-prefixed) clip
+//   web     — the link to the emotion web dashboard (upload or record a video,
+//             watch it being analysed, read the results) and whether it is up.
+//             While the dashboard is on, the Alani Emotion slot switches the Drive
+//             runs below off (it answers 503, which is explained to the user);
+//             unset DEMO_PASSWORD on the slot to go back to them.
+//
+//   run1   — process exactly one pending (not "DONE_"-prefixed) clip
 //   runany  — process every pending clip found, however many
 //   runall  — force-reprocess every clip in the Input folder, DONE or not
 //
@@ -49,6 +56,7 @@ export const data = {
 export const aiGuide = `
 .a emo <run1|runany|runall> m<modalities> <d|s> [mif]   — run the emotion-detection pipeline on video clips in Google Drive.
 .a emo resend <all|recent|<filename>>                    — re-post already-computed results (no recompute).
+.a emo web                                               — the link to the emotion web dashboard (upload or record a video there) and whether it is online. Use it when the user asks for the emotion website, dashboard, demo page or web board.
 Arguments, in this exact order, no spaces inside a token:
 - run mode: run1 = exactly one pending clip ("the latest video", "one video"); runany = every pending clip; runall = force-reprocess every clip, done or not.
 - modalities: "m" + a dot-separated subset of AU (facial action units), T (transcript), VO (voice), ET (eye gaze), HT (head pose); e.g. mAU.T.VO; or mall for all five. What goes into the prompt.
@@ -67,6 +75,7 @@ function usage() {
     "e.g. `.a emo runany mAU.T d` — process every pending clip using AU+transcript, caching all 5 modalities for later.",
     "Add `mif` at the end for more info per result (full prompt text + annotated frame).",
     "`.a emo resend <all|recent|<filename>>` — re-send already-computed results (no recompute, no OpenRouter calls).",
+    "`.a emo web` — the link to the emotion web dashboard (while it is on, the Drive runs above are switched off).",
   ].join("\n");
 }
 
@@ -83,6 +92,10 @@ async function startService(path, body, ctx) {
       body: JSON.stringify(body),
     });
     const responseBody = await res.text().catch(() => "");
+    if (res.status === 503) {
+      await ctx.reply("The emotion web dashboard is active, so the Drive emotion runs are switched off. Use `.a emo web` to open the dashboard.");
+      return null;
+    }
     if (!res.ok) {
       await ctx.reply(`Couldn't start it: ${res.status} ${res.statusText}${responseBody ? ` — ${responseBody}` : ""}`);
       return null;
@@ -107,6 +120,34 @@ function parseModalities(token) {
   return [...new Set(wanted)];
 }
 
+// Is the dashboard answering? /api/health is public and tiny. Any failure (DNS,
+// timeout, a non-200) just means "not answering" — this is a courtesy check.
+export async function dashboardOnline(webUrl, fetchImpl = fetch) {
+  try {
+    const res = await fetchImpl(`${webUrl.replace(/\/$/, "")}/api/health`, { signal: AbortSignal.timeout(6000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function replyWithDashboard(ctx) {
+  if (!config.webUrl) {
+    await ctx.reply("The emotion dashboard address isn't set — add EMOTION_WEB_URL to .env (the slot's HTTPS address from its Domains tab).");
+    return;
+  }
+  const url = `${config.webUrl.replace(/\/$/, "")}/app/`;
+  const online = await dashboardOnline(config.webUrl);
+  await ctx.reply(
+    [
+      `**Alani Emotion dashboard** — <${url}>`,
+      online
+        ? "🟢 Online. Log in with the demo password, then upload or record a video."
+        : "🔴 Not answering right now — the slot may be asleep, restarting or stopped. Try again in a minute.",
+    ].join("\n")
+  );
+}
+
 export async function execute(ctx, args = []) {
   // T+0 for the "mif" timeline — captured before anything else runs.
   const commandAtMs = Date.now();
@@ -119,6 +160,11 @@ export async function execute(ctx, args = []) {
     // a command this narrow isn't useful to anyone) — except when .aii ran
     // it, where the assistant needs to know why nothing happened.
     if (ctx.viaAI) await ctx.reply("`.a emo` only works in the emotion channel.");
+    return;
+  }
+
+  if (args[0]?.toLowerCase() === "web") {
+    await replyWithDashboard(ctx);
     return;
   }
 

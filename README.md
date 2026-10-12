@@ -117,6 +117,11 @@ you can trigger on a schedule).
   owner-granted regular users create and manage their own private or
   guild-scoped database. See "Tiers" below. SQLite-backed throughout, with
   duplicate and overlap detection.
+- **[emotion web dashboard](ALANI_EMOTION_WEBBOARD.txt)** — a password-protected web page on
+  the Alani Emotion slot (HTTPS): upload or record a video, watch a step-by-step progress
+  bar, read the quadrant / annotated frame / action units / transcript / timings, re-analyse
+  with other modalities, save a run to Discord. `.a emo web` links it. While it is on, the
+  Drive-based `.a emo run...` is switched off (one way at a time).
 - **[emotion-detect](src/features/emotion-detect/README.md)** — `.a emo
   <run1|runany|runall> m<modalities> <d|s>`, AIallowed users, one dedicated
   channel. Triggers "Alani Emotion" (a separate Python service — see
@@ -367,6 +372,11 @@ finishes.
   success.
 - `POST /emotion/batch-done` `{total, succeeded, failed}` — posts a short
   summary once a whole `run1`/`runany`/`runall` invocation finishes.
+- `POST /emotion/web-save` `{fileName, prediction, modalities, timings, transcript,
+  valencePrompt, arousalPrompt, imageBase64?, ...}` — the web dashboard's "Save to
+  Discord": posts one finished web run (image + summary, timing breakdown, transcript,
+  prompts) to `DISCORD_EMOTION_CHANNEL`. Unlike `/emotion/result` it answers 502 if
+  Discord refused, because a person is waiting on the button.
 
 ## Adding a new feature
 
