@@ -146,7 +146,7 @@ class JobStore:
         with self._lock:
             self._check_rate()
 
-    def create(self, *, clip_id, original_filename, size_bytes, modalities, cache_mode, parent_id=None, status="queued"):
+    def create(self, *, clip_id, original_filename, size_bytes, modalities, cache_mode, parent_id=None, status="queued", auto_retry=False):
         with self._lock:
             self._check_rate()
             job = {
@@ -158,8 +158,9 @@ class JobStore:
                 "status": status,
                 "stage": "queued",
                 "stage_detail": "",
-                "progress": {"percent": 0, "status": {}, "timings": {}},
+                "progress": {"percent": 0, "status": {}, "timings": {}, "cached": {}},
                 "modalities": modalities,
+                "auto_retry": bool(auto_retry),
                 "cache_mode": cache_mode,
                 "parent_id": parent_id,
                 "pinned": False,
@@ -176,7 +177,7 @@ class JobStore:
         self.update(job_id, status="queued", stage="queued", stage_detail="Waiting for its turn")
         self._queue.put(job_id)
 
-    def rerun(self, job_id, modalities):
+    def rerun(self, job_id, modalities, auto_retry=None):
         with self._lock:
             source = self._jobs.get(job_id)
             if source is None:
@@ -186,6 +187,7 @@ class JobStore:
             job = self.create(
                 clip_id=source["clip_id"], original_filename=source["original_filename"], size_bytes=source["size_bytes"],
                 modalities=modalities, cache_mode=source["cache_mode"], parent_id=job_id,
+                auto_retry=source.get("auto_retry", False) if auto_retry is None else auto_retry,
             )
         self.enqueue(job["id"])
         return job
@@ -207,7 +209,8 @@ class JobStore:
             "id": job["id"], "clip_id": job["clip_id"], "created_at": job["created_at"],
             "original_filename": job["original_filename"], "status": job["status"], "stage": job["stage"],
             "modalities": job["modalities"], "prediction": result.get("prediction"), "short": result.get("short"),
-            "total_seconds": result.get("total_seconds"), "pinned": job["pinned"], "saved": bool(job.get("saved_at")),
+            "total_seconds": result.get("total_seconds"), "reused_seconds": round(sum((result.get("stage_cached_seconds") or {}).values()), 2),
+            "auto_retry": bool(job.get("auto_retry")), "pinned": job["pinned"], "saved": bool(job.get("saved_at")),
             "parent_id": job["parent_id"],
         }
 
@@ -305,10 +308,10 @@ def run_job(job_id, store_=None):
     if job is None or job["status"] != "queued":
         return
 
-    def progress(stage, detail=None, percent=None, status=None, timings=None):
+    def progress(stage, detail=None, percent=None, status=None, timings=None, cached=None):
         store_.update(
             job_id, stage=stage, stage_detail=detail or "",
-            progress={"percent": percent or 0, "status": status or {}, "timings": timings or {}},
+            progress={"percent": percent or 0, "status": status or {}, "timings": timings or {}, "cached": cached or {}},
         )
 
     work_dir = tempfile.mkdtemp(prefix="emotion_web_")
@@ -323,17 +326,19 @@ def run_job(job_id, store_=None):
             store_.update(job_id, status="running", stage="truncating", stage_detail="Starting", started_at=now_iso())
             result = _processor()(
                 clip_cache_key(job["clip_id"]), src, job["modalities"], job["cache_mode"], False, progress, work_dir,
-                persist_dir=clip_dir(job["clip_id"]), render_annotated=True,
+                persist_dir=clip_dir(job["clip_id"]), render_annotated=True, auto_retry=bool(job.get("auto_retry")),
             )
         runtime.mark_ready()
         store_.update(
             job_id, status="done", stage="done", stage_detail="Finished", finished_at=now_iso(), result=_jsonable_result(result),
-            progress={"percent": 100, "status": result["stage_status"], "timings": result["stage_timings"]},
+            progress={"percent": 100, "status": result["stage_status"], "timings": result["stage_timings"], "cached": result["stage_cached_seconds"]},
         )
     except Exception as e:  # one bad job must never stop the worker
         traceback.print_exc()
-        tail = "".join(traceback.format_exception_only(type(e), e)).strip()[-400:]
-        store_.update(job_id, status="error", stage="error", stage_detail="", error=tail, finished_at=now_iso())
+        # The exception's own sentence (OpenRouterError and friends are already readable); the
+        # progress of the stages that did finish stays on the job so the page can still show their times.
+        message = str(e) if isinstance(e, RuntimeError) else f"{type(e).__name__}: {e}"
+        store_.update(job_id, status="error", stage_detail="", error=message[:500], finished_at=now_iso())
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 

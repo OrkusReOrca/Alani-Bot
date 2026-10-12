@@ -187,6 +187,43 @@ class UploadAndJobTests(WebTestCase):
         self.assertIn("could not be read", failed["error"])
         self.assertEqual(self.wait_for(cookie, self.upload(cookie)["json"]["jobId"])["status"], "done")
 
+    def test_auto_retry_waits_out_a_busy_provider_and_a_plain_failure_keeps_its_timings(self):
+        import fake_pipeline
+        cookie = self.login()
+        try:
+            # without auto retry: the run fails with a readable sentence, and the finished steps keep their times
+            fake_pipeline.FAIL_MODEL_CALLS = 1
+            failed = self.wait_for(cookie, self.upload(cookie, modalities="AU.T", extra={"X-Auto-Retry": "0"})["json"]["jobId"], status="error")
+            self.assertIn("rate-limited", failed["error"])
+            self.assertNotIn("{", failed["error"])
+            self.assertFalse(failed["auto_retry"])
+            self.assertEqual(failed["progress"]["status"]["face"], "done")
+            self.assertIn("face", failed["progress"]["timings"])
+
+            # re-running it does not redo the finished steps and reports what they took
+            res = self.request("POST", f"/api/jobs/{failed['id']}/rerun", json_body={"modalities": ["AU", "T"]}, headers=CSRF, cookie=cookie)
+            rerun = self.wait_for(cookie, res["json"]["jobId"])
+            self.assertEqual(rerun["result"]["stage_status"]["face"], "cached")
+            self.assertEqual(rerun["result"]["stage_cached_seconds"]["face"], failed["progress"]["timings"]["face"])
+            self.assertEqual(set(rerun["result"]["stage_timings"]), {"vlm_valence", "vlm_arousal"})
+            self.assertGreater(rerun["runs"][-1]["reused_seconds"], 0)
+
+            # with auto retry: it just keeps going until the provider answers
+            fake_pipeline.FAIL_MODEL_CALLS = 3
+            done = self.wait_for(cookie, self.upload(cookie, extra={"X-Auto-Retry": "1"})["json"]["jobId"])
+            self.assertTrue(done["auto_retry"])
+            self.assertEqual(fake_pipeline.FAIL_MODEL_CALLS, 0)
+        finally:
+            fake_pipeline.FAIL_MODEL_CALLS = 0
+
+    def test_a_rerun_inherits_auto_retry_unless_told_otherwise(self):
+        cookie = self.login()
+        first = self.wait_for(cookie, self.upload(cookie, extra={"X-Auto-Retry": "1"})["json"]["jobId"])
+        inherited = self.request("POST", f"/api/jobs/{first['id']}/rerun", json_body={"modalities": ["AU"]}, headers=CSRF, cookie=cookie)
+        self.assertTrue(self.wait_for(cookie, inherited["json"]["jobId"])["auto_retry"])
+        off = self.request("POST", f"/api/jobs/{first['id']}/rerun", json_body={"modalities": ["AU"], "autoRetry": False}, headers=CSRF, cookie=cookie)
+        self.assertFalse(self.wait_for(cookie, off["json"]["jobId"])["auto_retry"])
+
     def test_warmup_reports_state(self):
         cookie = self.login()
         runtime._set_warm("cold")

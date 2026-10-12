@@ -71,6 +71,8 @@ WHISPER_MODEL = _required("EMOTION_WHISPER_MODEL", "small")
 WHISPER_COMPUTE_TYPE = _required("EMOTION_WHISPER_COMPUTE_TYPE", "int8")
 
 MAX_CLIP_SECONDS = 120
+# "Retry automatically" keeps asking the model again for at most this long (seconds) before giving up.
+AUTO_RETRY_MAX_S = 1800
 MAX_VLM_FRAMES = 32
 
 # ---------------------------------------------------------------------------

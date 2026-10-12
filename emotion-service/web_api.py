@@ -204,6 +204,7 @@ def _upload(h):
     if cache_mode not in ("d", "s"):
         raise JobError(400, "X-Cache-Mode must be d or s")
 
+    auto_retry = (h.headers.get("X-Auto-Retry", "") or "").strip() == "1"
     jobs.check_can_create()
     os.makedirs(web_jobs.clips_dir(), exist_ok=True)
     free = shutil.disk_usage(web_jobs.clips_dir()).free
@@ -224,7 +225,7 @@ def _upload(h):
                 received += len(chunk)
         if received != length:
             raise JobError(400, "The upload was cut short")
-        job = jobs.create(clip_id=clip_id, original_filename=filename, size_bytes=length, modalities=modalities, cache_mode=cache_mode)
+        job = jobs.create(clip_id=clip_id, original_filename=filename, size_bytes=length, modalities=modalities, cache_mode=cache_mode, auto_retry=auto_retry)
     except Exception:
         shutil.rmtree(folder, ignore_errors=True)
         raise
@@ -403,7 +404,8 @@ def _route_api(h, method, path):
             return _json(h, 200, {"ok": True})
         if rest == ["rerun"] and method == "POST":
             body = _read_json(h)
-            new = jobs.rerun(job_id, web_jobs.normalize_modalities(body.get("modalities")))
+            auto_retry = body.get("autoRetry")
+            new = jobs.rerun(job_id, web_jobs.normalize_modalities(body.get("modalities")), None if auto_retry is None else bool(auto_retry))
             return _json(h, 201, {"jobId": new["id"]})
         if rest == ["pin"] and method == "POST":
             jobs.update(job_id, pinned=bool(_read_json(h).get("pinned")))

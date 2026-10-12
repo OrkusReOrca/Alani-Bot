@@ -97,6 +97,15 @@ at the repo root.
   or a filename. See `../src/features/emotion-detect/README.md`'s own
   "Resend" section for why this exists.
 
+## Caching, failures and retry
+
+After every finished step the clip's cache is saved with the seconds the step took, so a failure
+later on (say the model is rate-limited) loses nothing: a re-run reuses the finished steps and the
+page shows how long they originally took. The annotated frame is drawn right after the face pass for
+the same reason. The dashboard's "Retry automatically" box (on by default) makes a rate-limited or
+otherwise "busy, try again" model call wait (4 s, 8 s, 16 s, then 30 s) and ask again for up to 30
+minutes (`config.AUTO_RETRY_MAX_S`); the Discord/Drive flow still makes a single attempt.
+
 ## Code layout
 
 `core.py` is the source-agnostic analysis (video in, prediction out, with progress

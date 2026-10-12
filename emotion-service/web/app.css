@@ -116,6 +116,8 @@ input[type=password]:focus, input[type=text]:focus { border-color: var(--accent)
 .steps li.active { font-weight: 700; }
 .steps li.active .dot { border-color: var(--accent); border-top-color: transparent; animation: spin .9s linear infinite; }
 .steps li.pending { color: var(--muted); }
+.steps li.failed { color: var(--bad); font-weight: 700; }
+.steps li.failed .dot { background: var(--bad); border-color: var(--bad); color: #fff; }
 .steps .time { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; font-size: .85rem; }
 
 /* ---- results ---- */
@@ -147,8 +149,15 @@ details { border: 1px solid var(--line); border-radius: 12px; padding: .6rem 1re
 summary { cursor: pointer; font-weight: 700; }
 .stack-bar { display: flex; height: 26px; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin: .6rem 0; }
 .stack-bar > div { min-width: 2px; }
-.legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .8rem; color: var(--muted); }
-.legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 3px; margin-right: .3rem; vertical-align: middle; }
+.stack-bar > div { border-right: 2px solid #fff; }
+.stack-bar > div:last-child { border-right: 0; }
+.stack-bar > div.reused, .legend i.reused { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.6) 0 4px, transparent 4px 8px); }
+.legend { list-style: none; margin: .4rem 0 .8rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .35rem 1.2rem; font-size: .88rem; }
+.legend li { display: flex; align-items: center; gap: .5rem; }
+.legend i { display: inline-block; width: 1rem; height: 1rem; border-radius: 4px; flex: none; }
+.legend li span { flex: 1; }
+.legend li b { font-variant-numeric: tabular-nums; }
+.legend li em { font-style: normal; font-size: .72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 .45rem; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }

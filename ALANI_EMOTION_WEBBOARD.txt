@@ -122,7 +122,7 @@ fine (record at the start of the talk, present, read the result at the end).
                      external fonts/scripts/images (works on a restricted
                      network). Charts are hand-written SVG/CSS.
     fake_pipeline.py A stand-in for core.py used only in development/tests.
-    tests/           36 automated tests (python -m unittest discover ...).
+    tests/           48 automated tests (python -m unittest discover ...).
     In the Node bot: src/features/emotion-detect/ (the .a emo command, with
     ".a emo web", and emotionApi.js which receives "Save to Discord").
 
@@ -146,14 +146,37 @@ fine (record at the start of the talk, present, read the result at the end).
       truncating   check the video, cut to the first 2:00
       frames       sample up to 32 frames
       face         one py-feat pass: action units, gaze, head pose
+      finalizing   draw the annotated frame (py-feat's own plot; needs the
+                   face pass, so it is drawn right after it)
       audio        extract the audio track
       transcript   Whisper
       voice        openSMILE
       vlm_valence  ask the model: tone
       vlm_arousal  ask the model: energy
-      finalizing   draw the annotated frame (py-feat's own plot)
     A stage that is not needed (modality not requested, or already computed)
-    is shown as "not needed" / "already computed" and does not run.
+    is shown as "not needed" / "reused" and does not run.
+
+    CHECKPOINTS AND TIMES. After EVERY finished stage the cache of the clip is
+    saved together with how many seconds that stage took (stage_seconds). So if a
+    later stage fails (the model is rate-limited, the transcript crashes, ...),
+    nothing that finished is lost: the failed run's page lists the finished steps
+    with their times and marks where it failed, and a re-run reuses them without
+    recomputing and reports "reused - took X s earlier". (Earlier versions drew
+    the annotated frame only at the very end, so every retry after a model failure
+    redid the whole face pass just to draw it; that is fixed, and a drawing that
+    fails once is not retried by re-running the face pass.)
+
+    AUTOMATIC RETRY. The home page has a tick box (on by default): "Retry
+    automatically if the model provider is busy (rate-limited)". OpenRouter hands
+    each request to a hosting company whose shared capacity can be momentarily
+    full. With the box ticked, a failure of that kind (HTTP 408/409/425/429/5xx,
+    a timeout, an empty answer) is waited out - 4 s, 8 s, 16 s, then every 30 s -
+    and asked again, for up to 30 minutes per question; the page says "busy,
+    trying again in N s (retry k)". Failures that will not fix themselves (bad
+    key, no credit) are not retried. Unticked = one attempt, then the run fails
+    with a readable sentence and can be re-run. A re-run inherits the setting
+    (and the failed/result pages let you change it). The Discord/Drive flow never
+    retries (unchanged).
  6. PROGRESS. After every stage the worker records: the current stage, a
     plain-language sentence describing what it is doing, an overall percentage
     and the seconds each finished stage took. The page polls every 1.5 s and
@@ -183,7 +206,10 @@ fine (record at the start of the talk, present, read the result at the end).
  - Transcript (with a note that machine transcription can be wrong), voice
    features.
  - "What the model saw": both prompts exactly as sent and the raw answers.
- - Timing: stacked bar of seconds per stage and the total.
+ - Timing: a stacked bar with one distinct colour per step (colour-blind
+   friendly palette, legend with seconds). Steps reused from an earlier run of the
+   clip are hatched and tagged "earlier run", showing the seconds they originally
+   took; the text gives this run's time, the reused steps' time, and the total.
  - "Try other modalities" and the runs comparison table.
  - Actions: Save to Discord, Pin as demo, download result JSON, download the
    annotated frame, print, delete.
@@ -264,14 +290,17 @@ In Discord, ".a emo web" replies with the link and whether the board is online.
 --------------------------------------------------------------------------------
 10. TESTING
 --------------------------------------------------------------------------------
-  python -m unittest discover -s emotion-service/tests     (36 tests)
+  python -m unittest discover -s emotion-service/tests     (48 tests)
   They run the real HTTP server and the real job queue with a stand-in analysis
   (fake_pipeline.py), and exercise core.py with the heavy parts replaced. They
   cover: login, lock-out, cookie tampering/expiry, CSRF header, upload limits and
   type/name handling, short uploads, re-analysis reuse, media path traversal,
   pin/delete/retention, the hourly cap, "Discord and web never run together",
-  failing jobs, restart handling, save-to-Discord, and that the Drive wrapper
-  still logs, renames and calls back as before.
+  failing jobs, restart handling, save-to-Discord, that the Drive wrapper
+  still logs, renames and calls back as before, that a failed model call or a
+  crashed step keeps the finished steps and their times and the retry does not
+  redo them, and the automatic-retry waiting rules (4/8/16/30 s, deadline,
+  non-retryable errors).
   Node side: test/emotionWeb.test.js (the ".a emo web" command, the 503 message,
   and the Save-to-Discord message formatting).
   NOT tested automatically: the real py-feat / Whisper / openSMILE / OpenRouter
@@ -296,6 +325,14 @@ In Discord, ".a emo web" replies with the link and whether the board is online.
 --------------------------------------------------------------------------------
 CHANGE LOG
 --------------------------------------------------------------------------------
+2026-10-12  (2) Fixes after the first real run: (a) a retry after a model failure
+            no longer redoes the face pass - the annotated frame is drawn right
+            after the face pass and the clip cache is saved after every stage;
+            (b) the timing bar uses one colour per step and hatches reused steps;
+            (c) "Retry automatically" tick box (default on) for rate-limited model
+            calls; (d) times of finished steps are kept through failures and shown
+            on the failed page and, as "reused", on later runs of the same clip;
+            (e) readable error sentences for OpenRouter failures.
 2026-10-12  First version: web board implemented (login, upload/record, staged
             progress bar with descriptions, results page, re-analysis and
             comparison, pin/delete/retention, Save to Discord, ".a emo web",

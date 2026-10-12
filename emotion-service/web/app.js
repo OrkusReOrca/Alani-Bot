@@ -12,13 +12,18 @@ const STAGES = [
   { id: "truncating", label: "Check the video", weight: 2, tau: 5 },
   { id: "frames", label: "Sample frames", weight: 6, tau: 8 },
   { id: "face", label: "Read the face (action units, gaze, head pose)", weight: 30, tau: 45 },
+  { id: "finalizing", label: "Draw the annotated frame", weight: 8, tau: 10 },
   { id: "audio", label: "Extract the audio", weight: 4, tau: 6 },
   { id: "transcript", label: "Transcribe the speech", weight: 20, tau: 35 },
   { id: "voice", label: "Measure the voice", weight: 6, tau: 10 },
   { id: "vlm_valence", label: "Ask the model: tone (valence)", weight: 12, tau: 12 },
   { id: "vlm_arousal", label: "Ask the model: energy (arousal)", weight: 12, tau: 12 },
-  { id: "finalizing", label: "Draw the annotated frame", weight: 8, tau: 10 },
 ];
+// One colour per step for the timing bar (readable on white, distinguishable without relying on red/green alone).
+const STAGE_COLORS = {
+  truncating: "#8a8f98", frames: "#56b4e9", face: "#0072b2", finalizing: "#cc79a7", audio: "#e69f00",
+  transcript: "#009e73", voice: "#7b4fa3", vlm_valence: "#d55e00", vlm_arousal: "#a3283a",
+};
 const MODALITIES = [
   { id: "AU", name: "AU", hint: "Facial action units: which face muscles move" },
   { id: "T", name: "T", hint: "Transcript: what is said (Whisper)" },
@@ -180,7 +185,7 @@ function renderLogin() {
 }
 
 // ---------- home ----------
-const chosen = { file: null, modalities: new Set(MODALITIES.map((m) => m.id)), cacheAll: true };
+const chosen = { file: null, modalities: new Set(MODALITIES.map((m) => m.id)), cacheAll: true, autoRetry: true };
 
 function modalityChips(set, onChange) {
   const wrap = h("div", { class: "chips", role: "group", "aria-label": "Modalities" });
@@ -256,6 +261,7 @@ async function renderHome() {
     xhr.setRequestHeader("X-Filename", encodeURIComponent(chosen.file.name));
     xhr.setRequestHeader("X-Modalities", MODALITIES.map((m) => m.id).filter((id) => chosen.modalities.has(id)).join("."));
     xhr.setRequestHeader("X-Cache-Mode", chosen.cacheAll ? "d" : "s");
+    xhr.setRequestHeader("X-Auto-Retry", chosen.autoRetry ? "1" : "0");
     xhr.upload.onprogress = (e) => {
       if (!e.lengthComputable) return;
       const pct = Math.round((100 * e.loaded) / e.total);
@@ -328,6 +334,9 @@ async function renderHome() {
       h("label", { class: "row small", style: { marginTop: ".8rem" } },
         h("input", { type: "checkbox", checked: chosen.cacheAll, onchange: (e) => { chosen.cacheAll = e.target.checked; } }),
         "Compute and remember every modality (so re-analysing with other modalities later is fast)"),
+      h("label", { class: "row small", style: { marginTop: ".5rem" } },
+        h("input", { type: "checkbox", checked: chosen.autoRetry, onchange: (e) => { chosen.autoRetry = e.target.checked; } }),
+        "Retry automatically if the model provider is busy (rate-limited) — keeps trying for up to 30 minutes"),
       h("p", { class: "notice", style: { marginTop: ".8rem" } },
         `Only the first ${fmtClock(config.maxClipSeconds)} of a clip is analysed. The first run after the server wakes can take several minutes — press "Warm up models" first if you can.`),
       h("div", { class: "row", style: { marginTop: ".8rem" } }, startButton),
@@ -379,6 +388,27 @@ async function renderJob(id) {
   await load();
 }
 
+// One row per step: done (with its seconds), reused from an earlier run (with the seconds it originally
+// took), not needed, running, failed here, or still waiting. Used by the progress page and the failed page.
+function stepRows(job) {
+  const progress = job.progress || {};
+  return STAGES.map((st) => {
+    const status = (progress.status || {})[st.id] || "pending";
+    const running = job.status === "running" && job.stage === st.id && status === "pending";
+    const failed = job.status === "error" && job.stage === st.id && status === "pending";
+    const timing = (progress.timings || {})[st.id];
+    const reused = (progress.cached || {})[st.id];
+    const mark = failed ? "✕" : status === "done" ? "✓" : status === "cached" ? "•" : status === "skipped" ? "–" : "";
+    let note = "";
+    if (failed) note = "failed here";
+    else if (status === "done") note = fmtSeconds(timing);
+    else if (status === "cached") note = reused != null ? `reused · took ${fmtSeconds(reused)} earlier` : "already computed";
+    else if (status === "skipped") note = "not needed";
+    else if (running) note = "working…";
+    return h("li", { class: failed ? "failed" : running ? "active" : status }, h("span", { class: "dot" }, mark), st.label, h("span", { class: "time" }, note));
+  });
+}
+
 function buildProgress() {
   const percent = h("div", { class: "percent" }, "0%");
   const fill = h("span");
@@ -426,15 +456,7 @@ function buildProgress() {
     const active = STAGES.find((st) => st.id === job.stage);
     nowTitle.textContent = job.status === "queued" ? "Waiting for its turn" : (active ? active.label : "Working");
     nowText.textContent = job.stage_detail || "";
-    steps.replaceChildren(...STAGES.map((st) => {
-      const status = (job.progress.status || {})[st.id] || "pending";
-      const isActive = job.status === "running" && job.stage === st.id && status === "pending";
-      const cls = isActive ? "active" : status;
-      const timing = (job.progress.timings || {})[st.id];
-      const mark = status === "done" ? "✓" : status === "cached" ? "•" : status === "skipped" ? "–" : "";
-      const note = status === "cached" ? "already computed" : status === "skipped" ? "not needed" : timing != null ? fmtSeconds(timing) : isActive ? "working…" : "";
-      return h("li", { class: cls }, h("span", { class: "dot" }, mark), st.label, h("span", { class: "time" }, note));
-    }));
+    steps.replaceChildren(...stepRows(job));
     tick();
   }
   return { root, update };
@@ -442,18 +464,22 @@ function buildProgress() {
 
 function problemView(job) {
   const interrupted = job.status === "interrupted";
+  const retryBox = h("input", { type: "checkbox", checked: job.auto_retry !== false });
   return h("section", { class: "card" },
     h("h1", null, interrupted ? "This analysis was interrupted" : "The analysis failed"),
     h("p", null, h("b", null, job.original_filename), " ", h("span", { class: `pill ${job.status}` }, job.status)),
     h("p", { class: "form-error", role: "alert" }, job.error || "Something went wrong."),
-    h("div", { class: "row" },
-      h("button", { class: "primary", type: "button", onclick: () => rerun(job.id, job.modalities) }, "Re-run"),
+    h("p", { class: "muted small" }, "Steps that finished before the failure are kept: a re-run reuses them and shows how long they took."),
+    h("ul", { class: "steps" }, stepRows(job)),
+    h("label", { class: "row small", style: { marginTop: ".8rem" } }, retryBox, "Retry automatically if the model provider is busy (rate-limited)"),
+    h("div", { class: "row", style: { marginTop: ".8rem" } },
+      h("button", { class: "primary", type: "button", onclick: () => rerun(job.id, job.modalities, retryBox.checked) }, "Re-run"),
       h("button", { class: "danger", type: "button", onclick: () => removeJob(job.id) }, "Delete"),
       h("a", { class: "button", href: "#/" }, "Back")));
 }
 
-async function rerun(id, modalities) {
-  try { const r = await api(`/api/jobs/${id}/rerun`, { method: "POST", json: { modalities } }); go(`#/job/${r.jobId}`); } catch (e) { toast(e.message, true); }
+async function rerun(id, modalities, autoRetry) {
+  try { const r = await api(`/api/jobs/${id}/rerun`, { method: "POST", json: { modalities, autoRetry } }); go(`#/job/${r.jobId}`); } catch (e) { toast(e.message, true); }
 }
 async function removeJob(id) {
   if (!confirm("Delete this run and its uploaded video?")) return;
@@ -559,27 +585,39 @@ function resultView(job) {
     h("details", null, h("summary", null, `1 · Valence prompt → “${r.valence_raw}”`), h("pre", { class: "text" }, r.valence_prompt)),
     h("details", null, h("summary", null, `2 · Arousal prompt → “${r.arousal_raw}”`), h("pre", { class: "text" }, r.arousal_prompt))));
 
-  // timings
-  const palette = ["#da8552", "#e9a47c", "#c26a3a", "#f3c7a8", "#a85a2c", "#f7dcc7", "#8c4a24", "#efb48c", "#d4733f"];
-  const timings = STAGES.map((st, i) => ({ st, sec: r.stage_timings[st.id], color: palette[i % palette.length] })).filter((x) => x.sec != null);
-  const sum = timings.reduce((n, x) => n + x.sec, 0) || 1;
+  // timings: this run's steps, plus the steps reused from earlier runs of the clip (hatched) with the seconds they took then
+  const reusedSeconds = r.stage_cached_seconds || {};
+  const segments = STAGES.map((st) => {
+    const own = r.stage_timings[st.id];
+    const sec = own != null ? own : reusedSeconds[st.id];
+    return sec == null ? null : { st, sec, reused: own == null, color: STAGE_COLORS[st.id] };
+  }).filter(Boolean);
+  const sum = segments.reduce((n, x) => n + x.sec, 0) || 1;
+  const reusedTotal = segments.filter((x) => x.reused).reduce((n, x) => n + x.sec, 0);
   root.append(card("Timing",
-    h("div", { class: "stack-bar", role: "img", "aria-label": "Time spent per step" }, timings.map((x) => h("div", { title: `${x.st.label}: ${fmtSeconds(x.sec)}`, style: { width: (100 * x.sec) / sum + "%", background: x.color } }))),
-    h("div", { class: "legend" }, timings.map((x) => h("span", null, h("i", { style: { background: x.color } }), `${x.st.label}: ${fmtSeconds(x.sec)}`))),
-    h("p", { class: "small" }, h("b", null, `Total ${fmtSeconds(r.total_seconds)}`), Object.entries(r.stage_status || {}).some(([, v]) => v === "cached") ? " — steps marked “already computed” were reused from an earlier run of this clip." : "")));
+    h("div", { class: "stack-bar", role: "img", "aria-label": "Time spent per step" }, segments.map((x) =>
+      h("div", { class: x.reused ? "reused" : "", title: `${x.st.label}: ${fmtSeconds(x.sec)}${x.reused ? " (reused from an earlier run)" : ""}`, style: { width: (100 * x.sec) / sum + "%", backgroundColor: x.color } }))),
+    h("ul", { class: "legend" }, segments.map((x) => h("li", null,
+      h("i", { class: x.reused ? "reused" : "", style: { backgroundColor: x.color } }), h("span", null, x.st.label), h("b", null, fmtSeconds(x.sec)), x.reused ? h("em", null, "earlier run") : null))),
+    h("p", { class: "small" }, h("b", null, `This run: ${fmtSeconds(r.total_seconds)}`),
+      reusedTotal > 0 ? ` · steps reused from earlier runs of this clip took ${fmtSeconds(reusedTotal)} · everything together ≈ ${fmtSeconds(sum)}` : ""),
+    reusedTotal > 0 ? h("p", { class: "muted small" }, "Hatched segments were not repeated: their time is what they took when they were first computed.") : null));
 
   // re-analyse + runs
   const set = new Set(job.modalities);
-  const rerunButton = h("button", { class: "primary", type: "button", onclick: () => set.size ? rerun(job.id, [...set]) : toast("Pick at least one modality", true) }, "Re-analyse");
+  const retryAgain = h("input", { type: "checkbox", checked: job.auto_retry !== false });
+  const rerunButton = h("button", { class: "primary", type: "button", onclick: () => set.size ? rerun(job.id, [...set], retryAgain.checked) : toast("Pick at least one modality", true) }, "Re-analyse");
   root.append(card("Try other modalities",
     h("p", { class: "muted small" }, "Run the same clip again with a different set. Anything already computed is reused, so this is usually fast."),
-    modalityChips(set), h("div", { class: "row", style: { marginTop: ".8rem" } }, rerunButton),
+    modalityChips(set),
+    h("label", { class: "row small", style: { marginTop: ".8rem" } }, retryAgain, "Retry automatically if the model provider is busy (rate-limited)"),
+    h("div", { class: "row", style: { marginTop: ".8rem" } }, rerunButton),
     job.runs.length > 1 ? h("table", { style: { marginTop: "1rem" } },
       h("thead", null, h("tr", null, ["Modalities", "Prediction", "Time", "Status"].map((t) => h("th", null, t)))),
       h("tbody", null, job.runs.map((run) => h("tr", { class: run.id === job.id ? "current" : "" },
         h("td", null, h("a", { href: `#/job/${run.id}` }, modLabel(run.modalities))),
         h("td", null, run.short ? `${QUADS[run.short] ? QUADS[run.short].name : run.prediction} (${run.short})` : "—"),
-        h("td", null, fmtSeconds(run.total_seconds)), h("td", null, run.status))))) : null));
+        h("td", null, fmtSeconds(run.total_seconds), run.reused_seconds ? h("span", { class: "muted small" }, ` + ${fmtSeconds(run.reused_seconds)} reused`) : null), h("td", null, run.status))))) : null));
 
   // actions
   const saveButton = h("button", { type: "button", onclick: save }, job.saved ? "Saved to Discord ✓ (send again)" : "Save to Discord");

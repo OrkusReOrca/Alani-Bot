@@ -13,12 +13,12 @@ STAGE_WEIGHTS = {
     "truncating": 2,
     "frames": 6,
     "face": 30,
+    "finalizing": 8,
     "audio": 4,
     "transcript": 20,
     "voice": 6,
     "vlm_valence": 12,
     "vlm_arousal": 12,
-    "finalizing": 8,
 }
 STAGE_ORDER = list(STAGE_WEIGHTS)
 
@@ -26,8 +26,10 @@ STAGE_ORDER = list(STAGE_WEIGHTS)
 class Meter:
     """Tracks which stages will run, which are done, and the percentage."""
 
-    def __init__(self, progress, planned):
+    def __init__(self, progress, planned, cached=None):
         self._progress = progress or (lambda *args, **kwargs: None)
+        # Seconds the stages we are about to reuse originally took (from earlier runs of this clip).
+        self.cached = dict(cached or {})
         self.planned = {s: STAGE_WEIGHTS[s] for s in planned}
         self.total = sum(self.planned.values()) or 1
         self.done_weight = 0
@@ -41,9 +43,16 @@ class Meter:
     def skip(self, stage, why):
         self.status[stage] = why  # "cached" (already had it) or "skipped" (not asked for)
 
+    def _report(self, stage, detail):
+        self._progress(stage, detail, percent=self._percent(), status=dict(self.status), timings=dict(self.timings), cached=dict(self.cached))
+
     def begin(self, stage, detail):
         self._started[stage] = time.monotonic()
-        self._progress(stage, detail, percent=self._percent(), status=dict(self.status), timings=dict(self.timings))
+        self._report(stage, detail)
+
+    def note(self, stage, detail):
+        """Change the sentence shown for a running stage (e.g. "busy, retrying in 20 s") without touching its timer."""
+        self._report(stage, detail)
 
     def end(self, stage):
         self.timings[stage] = round(time.monotonic() - self._started[stage], 2)
@@ -63,7 +72,9 @@ class Plan:
         # one of them (or the annotated frame) still needs it.
         self.needs_au = "AU" in extract_set and "au_string" not in cache
         self.needs_pose = ("ET" in extract_set or "HT" in extract_set) and ("eye_string" not in cache or "head_string" not in cache)
-        self.needs_annotation = want_annotated and not have_annotated
+        # A drawing that failed once is not retried by re-running the whole face pass for it.
+        self.needs_annotation = want_annotated and not have_annotated and not cache.get("annotated_failed")
+        self.cache_seconds = dict(cache.get("stage_seconds", {}))
         self.need_detection = self.needs_au or self.needs_pose or self.needs_annotation
         self.need_transcript = "T" in extract_set and "transcript" not in cache
         self.need_voice = "VO" in extract_set and "voice_string" not in cache
@@ -95,7 +106,8 @@ class Plan:
         self.unplanned = {s: ("cached" if wanted[s] else "skipped") for s in STAGE_ORDER if not runs[s]}
 
     def meter(self, progress):
-        meter = Meter(progress, self.stages)
+        reused = {s: self.cache_seconds[s] for s, why in self.unplanned.items() if why == "cached" and s in self.cache_seconds}
+        meter = Meter(progress, self.stages, cached=reused)
         for stage, why in self.unplanned.items():
             meter.skip(stage, why)
         return meter

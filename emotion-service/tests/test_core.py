@@ -81,6 +81,8 @@ class CoreBase(unittest.TestCase):
             return dest
 
         self.answers = ["positive", "active"]
+        self.model_failures = []  # exceptions the next model calls raise, in order
+        self.retry_args = []
         patches = [
             mock.patch.object(core.video, "get_duration_and_frame_count", lambda p: (200.0, 6000)),
             mock.patch.object(core.video, "truncate_if_needed", counted("truncate", lambda p, w: (p, True))),
@@ -94,7 +96,7 @@ class CoreBase(unittest.TestCase):
             mock.patch.object(core, "extract_voice_features", counted("voice", lambda a: {"x": 1})),
             mock.patch.object(core, "format_voice_string", lambda f: "voice summary"),
             mock.patch.object(core.visualize, "render_annotated_frame", counted("annotate", annotate)),
-            mock.patch.object(core, "classify", counted("classify", lambda frames, prompt, max_tokens=8: self.answers[(self.calls["classify"] - 1) % 2])),
+            mock.patch.object(core, "classify", counted("classify", lambda frames, prompt, max_tokens=8, **kwargs: self.model(kwargs))),
         ]
         for p in patches:
             p.start()
@@ -106,19 +108,25 @@ class CoreBase(unittest.TestCase):
         store._CLIPS_DIR = store._CSV_PATH = None
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def progress(self, stage, detail=None, percent=None, status=None, timings=None):
+    def model(self, kwargs):
+        self.retry_args.append(kwargs.get("retry_until"))
+        if self.model_failures:
+            raise self.model_failures.pop(0)
+        return self.answers[(self.calls["classify"] - 1) % 2]
+
+    def progress(self, stage, detail=None, percent=None, status=None, timings=None, cached=None):
         self.events.append((stage, percent))
 
-    def run_core(self, modalities, cache_mode="d", persist=True, annotated=True, more_info=False, clip="web_a"):
+    def run_core(self, modalities, cache_mode="d", persist=True, annotated=True, more_info=False, clip="web_a", auto_retry=False):
         self.calls = {}
         return core.process(clip, self.src, modalities, cache_mode, more_info, self.progress, self.work,
-                            persist_dir=self.keep if persist else None, render_annotated=annotated)
+                            persist_dir=self.keep if persist else None, render_annotated=annotated, auto_retry=auto_retry)
 
 class CoreTests(CoreBase):
     def test_full_run_walks_every_stage_and_reports_progress(self):
         result = self.run_core(["AU", "T", "VO", "ET", "HT"])
         self.assertEqual((result["prediction"], result["short"]), ("Positive_Activate", "PA"))
-        self.assertEqual([s for s, _ in self.events], ["truncating", "frames", "face", "audio", "transcript", "voice", "vlm_valence", "vlm_arousal", "finalizing"])
+        self.assertEqual([s for s, _ in self.events], ["truncating", "frames", "face", "finalizing", "audio", "transcript", "voice", "vlm_valence", "vlm_arousal"])
         percents = [p for _, p in self.events]
         self.assertEqual(percents, sorted(percents))
         self.assertEqual(percents[0], 0)
@@ -164,6 +172,50 @@ class CoreTests(CoreBase):
         self.assertIn("last_valence_prompt", cache)
         self.assertEqual(cache["last_prediction"], "Positive_Activate")
 
+    def test_a_model_failure_keeps_every_finished_step_and_its_time(self):
+        """The bug this guards: after a failed model call, the retry used to redo the face pass (the picture
+        was only drawn after the model call) and the times of the finished steps were lost."""
+        from openrouter_client import OpenRouterError
+        self.model_failures = [OpenRouterError("The model provider is busy", retryable=True)]
+        with self.assertRaises(OpenRouterError):
+            self.run_core(["AU", "T", "VO", "ET", "HT"])
+        self.assertEqual(self.calls["annotate"], 1)  # drawn right after the face pass, long before the model was asked
+        saved = store.load_clip_cache("web_a")
+        self.assertEqual(set(saved["stage_seconds"]), {"truncating", "frames", "face", "audio", "transcript", "voice", "finalizing"})
+        self.assertIn("au_string", saved)
+
+        result = self.run_core(["AU", "T", "VO", "ET", "HT"])
+        heavy = {k: self.calls.get(k, 0) for k in ("truncate", "frames", "detect", "audio", "transcript", "voice", "annotate")}
+        self.assertEqual(heavy, {k: 0 for k in heavy})
+        self.assertEqual(result["short"], "PA")
+        self.assertEqual(set(result["stage_cached_seconds"]), {"truncating", "frames", "face", "audio", "transcript", "voice", "finalizing"})
+        self.assertEqual(result["stage_cached_seconds"]["face"], saved["stage_seconds"]["face"])
+        self.assertEqual(set(result["stage_timings"]), {"vlm_valence", "vlm_arousal"})
+
+    def test_a_crash_in_the_middle_still_keeps_the_earlier_steps(self):
+        with mock.patch.object(core, "extract_transcript", side_effect=RuntimeError("whisper died")):
+            with self.assertRaises(RuntimeError):
+                self.run_core(["AU", "T"])
+        saved = store.load_clip_cache("web_a")
+        self.assertEqual(set(saved["stage_seconds"]), {"truncating", "frames", "face", "finalizing", "audio"})
+        self.run_core(["AU", "T"])
+        self.assertEqual((self.calls.get("detect", 0), self.calls.get("frames", 0), self.calls["transcript"]), (0, 0, 1))
+
+    def test_a_failed_drawing_does_not_make_every_rerun_redo_the_face_pass(self):
+        with mock.patch.object(core.visualize, "render_annotated_frame", lambda row, dest: None):
+            first = self.run_core(["AU"])
+        self.assertIsNone(first["files"]["annotated"])
+        self.run_core(["AU"])
+        self.assertEqual(self.calls.get("detect", 0), 0)
+
+    def test_auto_retry_hands_the_model_client_a_deadline_only_when_asked(self):
+        self.run_core(["AU"])
+        self.assertEqual(self.retry_args, [None, None])
+        self.retry_args.clear()
+        self.run_core(["AU"], auto_retry=True)
+        self.assertTrue(all(isinstance(x, float) and x > __import__("time").time() for x in self.retry_args))
+        self.assertEqual(len(self.retry_args), 2)
+
     def test_prompts_and_raw_answers_are_returned(self):
         result = self.run_core(["AU", "T"])
         self.assertIn("VALENCE", result["valence_prompt"])
@@ -192,6 +244,78 @@ class DriveWrapperTests(CoreBase):
         self.assertEqual(rows["F1"]["status"], "ok")
         self.assertEqual(store.load_clip_cache("F1")["last_timeline"]["commandAtMs"], 1000)
         self.assertIsNotNone(store.load_first_frame("F1"))
+
+
+class OpenRouterRetryTests(unittest.TestCase):
+    def setUp(self):
+        import openrouter_client
+        self.client = openrouter_client
+        self._key = config.OPENROUTER_API_KEY
+        config.OPENROUTER_API_KEY = "key"
+        self.waits = []
+
+    def tearDown(self):
+        config.OPENROUTER_API_KEY = self._key
+
+    def classify(self, outcomes, retry_until=None):
+        queue = list(outcomes)
+        calls = []
+
+        def fake_call(frames, prompt, max_tokens):
+            calls.append(1)
+            outcome = queue.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+        events = []
+        with mock.patch.object(self.client, "_call", fake_call):
+            try:
+                answer = self.client.classify([], "p", retry_until=retry_until, on_wait=lambda a, s, r: events.append((a, s)), sleep=lambda s: None)
+            except Exception as e:
+                answer = e
+        return answer, len(calls), events
+
+    def test_one_attempt_without_a_deadline_exactly_like_the_discord_flow(self):
+        busy = self.client.OpenRouterError("busy", retryable=True)
+        answer, calls, events = self.classify([busy, "positive"])
+        self.assertIs(answer, busy)
+        self.assertEqual((calls, events), (1, []))
+
+    def test_busy_provider_is_waited_out_with_growing_pauses(self):
+        busy = lambda: self.client.OpenRouterError("busy", retryable=True)  # noqa: E731
+        answer, calls, events = self.classify([busy(), busy(), busy(), "positive"], retry_until=__import__("time").time() + 100)
+        self.assertEqual((answer, calls), ("positive", 4))
+        self.assertEqual(events, [(1, 4), (2, 8), (3, 16)])
+
+    def test_pauses_stop_growing_at_30_seconds(self):
+        busy = lambda: self.client.OpenRouterError("busy", retryable=True)  # noqa: E731
+        _, _, events = self.classify([busy() for _ in range(6)] + ["ok"], retry_until=__import__("time").time() + 100)
+        self.assertEqual([s for _, s in events], [4, 8, 16, 30, 30, 30])
+
+    def test_errors_that_will_not_fix_themselves_are_not_retried(self):
+        fatal = self.client.OpenRouterError("no credit", retryable=False)
+        answer, calls, _ = self.classify([fatal, "positive"], retry_until=__import__("time").time() + 100)
+        self.assertIs(answer, fatal)
+        self.assertEqual(calls, 1)
+
+    def test_gives_up_when_the_deadline_has_passed(self):
+        busy = self.client.OpenRouterError("busy", retryable=True)
+        answer, calls, _ = self.classify([busy, "positive"], retry_until=__import__("time").time() - 1)
+        self.assertIs(answer, busy)
+        self.assertEqual(calls, 1)
+
+    def test_failure_sentence_names_the_provider_and_hides_the_json(self):
+        class Response:
+            status_code = 429
+            text = "raw"
+
+            def json(self):
+                return {"error": {"message": "x", "metadata": {"provider_name": "Parasail", "raw": "long raw text"}}}
+
+        sentence = self.client._describe_failure(Response())
+        self.assertIn("rate-limited by Parasail", sentence)
+        self.assertNotIn("{", sentence)
 
 
 class StagesTests(unittest.TestCase):

@@ -17,7 +17,7 @@ It knows nothing about Google Drive, Discord callbacks or renaming files:
 Everything is reported through `progress(stage, detail, percent=...)` so the UI
 can show what is happening right now. Stage ids are a fixed vocabulary (the
 frontend maps them to labels): queued, truncating, frames, face, audio,
-transcript, voice, vlm_valence, vlm_arousal, finalizing, done, error.
+finalizing, audio, transcript, voice, vlm_valence, vlm_arousal, done, error.
 """
 
 import glob
@@ -42,7 +42,7 @@ def _existing_frames(frames_dir):
     return sorted(glob.glob(os.path.join(frames_dir, "frame_*.jpg")))
 
 
-def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work_dir, persist_dir=None, render_annotated=False):
+def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work_dir, persist_dir=None, render_annotated=False, auto_retry=False):
     """Analyse one video. Returns the result dict (see bottom).
 
     clip_id      key of the per-clip cache JSON in store.py (a Drive fileId, or "web_<id>")
@@ -53,6 +53,8 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
     work_dir     scratch space, deleted by the caller afterwards
     persist_dir  if given, frames / thumbnail / annotated frame live here and are
                  reused on the next call instead of being recomputed
+    auto_retry   keep asking the model again while its provider is busy (rate-limited), up to
+                 config.AUTO_RETRY_MAX_S; off = one attempt, as in the Discord flow
     """
     started = time.monotonic()
     want_annotated = more_info or render_annotated
@@ -72,6 +74,14 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
     need_frames, need_detection = plan.need_frames, plan.need_detection
     need_transcript, need_voice, needs_audio = plan.need_transcript, plan.need_voice, plan.needs_audio
 
+    def finish(stage):
+        """End a stage and save everything learned so far, with how long it took. Saving after every
+        stage (not once at the end) means a crash or a model failure later never throws away the work
+        and the timings of the stages that did finish — a re-run reuses and reports them."""
+        meter.end(stage)
+        cache.setdefault("stage_seconds", {})[stage] = meter.timings[stage]
+        store.save_clip_cache(clip_id, cache)
+
     # ---- the clip itself: cap its length, then sample frames ----
     working_path = None
     if plan.need_working_video:
@@ -81,13 +91,13 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
         cache.setdefault("clip_meta", {}).update(
             {"seconds": round(min(duration, config.MAX_CLIP_SECONDS), 1), "full_seconds": round(duration, 1), "truncated": bool(truncated)}
         )
-        meter.end("truncating")
+        finish("truncating")
 
     if need_frames:
         meter.begin("frames", "Sampling up to %d frames evenly across the clip" % config.MAX_VLM_FRAMES)
         frame_paths = video.extract_frames(working_path, frames_dir)
         cache["clip_meta"]["frame_count"] = len(frame_paths)
-        meter.end("frames")
+        finish("frames")
     else:
         frame_paths = have_frames
 
@@ -111,25 +121,39 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
             cache["pose_features"] = pose_feat
             cache.setdefault("eye_string", format_eye_string(pose_feat))
             cache.setdefault("head_string", format_head_string(pose_feat))
-        meter.end("face")
+        finish("face")
+
+    # ---- the annotated frame (py-feat's own drawing) ----
+    # Drawn right after the face pass (needs its detection), not at the end: a later failure (the model's
+    # rate limit, a crashed transcript...) must not leave the picture undrawn, or every retry would have to
+    # redo the whole face pass just to draw it.
+    annotated = annotated_path if have_annotated else None
+    if plan.needs_annotation:
+        meter.begin("finalizing", "Drawing the annotated frame: face box, landmarks, action-unit bars, head pose and gaze")
+        if detection is not None and len(detection) > 0:
+            annotated = visualize.render_annotated_frame(detection.iloc[[0]], annotated_path)
+        if annotated is None:
+            cache["annotated_failed"] = True  # do not re-run the face pass again just to retry the drawing
+        finish("finalizing")
 
     # ---- sound: transcript and voice features ----
     audio_path = None
     if needs_audio:
         meter.begin("audio", "Extracting the audio track")
         audio_path = video.extract_audio(working_path, work_dir)
-        meter.end("audio")
+        finish("audio")
     if need_transcript:
         meter.begin("transcript", "Transcribing the speech with Whisper (%s). Silent clips finish instantly" % config.WHISPER_MODEL)
         cache["transcript"] = extract_transcript(audio_path)
-        meter.end("transcript")
+        finish("transcript")
     if need_voice:
         meter.begin("voice", "Measuring voice pitch, loudness and speaking rate with openSMILE")
         cache["voice_string"] = format_voice_string(extract_voice_features(audio_path))
-        meter.end("voice")
+        finish("voice")
 
     store.save_clip_cache(clip_id, cache)
-    preprocess_done_at = time.time()
+    drawing_seconds = meter.timings.get("finalizing", 0)
+    preprocess_done_at = time.time() - drawing_seconds  # the drawing is not part of "preprocess" in the Discord timeline
 
     au_string = cache.get("au_string", "")
     transcript = cache.get("transcript", "")
@@ -138,18 +162,27 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
     head_string = cache.get("head_string", "")
 
     # ---- the two VLM questions ----
+    def ask(stage, prompt_text):
+        """One model question. With auto_retry a busy provider is waited out (and the page says so)."""
+        deadline = time.time() + config.AUTO_RETRY_MAX_S if auto_retry else None
+
+        def waiting(attempt, seconds, reason):
+            meter.note(stage, "%s Trying again in %d s (retry %d, up to %d min in total)." % (reason, seconds, attempt, config.AUTO_RETRY_MAX_S // 60))
+
+        return classify(frame_paths, prompt_text, max_tokens=8, retry_until=deadline, on_wait=waiting)
+
     valence_prompt = prompt.build_prompt_valence(modalities, au_string, transcript, voice_string, eye_string, head_string)
     meter.begin("vlm_valence", "Asking Qwen3-VL whether the person's emotional tone is positive or negative (%d frames + the prompt)" % len(frame_paths))
-    valence_raw = classify(frame_paths, valence_prompt, max_tokens=8)
+    valence_raw = ask("vlm_valence", valence_prompt)
     valence = prompt.parse_valence(valence_raw)
     meter.end("vlm_valence")
 
     arousal_prompt = prompt.build_prompt_arousal(valence, modalities, au_string, transcript, voice_string, eye_string, head_string)
     meter.begin("vlm_arousal", "Asking Qwen3-VL whether the person's energy level is active or deactivated, knowing the tone is %s" % valence)
-    arousal_raw = classify(frame_paths, arousal_prompt, max_tokens=8)
+    arousal_raw = ask("vlm_arousal", arousal_prompt)
     arousal = prompt.parse_arousal(arousal_raw)
     meter.end("vlm_arousal")
-    vlm_done_at = time.time()
+    vlm_done_at = time.time() - drawing_seconds  # the drawing is not part of "model time" in the Discord timeline
 
     label = prompt.combine(valence, arousal)
     short = prompt.SHORT_CODE.get(label, label)
@@ -164,14 +197,6 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
         cache["last_valence_prompt"] = valence_prompt
         cache["last_arousal_prompt"] = arousal_prompt
     store.save_clip_cache(clip_id, cache)
-
-    # ---- the annotated frame (py-feat's own drawing) ----
-    annotated = annotated_path if have_annotated else None
-    if want_annotated and not have_annotated:
-        meter.begin("finalizing", "Drawing the annotated frame: face box, landmarks, action-unit bars, head pose and gaze")
-        if detection is not None and len(detection) > 0:
-            annotated = visualize.render_annotated_frame(detection.iloc[[0]], annotated_path)
-        meter.end("finalizing")
 
     meta = cache.get("clip_meta", {})
     return {
@@ -192,6 +217,7 @@ def process(clip_id, src_path, modalities, cache_mode, more_info, progress, work
         "pose_features": cache.get("pose_features", {}),
         "modalities_used": list(modalities),
         "stage_timings": meter.timings,
+        "stage_cached_seconds": {stage: meter.cached[stage] for stage, status in meter.status.items() if status == "cached" and stage in meter.cached},
         "stage_status": meter.status,
         "total_seconds": round(time.monotonic() - started, 2),
         "frame_count": len(frame_paths),
