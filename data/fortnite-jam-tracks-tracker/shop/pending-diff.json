@@ -1,24 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_607",
-      "title": "Ghosts 'n' Stuff",
-      "artist": "deadmau5, Rob Swire",
-      "image": "https://cdn.fortnite-api.com/tracks/85f3a327d3ef625f.jpg",
-      "price": 2600,
-      "inDate": "2026-10-13T00:00:00Z",
-      "outDate": "2026-10-17T23:59:59.999Z"
-    }
-  ],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_791",
-      "title": "4 Raws",
-      "artist": "EsDeeKid",
-      "image": "https://cdn.fortnite-api.com/tracks/8b5f1b39302aa542.jpg",
-      "price": 3400,
-      "inDate": "2026-10-09T00:00:00Z",
-      "outDate": "2026-10-12T23:59:59.999Z"
-    }
-  ]
+  "newTracks": [],
+  "leftTracks": []
 }
