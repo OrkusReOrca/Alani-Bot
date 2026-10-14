@@ -107,7 +107,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!command) return;
 
   const ctx = {
-    reply: (text) => interaction.reply(text),
+    // a command may reply more than once (e.g. /info); an interaction only allows one first reply
+    reply: (text) => (interaction.replied || interaction.deferred ? interaction.followUp(text) : interaction.reply(text)),
     replyWithFile: (buffer, filename) => interaction.reply({ files: [{ attachment: buffer, name: filename }] }),
     userId: interaction.user.id,
     channelId: interaction.channelId,

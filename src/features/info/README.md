@@ -4,6 +4,12 @@ Replies with a short introduction plus the current list of commands and
 features. Works two ways: the `/info` slash command, or `.a info` typed as
 a plain message in any channel Alani can see.
 
+**The official site.** Plain `.a info` (and `/info`) first sends one short message with the link to the
+public command reference, "For more details, visit our official site: https://alatomy.com/alani/discord"
+(`OFFICIAL_SITE_MESSAGE` in `command.js`), then the usual introduction. The topic pages (`.a info db`, `avc`, `at`...)
+do not repeat it. The website's Discord page is written by hand: when a public command changes, update that
+website page too (repo `Alatomy_Website`, `pages/alani-discord.html`).
+
 **`.a info db`** (prefix only — a two-word freeform subcommand doesn't
 map onto a slash option cleanly, same reasoning as `.a fjamtrack shop`
 staying prefix-only) replies with a full, standalone explanation of the

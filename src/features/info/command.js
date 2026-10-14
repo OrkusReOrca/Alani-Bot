@@ -29,6 +29,10 @@ Read-only.`;
 
 const PRIVATE_SERVER_ID = "1539132003109314572";
 
+// Sent as its own first message by plain `.a info` / `/info` (not by the topic pages such as
+// `.a info db`): the public site has the full command reference, laid out for reading.
+export const OFFICIAL_SITE_MESSAGE = "For more details, visit our official site: https://alatomy.com/alani/discord";
+
 const COMMANDS = [
   { text: "**/info** or **.a info** — this message. **.a info db** — full detail on the reminders/events database system, its tiers, and every command.", private: false },
   { text: "**.a fjamtrack shop** — sends the current Fortnite Jam Tracks shop grid.", private: false },
@@ -434,5 +438,6 @@ export async function execute(ctx, args = []) {
     features.join("\n"),
   ].join("\n");
 
+  await ctx.reply(OFFICIAL_SITE_MESSAGE);
   await ctx.reply(reply);
 }
