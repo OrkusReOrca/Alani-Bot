@@ -44,10 +44,11 @@ _FORBIDDEN_NAME_CHARS = '<>"|?*'
 class JobError(Exception):
     """A request the user can fix; carries the HTTP status to answer with."""
 
-    def __init__(self, status, message):
+    def __init__(self, status, message, retry_after=None):
         super().__init__(message)
         self.status = status
         self.message = message
+        self.retry_after = retry_after  # seconds, sent as the Retry-After header on a 429
 
 
 def now_iso():

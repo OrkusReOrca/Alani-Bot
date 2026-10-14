@@ -20,6 +20,7 @@ import fake_pipeline  # noqa: E402
 import store  # noqa: E402
 import web_auth  # noqa: E402
 import web_jobs  # noqa: E402
+import web_ratelimit  # noqa: E402
 
 CSRF = {"X-Requested-With": "alani-web"}
 
@@ -32,7 +33,8 @@ class WebTestCase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="emotion_test_")
         self._saved = {k: getattr(config, k) for k in (
             "DATA_DIR", "DEMO_PASSWORD", "SHARED_SECRET", "FAKE_PIPELINE", "WEB_MAX_UPLOAD_MB", "WEB_MAX_JOBS_PER_HOUR",
-            "WEB_RETENTION_HOURS", "KEEP_DISCORD_FLOW", "WEB_SESSION_KEY", "OPENROUTER_API_KEY")}
+            "WEB_RETENTION_HOURS", "KEEP_DISCORD_FLOW", "WEB_SESSION_KEY", "OPENROUTER_API_KEY",
+            "WEB_RATE_PER_MIN", "WEB_RATE_GLOBAL_PER_MIN", "WEB_UPLOADS_PER_HOUR_PER_IP", "WEB_MAX_CONCURRENT_UPLOADS")}
         config.DATA_DIR = self.tmp
         config.DEMO_PASSWORD = self.PASSWORD
         config.SHARED_SECRET = self.SECRET
@@ -42,6 +44,11 @@ class WebTestCase(unittest.TestCase):
         config.WEB_RETENTION_HOURS = 24
         config.KEEP_DISCORD_FLOW = False
         config.WEB_SESSION_KEY = None
+        # generous limits so the ordinary tests are never throttled; the rate-limit tests lower them
+        config.WEB_RATE_PER_MIN = config.WEB_RATE_GLOBAL_PER_MIN = 100000
+        config.WEB_UPLOADS_PER_HOUR_PER_IP = 1000
+        config.WEB_MAX_CONCURRENT_UPLOADS = 2
+        web_ratelimit.reset()
         fake_pipeline.DELAY_S = 0.0
         store._CLIPS_DIR = store._CSV_PATH = None
         web_auth.limiter = web_auth.LoginLimiter()

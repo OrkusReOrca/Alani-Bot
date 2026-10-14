@@ -12,6 +12,7 @@ import config
 import runtime
 import web_auth
 import web_jobs
+import web_ratelimit
 
 
 class AuthTests(WebTestCase):
@@ -288,6 +289,90 @@ class RestartAndRetentionTests(WebTestCase):
         self.assertIsNone(web_jobs.jobs.get(old["id"]))
         self.assertIsNotNone(web_jobs.jobs.get(pinned["id"]))
         self.assertIsNotNone(web_jobs.jobs.get(fresh["id"]))
+
+
+class RateLimitTests(WebTestCase):
+    def test_a_visitor_over_the_limit_gets_429_with_retry_after_and_others_are_unaffected(self):
+        config.WEB_RATE_PER_MIN = 6
+        cookie = self.login()  # counts as one request
+        statuses = [self.request("GET", "/api/config", cookie=cookie)["status"] for _ in range(7)]
+        self.assertEqual(statuses[:5], [200] * 5)
+        self.assertEqual(statuses[5:], [429, 429])
+        limited = self.request("GET", "/api/config", cookie=cookie)
+        self.assertEqual(limited["status"], 429)
+        self.assertGreaterEqual(int(limited["headers"]["retry-after"]), 1)
+        self.assertIn("slow down", limited["json"]["error"])
+        # the proxy reports another visitor (the test peer is loopback, so the header is trusted)
+        self.assertEqual(self.request("GET", "/api/health", headers={"X-Forwarded-For": "198.51.100.20"})["status"], 200)
+        other = self.request("GET", "/api/session", headers={"X-Forwarded-For": "198.51.100.20"})
+        self.assertEqual(other["status"], 200)
+
+    def test_the_health_check_is_never_throttled(self):
+        config.WEB_RATE_PER_MIN = 2
+        for _ in range(8):
+            self.assertEqual(self.request("GET", "/api/health")["status"], 200)
+
+    def test_pages_and_static_files_count_too_but_the_old_bearer_routes_do_not(self):
+        config.WEB_RATE_PER_MIN = 3
+        statuses = [self.request("GET", "/app/")["status"] for _ in range(5)]
+        self.assertEqual(statuses, [200, 200, 200, 429, 429])
+        # /run is not a dashboard route: it keeps answering (401 without the bearer secret)
+        self.assertEqual(self.request("POST", "/run", json_body={})["status"], 401)
+
+    def test_the_global_ceiling_holds_even_when_every_visitor_is_within_their_own_limit(self):
+        config.WEB_RATE_GLOBAL_PER_MIN = 4
+        statuses = [self.request("GET", "/api/session", headers={"X-Forwarded-For": f"198.51.100.{i + 1}"})["status"] for i in range(6)]
+        self.assertEqual(statuses, [200, 200, 200, 200, 429, 429])
+
+    def test_a_refused_flood_does_not_use_up_the_global_budget(self):
+        config.WEB_RATE_PER_MIN = 2
+        config.WEB_RATE_GLOBAL_PER_MIN = 5
+        for _ in range(10):  # one noisy visitor, mostly refused
+            self.request("GET", "/api/session", headers={"X-Forwarded-For": "198.51.100.1"})
+        self.assertEqual(self.request("GET", "/api/session", headers={"X-Forwarded-For": "198.51.100.2"})["status"], 200)
+
+    def test_uploads_per_visitor_per_hour(self):
+        cookie = self.login()
+        config.WEB_UPLOADS_PER_HOUR_PER_IP = 2
+        self.assertEqual(self.upload(cookie)["status"], 201)
+        self.assertEqual(self.upload(cookie)["status"], 201)
+        third = self.upload(cookie)
+        self.assertEqual(third["status"], 429)
+        self.assertGreaterEqual(int(third["headers"]["retry-after"]), 1)
+        # another visitor still can
+        self.assertEqual(self.upload(cookie, extra={"X-Forwarded-For": "198.51.100.77"})["status"], 201)
+
+    def test_only_a_few_uploads_may_stream_at_once(self):
+        cookie = self.login()
+        config.WEB_MAX_CONCURRENT_UPLOADS = 1
+        limits = web_ratelimit.limits.refresh()
+        self.assertTrue(limits.upload_slots.acquire(blocking=False))  # an upload is "in progress"
+        try:
+            busy = self.upload(cookie)
+            self.assertEqual(busy["status"], 429)
+            self.assertIn("in progress", busy["json"]["error"])
+            self.assertEqual(busy["headers"]["retry-after"], "5")
+        finally:
+            limits.upload_slots.release()
+        self.assertEqual(self.upload(cookie)["status"], 201)  # and the slot is free again afterwards
+
+    def test_sliding_window_unit(self):
+        now = [0.0]
+        window = web_ratelimit.SlidingWindow(2, 60.0, max_keys=2, clock=lambda: now[0])
+        self.assertEqual(window.take("a"), (True, 0))
+        now[0] = 30
+        self.assertEqual(window.take("a"), (True, 0))
+        allowed, retry = window.take("a")
+        self.assertFalse(allowed)
+        self.assertTrue(1 <= retry <= 31)
+        now[0] = 61  # the first hit has aged out
+        self.assertEqual(window.take("a"), (True, 0))
+        now[0] = 1000
+        window.take("x")
+        window.take("y")
+        self.assertFalse(window.take("z")[0])  # many distinct addresses: refused, memory stays bounded
+        now[0] = 2000
+        self.assertTrue(window.take("z")[0])
 
 
 class AuthUnitTests(unittest.TestCase):

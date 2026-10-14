@@ -26,6 +26,7 @@ import config
 import runtime
 import web_auth
 import web_jobs
+import web_ratelimit
 from stages import ALL_MODALITIES
 from web_jobs import JobError, jobs
 
@@ -104,7 +105,7 @@ def _csrf_ok(h):
 
 
 def _login(h):
-    ip = web_auth.client_ip(h.client_address[0], h.headers.get("X-Forwarded-For"))
+    ip = _client_ip(h)
     wait = web_auth.limiter.retry_after(ip)
     if wait:
         return _error(h, 429, f"Too many wrong passwords. Try again in {wait} seconds.", {"Retry-After": str(wait)})
@@ -184,7 +185,25 @@ def _serve_media(h, job_id, name):
 
 # ---------- upload ----------
 
+def _client_ip(h):
+    return web_auth.client_ip(h.client_address[0], h.headers.get("X-Forwarded-For"))
+
+
 def _upload(h):
+    """Per-visitor hourly allowance and a cap on uploads streaming at the same time, then the real work."""
+    limits = web_ratelimit.limits.refresh()
+    allowed, retry = limits.check_upload(_client_ip(h))
+    if not allowed:
+        raise JobError(429, "You have uploaded a lot of videos in the last hour. Please wait a while before the next one.", retry_after=retry)
+    if not limits.upload_slots.acquire(blocking=False):
+        raise JobError(429, "Another upload is still in progress. Try again in a moment.", retry_after=5)
+    try:
+        _store_upload(h)
+    finally:
+        limits.upload_slots.release()
+
+
+def _store_upload(h):
     try:
         length = int(h.headers.get("Content-Length", ""))
     except ValueError:
@@ -340,6 +359,14 @@ def handle(h, method):
     parts = urlsplit(h.path)
     path = parts.path
 
+    if not (path in ("/", "/app") or path.startswith("/app/") or path.startswith("/api/")):
+        return False
+    if path != "/api/health":  # the health check is for monitoring, never throttled
+        allowed, retry = web_ratelimit.limits.check_request(_client_ip(h))
+        if not allowed:
+            _error(h, 429, "Too many requests. Please slow down for a moment.", {"Retry-After": str(retry)})
+            return True
+
     if path in ("/", "/app"):
         if method not in ("GET", "HEAD"):
             return False
@@ -356,7 +383,7 @@ def handle(h, method):
     try:
         _route_api(h, method, path)
     except JobError as e:
-        _error(h, e.status, e.message)
+        _error(h, e.status, e.message, {"Retry-After": str(e.retry_after)} if e.retry_after else None)
     except Exception as e:  # never leak internals (or secrets) to the browser
         import traceback
         traceback.print_exc()

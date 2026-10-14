@@ -92,6 +92,12 @@ WEB_MAX_UPLOAD_MB = _number("EMOTION_WEB_MAX_UPLOAD_MB", 300)
 WEB_RETENTION_HOURS = _number("EMOTION_WEB_RETENTION_HOURS", 24)
 WEB_MAX_JOBS_PER_HOUR = int(_number("EMOTION_WEB_MAX_JOBS_PER_HOUR", 20))
 
+# Rate limits for the dashboard (web_ratelimit.py) - the host's resources are small.
+WEB_RATE_PER_MIN = int(_number("EMOTION_WEB_RATE_PER_MIN", 240))              # requests per visitor per minute
+WEB_RATE_GLOBAL_PER_MIN = int(_number("EMOTION_WEB_RATE_GLOBAL_PER_MIN", 3000))  # requests per minute, everybody together
+WEB_UPLOADS_PER_HOUR_PER_IP = int(_number("EMOTION_WEB_UPLOADS_PER_HOUR_PER_IP", 8))
+WEB_MAX_CONCURRENT_UPLOADS = int(_number("EMOTION_WEB_MAX_CONCURRENT_UPLOADS", 2))
+
 # Load py-feat / whisper in the background at boot (a RAM spike) instead of on
 # the dashboard's "Warm up models" button.
 WARMUP_ON_START = _flag("EMOTION_WARMUP_ON_START")

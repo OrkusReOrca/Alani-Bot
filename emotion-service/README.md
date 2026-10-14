@@ -53,6 +53,10 @@ Web dashboard variables (all optional except `DEMO_PASSWORD`; read in `config.py
 | `EMOTION_WEB_MAX_UPLOAD_MB` | Upload size limit. Default 300 — lower it if the host's proxy cuts long uploads. |
 | `EMOTION_WEB_RETENTION_HOURS` | Unpinned runs (and their uploaded videos) are deleted after this. Default 24. |
 | `EMOTION_WEB_MAX_JOBS_PER_HOUR` | Spend guard against a leaked password. Default 20. |
+| `EMOTION_WEB_RATE_PER_MIN` | Dashboard requests allowed per visitor per minute (pages, API, images). Over it: HTTP 429 with `Retry-After`. Default 240. `/api/health` is never throttled. |
+| `EMOTION_WEB_RATE_GLOBAL_PER_MIN` | The same, for everybody together. Default 3000. |
+| `EMOTION_WEB_UPLOADS_PER_HOUR_PER_IP` | Videos one visitor may upload per hour. Default 8. |
+| `EMOTION_WEB_MAX_CONCURRENT_UPLOADS` | Uploads allowed to stream to disk at the same time. Default 2. |
 | `EMOTION_WARMUP_ON_START` | `1` loads the heavy models at boot instead of on the dashboard's "Warm up models" button. |
 | `EMOTION_FAKE_PIPELINE` | Dev/test only: a stand-in analysis that needs none of torch / py-feat / whisper (`fake_pipeline.py`). |
 
@@ -96,6 +100,10 @@ at the repo root.
   `store.py`'s own records. `target` is `"all"`, `"recent"` (last 24h),
   or a filename. See `../src/features/emotion-detect/README.md`'s own
   "Resend" section for why this exists.
+
+## Rate limiting
+
+The slot's resources are small, so the dashboard limits itself (`web_ratelimit.py`, numbers in the table above): a per-visitor and a global requests-per-minute allowance, a per-visitor uploads-per-hour allowance, and a cap on uploads streaming at once. A refused request gets HTTP 429 with a `Retry-After` header and the page waits and retries by itself. Logins have their own lock-out (5 wrong passwords in a minute), and the whole service also caps analyses per hour (`EMOTION_WEB_MAX_JOBS_PER_HOUR`). The visitor's address is the last `X-Forwarded-For` entry the host's proxy appended, trusted only when the direct peer is a private address. Everything is in memory: a restart resets the counters.
 
 ## Caching, failures and retry
 

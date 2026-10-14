@@ -122,7 +122,7 @@ fine (record at the start of the talk, present, read the result at the end).
                      external fonts/scripts/images (works on a restricted
                      network). Charts are hand-written SVG/CSS.
     fake_pipeline.py A stand-in for core.py used only in development/tests.
-    tests/           48 automated tests (python -m unittest discover ...).
+    tests/           56 automated tests (python -m unittest discover ...).
     In the Node bot: src/features/emotion-detect/ (the .a emo command, with
     ".a emo web", and emotionApi.js which receives "Save to Discord").
 
@@ -246,6 +246,11 @@ fine (record at the start of the talk, present, read the result at the end).
  - XSS: file names, transcripts and prompts are model/ASR/user text; the page
    inserts them with textContent only, and sends a Content-Security-Policy that
    allows scripts only from the same origin.
+ - Rate limiting (the slot is small): per visitor 240 requests/minute and 3000/minute
+   for everybody (pages, API, images; /api/health exempt), 8 uploads per visitor per
+   hour, at most 2 uploads streaming at once; over a limit = HTTP 429 + Retry-After and
+   the page retries by itself. Visitor address = the last X-Forwarded-For entry, trusted
+   only behind a private peer. In memory, bounded (web_ratelimit.py).
  - Spend and disk guards: at most 20 analyses per hour (stops a leaked password
    from burning OpenRouter credit); uploads refused if free disk is under twice
    the upload size; size and type limits on uploads.
@@ -284,13 +289,15 @@ In Discord, ".a emo web" replies with the link and whether the board is online.
   DEMO_PASSWORD (turns the web board on), EMOTION_SERVICE_SECRET, ALANI_BOT_URL,
   OPENROUTER_API_KEY, optional EMOTION_WEB_SESSION_KEY / _SESSION_HOURS /
   _MAX_UPLOAD_MB / _RETENTION_HOURS / _MAX_JOBS_PER_HOUR, EMOTION_WARMUP_ON_START,
-  EMOTION_KEEP_DISCORD_FLOW, EMOTION_WHISPER_MODEL. In the Discord bot's env:
+  EMOTION_KEEP_DISCORD_FLOW, EMOTION_WHISPER_MODEL, and the rate limits
+  EMOTION_WEB_RATE_PER_MIN / _RATE_GLOBAL_PER_MIN / _UPLOADS_PER_HOUR_PER_IP /
+  _MAX_CONCURRENT_UPLOADS. In the Discord bot's env:
   EMOTION_WEB_URL (the slot's HTTPS address, used by ".a emo web").
 
 --------------------------------------------------------------------------------
 10. TESTING
 --------------------------------------------------------------------------------
-  python -m unittest discover -s emotion-service/tests     (48 tests)
+  python -m unittest discover -s emotion-service/tests     (56 tests)
   They run the real HTTP server and the real job queue with a stand-in analysis
   (fake_pipeline.py), and exercise core.py with the heavy parts replaced. They
   cover: login, lock-out, cookie tampering/expiry, CSRF header, upload limits and
@@ -325,6 +332,12 @@ In Discord, ".a emo web" replies with the link and whether the board is online.
 --------------------------------------------------------------------------------
 CHANGE LOG
 --------------------------------------------------------------------------------
+2026-10-14  Rate limiting for the web board (owner request: limited hosting resources).
+            New web_ratelimit.py: per-visitor and global requests per minute, uploads
+            per visitor per hour, a cap on simultaneous uploads; HTTP 429 with
+            Retry-After; /api/health exempt; the page keeps polling through a 429
+            instead of showing "run not found". 8 new tests (56 in total). The company
+            website (alatomy.com, own repo) has the same kind of limiter.
 2026-10-12  (2) Fixes after the first real run: (a) a retry after a model failure
             no longer redoes the face pass - the annotated frame is drawn right
             after the face pass and the clip cache is saved after every stage;

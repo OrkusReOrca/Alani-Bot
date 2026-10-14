@@ -136,9 +136,16 @@ async function route() {
   view.replaceChildren();
   if (!config) {
     let session;
-    try { session = await (await fetch("/api/session", { credentials: "same-origin" })).json(); } catch (_) { session = {}; }
+    try {
+      const res = await fetch("/api/session", { credentials: "same-origin" });
+      if (res.status === 429) return renderMessage("Please wait a moment", "Too many requests were made from this connection. Try again in a few seconds.");
+      session = await res.json();
+    } catch (_) { session = {}; }
     if (!session.authenticated) return renderLogin();
-    try { config = await api("/api/config"); } catch (_) { return renderLogin(); }
+    try { config = await api("/api/config"); } catch (e) {
+      if (e.status === 429) return renderMessage("Please wait a moment", e.message);
+      return renderLogin();
+    }
   }
   nav.hidden = false;
   document.getElementById("foot-text").textContent =
@@ -154,6 +161,12 @@ document.getElementById("logout").addEventListener("click", async () => {
   nav.hidden = true;
   go("#/");
 });
+
+// A plain full-page message with a retry button (for a temporary 429 or a lost connection).
+function renderMessage(title, text) {
+  view.replaceChildren(h("section", { class: "card" }, h("h1", null, title), h("p", { class: "muted" }, text),
+    h("button", { class: "primary", type: "button", onclick: () => route() }, "Try again")));
+}
 
 // ---------- login ----------
 function renderLogin() {
@@ -372,6 +385,12 @@ async function renderJob(id) {
     let job;
     try { job = await api(`/api/jobs/${id}`); } catch (e) {
       if (mine !== epoch) return;
+      if (e.status !== 404) {
+        // a busy moment (429), a dropped connection...: the run itself is fine, so keep trying instead of giving up
+        if (!progressUi) holder.replaceChildren(h("section", { class: "card" }, h("h1", null, "Reconnecting..."), h("p", { class: "muted" }, e.message)));
+        later(load, 4000);
+        return;
+      }
       holder.replaceChildren(h("section", { class: "card" }, h("h1", null, "Run not found"), h("p", { class: "muted" }, "It may have been deleted or expired."), h("a", { class: "button primary", href: "#/" }, "Back")));
       return;
     }
