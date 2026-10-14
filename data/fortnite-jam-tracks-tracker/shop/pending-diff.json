@@ -1,4 +1,14 @@
 {
   "newTracks": [],
-  "leftTracks": []
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_667",
+      "title": "What's New Scooby-Doo?",
+      "artist": "Simple Plan",
+      "image": "https://cdn.fortnite-api.com/tracks/e924fb4f8c76e199.jpg",
+      "price": 3400,
+      "inDate": "2026-10-09T00:00:00Z",
+      "outDate": "2026-10-13T23:59:59.999Z"
+    }
+  ]
 }
