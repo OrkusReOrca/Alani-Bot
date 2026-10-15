@@ -40,6 +40,7 @@ import { getSession, setTextChannel, prepareVoice } from "./manager.js";
 
 export const data = {
   name: "avc",
+  description: "Music player for voice calls",
 };
 
 export const aiGuide = `

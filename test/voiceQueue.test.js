@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { matchByName, normalizeName, cleanQuery } from "../src/features/voice-player/match.js";
 import { emptyState, currentEntry, enqueue, enqueueFront, insertNext, jumpTo, advance, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, isLooping } from "../src/features/voice-player/queue.js";
 import { formatDuration, describeSettings, buildQueuePages, queuePageOf, describeQueueList, describeQueueForModel, QUEUE_PAGE_SIZE } from "../src/features/voice-player/format.js";
-import { loadState, saveState, voiceDb } from "../src/features/voice-player/stateStore.js";
+import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState, voiceDb } from "../src/features/voice-player/stateStore.js";
 import { isPlayableFile } from "../src/features/voice-player/config.js";
 
 const track = (name) => ({ key: name, name });
@@ -370,4 +370,26 @@ test("a server saved before the cursor existed resumes at its first track; a sta
     voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
     voiceDb.prepare(`DELETE FROM guild_voice_cursor WHERE guild_id = ?`).run(id);
   }
+});
+
+test("presence: the call and the text channel are remembered per server and listed for the restart", () => {
+  const guild = `tg-p-${Date.now()}`;
+  assert.deepEqual(loadPresence(guild), { voiceChannelId: null, textChannelId: null });
+
+  savePresence(guild, { textChannelId: "t1" });
+  savePresence(guild, { voiceChannelId: "v1" });
+  assert.deepEqual(loadPresence(guild), { voiceChannelId: "v1", textChannelId: "t1" });
+  assert.ok(listGuildsInCall().some((g) => g.guildId === guild && g.voiceChannelId === "v1"));
+
+  savePresence(guild, { voiceChannelId: null });
+  assert.deepEqual(loadPresence(guild), { voiceChannelId: null, textChannelId: "t1" });
+  assert.ok(!listGuildsInCall().some((g) => g.guildId === guild));
+
+  saveState(guild, stateOf(["a"]));
+  assert.ok(listGuildsWithQueue().includes(guild));
+  saveState(guild, emptyState());
+  assert.ok(!listGuildsWithQueue().includes(guild));
+
+  voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(guild);
+  voiceDb.prepare(`DELETE FROM guild_voice_presence WHERE guild_id = ?`).run(guild);
 });

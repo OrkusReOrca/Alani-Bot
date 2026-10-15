@@ -25,6 +25,7 @@ import { ACCOUNT_DB_NAME, accountUrl, getLinkedAccountQuietly } from "../alatomy
 
 export const data = {
   name: "list",
+  description: "List the databases you can use (list db)",
 };
 
 export const aiGuide = `

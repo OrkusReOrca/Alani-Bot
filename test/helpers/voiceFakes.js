@@ -105,6 +105,7 @@ export const track = (name) => ({ fileId: `id-${name}`, name, key: `key-${name}`
 
 export function makeSession({ store = memoryStore(), output = fakeOutput(), cache = fakeCache(), timers = fakeTimers(), random = () => 0, guildId = "g1" } = {}) {
   const announcements = [];
+  const presence = { channel: null, connected: (id) => (presence.channel = id), disconnected: () => (presence.channel = null) };
   const session = createGuildSession({
     guildId,
     store,
@@ -112,10 +113,11 @@ export function makeSession({ store = memoryStore(), output = fakeOutput(), cach
     output,
     announce: (text) => announcements.push(text),
     timing: TIMING,
+    presence,
     random,
     setTimer: timers.setTimer,
     clearTimer: timers.clearTimer,
   });
   const names = () => store.loadState(guildId).queue.map((t) => t.name);
-  return { session, store, output, cache, timers, announcements, names };
+  return { session, store, output, cache, timers, announcements, names, presence };
 }

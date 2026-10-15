@@ -46,6 +46,14 @@ voiceDb.exec(`
     guild_id      TEXT PRIMARY KEY,
     current_index INTEGER NOT NULL
   );
+
+  -- Where the bot was when it last stopped: the call it is in (null = not in one) and the text channel
+  -- its "Now playing" messages go to. Lets a restart rejoin the call and carry on.
+  CREATE TABLE IF NOT EXISTS guild_voice_presence (
+    guild_id         TEXT PRIMARY KEY,
+    voice_channel_id TEXT,
+    text_channel_id  TEXT
+  );
 `);
 // Added after the table first shipped: servers that already have a row get these defaults.
 ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAULT 1");
@@ -67,6 +75,32 @@ export function loadState(guildId) {
     playCall: Boolean(row.play_call),
     persistent: Boolean(row.persistent),
   };
+}
+
+export function loadPresence(guildId) {
+  const row = voiceDb.prepare(`SELECT voice_channel_id, text_channel_id FROM guild_voice_presence WHERE guild_id = ?`).get(guildId);
+  return { voiceChannelId: row?.voice_channel_id ?? null, textChannelId: row?.text_channel_id ?? null };
+}
+
+// Pass only the fields to change: savePresence(guild, { voiceChannelId: null }).
+export function savePresence(guildId, change) {
+  const next = { ...loadPresence(guildId), ...change };
+  voiceDb
+    .prepare(
+      `INSERT INTO guild_voice_presence (guild_id, voice_channel_id, text_channel_id) VALUES (?, ?, ?)
+       ON CONFLICT (guild_id) DO UPDATE SET voice_channel_id = excluded.voice_channel_id, text_channel_id = excluded.text_channel_id`
+    )
+    .run(guildId, next.voiceChannelId, next.textChannelId);
+}
+
+// Servers that were in a call when the bot last stopped.
+export function listGuildsInCall() {
+  return voiceDb.prepare(`SELECT guild_id, voice_channel_id FROM guild_voice_presence WHERE voice_channel_id IS NOT NULL`).all().map((row) => ({ guildId: row.guild_id, voiceChannelId: row.voice_channel_id }));
+}
+
+// Servers with something queued (their tracks must be kept and re-converted after a restart).
+export function listGuildsWithQueue() {
+  return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]'`).all().map((row) => row.guild_id);
 }
 
 export function saveState(guildId, state) {

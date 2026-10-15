@@ -37,6 +37,7 @@ const REFRESH_WORKFLOW_FILE = "fortnite-jam-tracks-tracker-shop-refresh.yml";
 
 export const data = {
   name: "fjamtrack",
+  description: "Fortnite Jam Tracks shop",
 };
 
 export const aiGuide = `

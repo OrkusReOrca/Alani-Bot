@@ -5,7 +5,7 @@
 import { AccountApiError } from "./client.js";
 import { accountUrl, accountsEnabled, getLinkedAccount, NOT_CONNECTED_HELP, NOT_LINKED_HELP, ACCOUNT_DB_NAME } from "./link.js";
 
-export const data = { name: "account" };
+export const data = { name: "account", description: "Your linked Alatomy account" };
 
 export const aiGuide = `
 .a account  — shows whether the caller's Discord is linked to an Alatomy account (and which). Read-only. Once linked, the caller's reminders and events live in their "Alatomy account DB": use .a db alatomy add|list|delete|edit ... exactly like any other database (also visible on alatomy.com).`;

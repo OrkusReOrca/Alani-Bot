@@ -24,6 +24,7 @@ import { TrackerError } from "./storeFactory.js";
 
 export const data = {
   name: "at",
+  description: "Blood pressure, pill and activity trackers",
 };
 
 export const aiGuide = `

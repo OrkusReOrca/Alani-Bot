@@ -444,3 +444,31 @@ test("remove keeps the pointer on the same track: removing an earlier one shifts
   assert.deepEqual(t.names(), ["B", "D"]);
   assert.equal(t.cache.opened.at(-1), "D"); // D slid into its place and plays
 });
+
+test("the call the bot is in is remembered while it stays, and forgotten when it leaves or is kicked", async () => {
+  const t = makeSession();
+  assert.equal(t.presence.channel, null);
+  await t.session.join("vc1");
+  assert.equal(t.presence.channel, "vc1");
+  await t.session.leave();
+  assert.equal(t.presence.channel, null);
+
+  await t.session.join("vc2");
+  t.session.handleClosed();
+  assert.equal(t.presence.channel, null);
+});
+
+test("warmUp pins and converts the saved queue (after a restart, when nothing was added this run)", async () => {
+  const store = memoryStore();
+  const first = makeSession({ store });
+  await first.session.join("vc1");
+  first.session.add(track("A"));
+  first.session.add(track("B"));
+
+  const restarted = makeSession({ store, cache: fakeCache() });
+  assert.deepEqual(restarted.cache.pinned, []);
+  restarted.session.warmUp();
+  assert.deepEqual(restarted.cache.pinned, ["key-A", "key-B"]);
+  await restarted.session.join("vc1"); // rejoining resumes the current track
+  assert.deepEqual(restarted.cache.opened, ["A"]);
+});

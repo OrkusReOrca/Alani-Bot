@@ -10,10 +10,11 @@ import { config, limits } from "./config.js";
 import { createAudioCache } from "./audioCache.js";
 import { createDiscordOutput } from "./discordOutput.js";
 import { createGuildSession } from "./session.js";
-import { loadState, saveState } from "./stateStore.js";
+import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState } from "./stateStore.js";
 
 let cache = null;
 const sessions = new Map(); // guildId -> { session, textChannelId }
+let shuttingDown = false;
 
 async function createCache() {
   let ffmpegPath;
@@ -44,7 +45,7 @@ function getCache() {
 export function getSession(guildId) {
   let entry = sessions.get(guildId);
   if (!entry) {
-    entry = { textChannelId: null };
+    entry = { textChannelId: loadPresence(guildId).textChannelId };
     entry.session = createGuildSession({
       guildId,
       store: { loadState, saveState },
@@ -55,6 +56,13 @@ export function getSession(guildId) {
         sendViaBotChannel(botConfig.botToken, entry.textChannelId, text).catch((err) => console.error("[voice-player] announce failed:", err));
       },
       timing: limits,
+      presence: {
+        connected: (channelId) => savePresence(guildId, { voiceChannelId: channelId }),
+        // Closing the connections on shutdown must not look like leaving: the bot rejoins after the restart.
+        disconnected: () => {
+          if (!shuttingDown) savePresence(guildId, { voiceChannelId: null });
+        },
+      },
     });
     sessions.set(guildId, entry);
   }
@@ -64,7 +72,36 @@ export function getSession(guildId) {
 // Where "Now playing" messages go: the text channel of the latest command.
 export function setTextChannel(guildId, channelId) {
   getSession(guildId);
-  sessions.get(guildId).textChannelId = channelId;
+  const entry = sessions.get(guildId);
+  if (entry.textChannelId === channelId) return;
+  entry.textChannelId = channelId;
+  savePresence(guildId, { textChannelId: channelId });
+}
+
+// Called just before the bot closes its Discord connection on purpose.
+export function markShuttingDown() {
+  shuttingDown = true;
+}
+
+// After the bot starts: gets the audio cache ready, re-converts what is queued, and rejoins every call
+// the bot was in when it stopped (the queue is resumed from the start of the current track).
+export async function resumeVoice({ log = console } = {}) {
+  try {
+    await prepareVoice();
+  } catch (err) {
+    log.error(`[voice-player] voice playback is unavailable: ${err.message}`);
+    return;
+  }
+  for (const guildId of listGuildsWithQueue()) getSession(guildId).warmUp();
+  for (const { guildId, voiceChannelId } of listGuildsInCall()) {
+    try {
+      await getSession(guildId).join(voiceChannelId);
+      log.log(`[voice-player] rejoined the call in ${guildId}`);
+    } catch (err) {
+      log.error(`[voice-player] couldn't rejoin the call in ${guildId}: ${err.message}`);
+      savePresence(guildId, { voiceChannelId: null });
+    }
+  }
 }
 
 // For the bot's voiceStateUpdate event: re-check whether the bot is alone.

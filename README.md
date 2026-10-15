@@ -18,8 +18,8 @@ src/
                                   blocks), see "Daily jobs" in this README
   commands.js                    the registry of every `.a <name>` command (each
                                   must export `aiGuide` so .aii can use it)
-  deployCommands.js              registers slash commands with Discord — run once,
-                                  and again whenever a command's shape changes
+  slashCommands.js               builds and registers the slash commands (at start-up when changed)
+  deployCommands.js              forces that registration by hand (`npm run deploy-commands`)
   common/                       shared plumbing used by every feature
     discordApi.js               thin REST wrapper: DM, channel posts, embeds, file
                                  attachments via bot token, with 429 retry handling
@@ -216,18 +216,22 @@ application -> Bot tab -> "Message Content Intent") — without it, prefix
 commands are silently ignored (the bot isn't allowed to read message text
 at all otherwise).
 
-Some commands (currently just `info`) are also **slash commands** —
-`/info` — which need registering once (see below). Slash commands need a
-single-word name and structured options, so a command like
-`fjamtrack shop` (a name plus a freeform subcommand) stays prefix-only.
+Every command whose `data` has a `description` is also a **slash command**
+(`/info`, `/db`, `/list`, `/at`, `/avc`, `/account`, `/fjamtrack`), available in servers and
+in the bot's DM. Each takes one optional text field, `input`, which is whatever you would
+type after the command name: `/db input:list reminders` = `.a db list reminders`
+([src/slashCommands.js](src/slashCommands.js)). The bot registers them with Discord by
+itself at start-up whenever they changed; to force it:
 
 ```bash
-npm run deploy-commands   # once, and again whenever a command's shape changes
+npm run deploy-commands   # optional: forces slash command registration
 npm start                 # runs src/bot.js — needs to stay running 24/7
 ```
 
-Needs `DISCORD_BOT_TOKEN` (both) and `DISCORD_CLIENT_ID` (deploy-commands
-only) in `.env`. `db` additionally needs `DISCORD_COMMAND_BOX`,
+Direct messages need the `Channel` partial in bot.js (already set): without it discord.js
+drops a DM from anyone whose DM channel it has not cached since the restart.
+
+Needs `DISCORD_BOT_TOKEN` and `DISCORD_CLIENT_ID` in `.env`. `db` additionally needs `DISCORD_COMMAND_BOX`,
 `DISCORD_OWNER_0`, and `DISCORD_OWNER_1` — see
 [src/features/db/README.md](src/features/db/README.md). For 24/7 hosting:
 point the host at this repo, set those as environment variables in its

@@ -12,10 +12,11 @@
 //   cache   { open(entry) -> { stream }, ensure(entry), durationOf(entry), setPinned(keys) }
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
+//   presence         { connected(channelId), disconnected() } — remembers which call the bot is in, so a restart can rejoin it
 
 import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent } from "./queue.js";
 
-export function createGuildSession({ guildId, store, getCache, output, announce, timing, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
+export function createGuildSession({ guildId, store, getCache, output, announce, timing, presence = { connected() {}, disconnected() {} }, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let connected = false;
   let playing = false;
   let paused = false;
@@ -123,6 +124,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     async join(channelId) {
       await output.join(channelId);
       connected = true;
+      presence.connected(output.channelId() ?? channelId);
       clearTimers();
       const resumed = currentEntry(load()) !== null;
       if (resumed) startCurrent();
@@ -134,6 +136,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
       stopPlayback();
       clearTimers();
       connected = false;
+      presence.disconnected();
       output.leave();
     },
 
@@ -244,7 +247,11 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
       token++;
       playing = paused = connected = false;
       clearTimers();
+      presence.disconnected();
     },
+
+    // After a restart: pins the queued tracks and starts converting any that are not on disk yet.
+    warmUp: () => refreshCache(load()),
 
     // Length of a converted track in ms, or undefined if not known yet.
     durationOf(entry) {

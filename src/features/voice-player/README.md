@@ -124,6 +124,15 @@ The queue and switches live in `guild_voice_state` and the **pointer lives in it
 a copy of the queue — so playing music doesn't bloat the backup. A save only writes what actually
 changed. A server that was saved before the pointer existed resumes at its first track.
 
+### Restarts and redeploys
+
+The bot remembers which call it is in and which text channel "Now playing" goes to
+(`guild_voice_presence` in `VoiceState.db`). When it starts again it gets the audio cache
+ready, re-converts any queued track that is not on disk, rejoins every call it was in and
+resumes the current track from its start (`resumeVoice` in `manager.js`). A call it left
+on purpose, was kicked from, or lost (channel deleted) is forgotten; a restart is not
+treated as leaving. If rejoining fails (the channel is gone), that call is forgotten.
+
 ### More queue behaviour
 
 - A track that can't be played is announced and dropped, and the next one starts.
@@ -134,10 +143,8 @@ changed. A server that was saved before the pointer existed resumes at its first
 - **Persistent** (`.avc queue persistent on|off`, default off, per server, **bot owners
   only** — not even SongMaster): when on, the
   bot stays in the call whatever happens — empty queue, everyone else gone — instead of
-  leaving after 5 min idle / 1 min alone. It stays until you `.avc leave` it. It does NOT
-  survive a bot restart or redeploy (the connection drops and is not re-opened
-  automatically; `.avc join` brings it back). Turning it off re-applies the normal
-  auto-leave rules immediately.
+  leaving after 5 min idle / 1 min alone. It stays until you `.avc leave` it. Turning it
+  off re-applies the normal auto-leave rules immediately.
 - "Now playing" messages go to the text channel of the latest command. **PlayCall**
   (`.avc queue playcall on|off`, default on, per server like loop and shuffle) turns
   them off; failures and "left the call" notices still post.

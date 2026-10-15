@@ -40,7 +40,7 @@
 //      commands need no registration — they work as soon as the bot
 //      restarts with the new code.
 
-import { Client, Events, GatewayIntentBits } from "discord.js";
+import { Client, Events, GatewayIntentBits, Partials } from "discord.js";
 import { config } from "./common/config.js";
 import { setClient } from "./common/discordClient.js";
 import { commands } from "./commands.js";
@@ -55,7 +55,8 @@ import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
 import { runScheduledBackup } from "./features/cloud-backup/index.js";
-import { onVoiceActivity } from "./features/voice-player/manager.js";
+import { markShuttingDown as markVoiceShuttingDown, onVoiceActivity, resumeVoice } from "./features/voice-player/manager.js";
+import { registerSlashCommands } from "./slashCommands.js";
 import { engine as trackerEngine, reminderState as trackerState } from "./features/tracker/runtime.js";
 import { store as trackerStore } from "./features/tracker/store.js";
 import { startReminderEngine } from "./features/tracker/reminders.js";
@@ -78,6 +79,9 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates, // voice player: who is in which call
   ],
+  // Without the Channel partial, discord.js drops a DM from someone whose DM channel it has not cached
+  // yet (every DM after a restart, until the bot has written to that person), so DM commands never ran.
+  partials: [Partials.Channel],
 });
 
 setClient(client);
@@ -94,7 +98,14 @@ client.once(Events.ClientReady, (readyClient) => {
   startReminderEngine(trackerEngine);
   // Verify (and if needed save) a backup every time the bot comes online.
   runScheduledBackup().catch((err) => console.error("[cloud-backup] startup backup failed:", err));
-  startLifecycleReporting(() => client.destroy()).catch((err) => console.error("[lifecycle] failed to start:", err));
+  registerSlashCommands({ commands, token: config.botToken, clientId: config.clientId, onlyIfChanged: true })
+    .then(({ registered, count }) => registered && console.log(`[slash] registered ${count} slash command(s)`))
+    .catch((err) => console.error("[slash] couldn't register slash commands:", err));
+  resumeVoice().catch((err) => console.error("[voice-player] resume failed:", err));
+  startLifecycleReporting(() => {
+    markVoiceShuttingDown(); // closing the voice connections below must not forget which calls to rejoin
+    return client.destroy();
+  }).catch((err) => console.error("[lifecycle] failed to start:", err));
 });
 
 // Someone joined/left a voice channel: the voice player leaves if it's left alone.
@@ -108,25 +119,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const command = commands.get(interaction.commandName);
   if (!command) return;
 
+  // Discord wants an answer within 3 seconds; deferring first lets any command take its time.
+  await interaction.deferReply();
+  const send = (payload) => interaction.followUp(payload);
   const ctx = {
-    // a command may reply more than once (e.g. /info); an interaction only allows one first reply
-    reply: (text) => (interaction.replied || interaction.deferred ? interaction.followUp(text) : interaction.reply(text)),
-    replyWithFile: (buffer, filename) => interaction.reply({ files: [{ attachment: buffer, name: filename }] }),
+    reply: (text) => send(text), // a command may reply more than once (e.g. /info)
+    replyWithFile: (buffer, filename) => send({ files: [{ attachment: buffer, name: filename }] }),
     userId: interaction.user.id,
     channelId: interaction.channelId,
     guildId: interaction.guildId, // null in DMs
+    voiceChannelId: interaction.guild?.voiceStates.cache.get(interaction.user.id)?.channelId ?? null,
   };
+  const input = interaction.options.getString("input") ?? "";
 
   try {
-    await command.execute(ctx, []);
+    await command.execute(ctx, input.split(/\s+/).filter(Boolean));
   } catch (err) {
     console.error(`Error handling /${interaction.commandName}:`, err);
-    const payload = { content: "Something went wrong running that command.", ephemeral: true };
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(payload);
-    } else {
-      await interaction.reply(payload);
-    }
+    await interaction.followUp("Something went wrong running that command.").catch(() => {});
   }
 });
 

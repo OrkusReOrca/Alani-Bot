@@ -62,6 +62,7 @@ const SNOWFLAKE_RE = /^\d{15,20}$/;
 
 export const data = {
   name: "db",
+  description: "Reminders and events in your databases",
 };
 
 export const aiGuide = `
