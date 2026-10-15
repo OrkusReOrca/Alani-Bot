@@ -22,10 +22,11 @@
 import storeDb, { getNextDisplayNumber, logEvent } from "../features/db/store.js";
 import { getClient } from "./discordClient.js";
 import { canSendInChannel } from "./channelAccess.js";
-import { extractQuoted, normalizeText, stripTrailingModifiers } from "./textParsing.js";
-import { DEDUP_WINDOW_MS, DEFAULT_EVENT_DURATION_MS } from "./recordRules.js";
+import { normalizeText } from "./textParsing.js";
+import { DEDUP_WINDOW_MS } from "./recordRules.js";
+import { parseAddEvent, parseAddReminder, parseEditEvent, parseEditReminder } from "./recordParsing.js";
 import { resolveMentions, formatMentions } from "./mentions.js";
-import { parseIct, fmtIct, fmtIctDate, startOfIctDay } from "../features/orkus-info/format.js";
+import { fmtIct, fmtIctDate } from "../features/orkus-info/format.js";
 import { announceDatabaseUpdated } from "./dbAnnouncements.js";
 
 export function createRecordActions({
@@ -96,20 +97,10 @@ export function createRecordActions({
     return `Added reminder #${displayNumber}: "${text}" at ${fmtIct(remindAt.toISOString())} (${destination}${mentionNote})`;
   }
 
-  // Reminder "name" field is quoted (`"..."`) so it can safely contain
-  // spaces, commas, emoji — anything — same standard as orkus-info's own
-  // reminders/events; see common/textParsing.js's extractQuoted().
-  const ADD_REMINDER_USAGE =
-    'Usage: `.a db [<name>] add reminder <YYYY-MM-DDTHH:MM> "<text>" [mentions] [channel-id] [force]` (24hr time, Indochina/Bangkok timezone; mentions is a comma-separated list of user IDs and/or usernames, tagged when the reminder fires)';
-
   async function addReminder(args, ctx) {
-    const [when, ...afterWhen] = args;
-    const remindAt = parseIct(when);
-    const quoted = extractQuoted(afterWhen);
-    if (!remindAt || !quoted || !quoted.text.trim()) return ADD_REMINDER_USAGE;
-
-    const text = quoted.text.trim();
-    const { force, channelId, mentions } = stripTrailingModifiers(quoted.after, { allowMentions: true });
+    const parsed = parseAddReminder(args);
+    if (parsed.usage) return parsed.usage;
+    const { text, remindAt, force, channelId, mentions } = parsed;
 
     let mentionIds = [];
     if (mentions) {
@@ -165,13 +156,9 @@ export function createRecordActions({
   }
 
   function editReminder(args, ctx = null) {
-    const quoted = extractQuoted(args);
-    const [displayNumber, when] = quoted?.before ?? [];
-    const text = quoted?.text.trim();
-    const remindAt = parseIct(when);
-    if (!displayNumber || !remindAt || !text) {
-      return 'Usage: `.a db edit reminder <id> <YYYY-MM-DDTHH:MM> "<text>"` (replaces both fields; destination/channel/mentions unchanged — delete and re-add to change those)';
-    }
+    const parsed = parseEditReminder(args);
+    if (parsed.usage) return parsed.usage;
+    const { displayNumber, remindAt, text } = parsed;
     const result = storeDb
       .prepare(`UPDATE gen_reminders SET text = ?, text_normalized = ?, remind_at = ? WHERE database_id = ? AND display_number = ?`)
       .run(text, normalizeText(text), remindAt.toISOString(), databaseId, Number(displayNumber));
@@ -182,50 +169,11 @@ export function createRecordActions({
 
   // ---------- events ----------
 
-  const ADD_EVENT_USAGE =
-    'Usage: `.a db add event <start> [end|allday] "<title>" [| <location>] [force]` (24hr time, Indochina/Bangkok timezone, e.g. 2026-08-25T15:00 — year/month optional, assumes current; end defaults to 1 hour after start if omitted; use `allday` in place of end for an all-day event; `| <location>` is optional, defaults to this database\'s name; add `force` at the end to skip the duplicate check)';
-
-  // Splits the tokens AFTER a quoted title's closing quote on a literal
-  // "|" — everything before it (if any) is checked for "force", everything
-  // after (joined back with spaces) is the location. Location itself
-  // isn't quoted (only the title/text "name" fields are, per the
-  // standard) — it's just whatever's left, same as before this file's
-  // title parsing switched to quotes.
-  function parseEventModifiers(tokens) {
-    const pipeIdx = tokens.indexOf("|");
-    const modifierTokens = pipeIdx === -1 ? tokens : tokens.slice(0, pipeIdx);
-    const location = pipeIdx === -1 ? null : tokens.slice(pipeIdx + 1).join(" ").trim() || null;
-    const force = modifierTokens.some((t) => t.toLowerCase() === "force");
-    return { force, location };
-  }
-
   async function addEvent(args, ctx = null) {
-    const quoted = extractQuoted(args);
-    if (!quoted) return ADD_EVENT_USAGE;
-    const { force, location: pipedLocation } = parseEventModifiers(quoted.after);
-    const [startRaw, second] = quoted.before;
-    const parsedStart = parseIct(startRaw);
-    if (!parsedStart) return ADD_EVENT_USAGE;
-
-    let startTime = parsedStart;
-    let endTime;
-    let allDay = false;
-
-    if (second?.toLowerCase() === "allday") {
-      allDay = true;
-      startTime = startOfIctDay(parsedStart);
-      endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
-    } else if (second) {
-      const parsedEnd = parseIct(second);
-      if (!parsedEnd) return ADD_EVENT_USAGE;
-      endTime = parsedEnd;
-    } else {
-      endTime = new Date(parsedStart.getTime() + DEFAULT_EVENT_DURATION_MS);
-    }
-
-    const title = quoted.text.trim();
-    if (!title || endTime <= startTime) return ADD_EVENT_USAGE;
-    const location = pipedLocation ?? databaseName;
+    const parsed = parseAddEvent(args);
+    if (parsed.usage) return parsed.usage;
+    const { title, startTime, endTime, allDay, force } = parsed;
+    const location = parsed.location ?? databaseName;
 
     const normalized = normalizeText(title);
     const windowStart = new Date(startTime.getTime() - DEDUP_WINDOW_MS).toISOString();
@@ -308,15 +256,9 @@ export function createRecordActions({
   }
 
   async function editEvent(args, ctx = null) {
-    const quoted = extractQuoted(args);
-    const [id, start, end] = quoted?.before ?? [];
-    const title = quoted?.text.trim();
-    const { location: pipedLocation } = parseEventModifiers(quoted?.after ?? []);
-    const startTime = parseIct(start);
-    const endTime = parseIct(end);
-    if (!id || !startTime || !endTime || !title || endTime <= startTime) {
-      return 'Usage: `.a db edit event <id> <start> <end> "<title>" [| <location>]` (replaces all fields, 24hr time, Indochina/Bangkok timezone; location unchanged if omitted)';
-    }
+    const parsed = parseEditEvent(args);
+    if (parsed.usage) return parsed.usage;
+    const { id, startTime, endTime, title, location: pipedLocation } = parsed;
 
     const existing = storeDb.prepare(`SELECT discord_event_id, location FROM gen_events WHERE database_id = ? AND id = ?`).get(databaseId, Number(id));
     const location = pipedLocation ?? existing?.location ?? databaseName;

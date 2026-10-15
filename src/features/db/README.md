@@ -210,6 +210,14 @@ completely out of this too, consistent with the rest of this feature's
 "don't touch orkus-info" approach. Query it directly via
 `store.getAuditLog(databaseId)` if you need to look something up for now.
 
+## The Alatomy account DB (`alatomy-account-db`)
+
+A fourth kind that is not stored by the bot: it is the caller's Alatomy account database on the
+Alatomy website (one per account, shared with alatomy.com). It appears as the database named `alatomy`
+for anyone whose Discord is linked to an Alatomy account, takes the same `add|list|delete|edit
+reminder|event` verbs and the same parsers, is chosen implicitly when it is someone's only database, and is
+listed by `.a list db`. See [../alatomy-account/README.md](../alatomy-account/README.md).
+
 ## Adding a new database kind
 
 1. Build it as its own feature under `src/features/<name>/` — an

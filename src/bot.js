@@ -50,6 +50,7 @@ import { awaitConfirmation } from "./common/confirm.js";
 import { parseAiInvocation, handleAiMessage } from "./features/ai-assistant/handler.js";
 import { startReminderScheduler } from "./features/orkus-info/scheduler.js";
 import { startGenReminderScheduler } from "./features/db/scheduler.js";
+import { startAccountReminderScheduler } from "./features/alatomy-account/scheduler.js";
 import { startBridgeServer } from "./common/bridgeServer.js";
 import { startDailyJobs } from "./common/dailyJobs.js";
 import { startLifecycleReporting } from "./common/lifecycle.js";
@@ -87,6 +88,7 @@ client.once(Events.ClientReady, (readyClient) => {
   // fetches) — starting it here rather than at module load.
   startReminderScheduler();
   startGenReminderScheduler();
+  startAccountReminderScheduler();
   startBridgeServer();
   startDailyJobs();
   startReminderEngine(trackerEngine);

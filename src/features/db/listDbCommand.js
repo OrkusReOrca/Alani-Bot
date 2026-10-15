@@ -21,6 +21,7 @@ import { config } from "../../common/config.js";
 import { isOwner, getOwnerIds } from "../../common/auth.js";
 import { chunkMessage } from "../../common/discordApi.js";
 import * as store from "./store.js";
+import { ACCOUNT_DB_NAME, accountUrl, getLinkedAccountQuietly } from "../alatomy-account/link.js";
 
 export const data = {
   name: "list",
@@ -47,6 +48,15 @@ function formatMain() {
   ].join("\n");
 }
 
+// The caller's Alatomy account DB, if their Discord is linked to an Alatomy account.
+function formatAccountDb({ account, db }, userId) {
+  return [
+    `**${ACCOUNT_DB_NAME}** — Alatomy account DB`,
+    `Owner: <@${userId}> (@${account.username})`,
+    `Contains: ${db.reminders} reminder(s), ${db.events} event(s), ${db.trackers} tracker(s) — also on ${accountUrl()}`,
+  ].join("\n");
+}
+
 async function replyChunked(ctx, text) {
   for (const chunk of chunkMessage(text)) {
     await ctx.reply(chunk);
@@ -62,7 +72,8 @@ export async function execute(ctx, args = []) {
   if (isOwner(ctx.userId)) {
     if (!ctx.guildId || ctx.channelId === config.commandBoxChannelId) {
       const all = store.listAccessibleDatabases(ctx.userId, { includeAll: true });
-      await replyChunked(ctx, [`**All databases (${all.length + 1}):**`, formatMain(), ...all.map(formatInstance)].join("\n\n"));
+      const link = await getLinkedAccountQuietly(ctx.userId);
+      await replyChunked(ctx, [`**All databases (${all.length + 1 + (link ? 1 : 0)}):**`, formatMain(), ...all.map(formatInstance), ...(link ? [formatAccountDb(link, ctx.userId)] : [])].join("\n\n"));
       return;
     }
     const inGuild = store.listDatabasesInGuild(ctx.guildId);
@@ -75,9 +86,11 @@ export async function execute(ctx, args = []) {
   }
 
   const accessible = store.listAccessibleDatabases(ctx.userId);
-  if (accessible.length === 0) {
+  const link = await getLinkedAccountQuietly(ctx.userId);
+  if (accessible.length === 0 && !link) {
     await ctx.reply("You don't own or collaborate on any database.");
     return;
   }
-  await replyChunked(ctx, [`**Databases you have access to (${accessible.length}):**`, ...accessible.map(formatInstance)].join("\n\n"));
+  const total = accessible.length + (link ? 1 : 0);
+  await replyChunked(ctx, [`**Databases you have access to (${total}):**`, ...accessible.map(formatInstance), ...(link ? [formatAccountDb(link, ctx.userId)] : [])].join("\n\n"));
 }

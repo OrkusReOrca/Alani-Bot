@@ -18,7 +18,8 @@ import * as settingCommand from "./features/settings/command.js";
 import * as tagCommand from "./features/tags/command.js";
 import * as voiceCommand from "./features/voice-player/command.js";
 import * as trackerCommand from "./features/tracker/index.js";
+import * as accountCommand from "./features/alatomy-account/command.js";
 
 export const commands = new Map(
-  [infoCommand, fjamtrackCommand, dbCommand, listDbCommand, emotionCommand, settingCommand, tagCommand, voiceCommand, trackerCommand].map((c) => [c.data.name, c])
+  [infoCommand, fjamtrackCommand, dbCommand, listDbCommand, emotionCommand, settingCommand, tagCommand, voiceCommand, trackerCommand, accountCommand].map((c) => [c.data.name, c])
 );

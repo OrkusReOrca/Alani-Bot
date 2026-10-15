@@ -49,10 +49,14 @@ import * as store from "./store.js";
 import orkusInfo from "../orkus-info/actions.js";
 import generalUserDb from "../general-user-db/actions.js";
 import generalServerDb from "../general-server-db/actions.js";
+import alatomyAccountDb from "../alatomy-account/actions.js";
+import { AccountApiError } from "../alatomy-account/client.js";
+import { ACCOUNT_DB_NAME, NOT_CONNECTED_HELP, NOT_LINKED_HELP, accountInstance, accountsEnabled, getLinkedAccount, getLinkedAccountQuietly } from "../alatomy-account/link.js";
 
 register("orkus-info", orkusInfo);
 register("general-user-db", generalUserDb);
 register("general-server-db", generalServerDb);
+register("alatomy-account-db", alatomyAccountDb);
 
 const SNOWFLAKE_RE = /^\d{15,20}$/;
 
@@ -77,7 +81,7 @@ Rules:
 - [mentions] is ONE token: comma-separated user IDs and/or usernames, no spaces, e.g. higgorca,kk or 123456789012345678,987654321098765432. It tags those people when the reminder fires. Prefer numeric user IDs (from the message's mention list) when known.
 - [channel-id] is a channel ID (digits only). The reminder posts there; omit it and the reminder DMs its creator. Modifiers go AFTER the quoted text, in the order: mentions, channel-id, force.
 - "force" skips the duplicate check; add it only if the user asks or a duplicate warning came back and they want it anyway.
-- <database> is the database NAME (see "Databases the caller can use" in the context). Leave it out if the caller has exactly one. "main" is the owners' original database and only works in the command-box channel.
+- <database> is the database NAME (see "Databases the caller can use" in the context). Leave it out if the caller has exactly one. "main" is the owners' original database and only works in the command-box channel. "alatomy" is the caller's Alatomy account DB (only if their Discord is linked to an Alatomy account, see .a account): the same data is shown on alatomy.com.
 - Reminders are addressed by their small display number, events by id.
 
 Admin and management verbs:
@@ -98,6 +102,7 @@ export function isDestructive(args) {
 function usage() {
   return [
     "Usage: `.a db [<database>] <add|list|delete|edit> [args...]`",
+    "Your Alatomy account DB (when your Discord is linked to an Alatomy account): `.a db alatomy <add|list|delete|edit> ...` — see `.a account`",
     "Tier admin: `.a db grant|revoke <personal|server> <user-id>` (bot owner only)",
     "Create/manage: `.a db create <personal|server> <name> <channel-id|dm>` · `.a db drop <name>` · `.a db collab add|remove <name> <user-id>` (server-kind only)",
     "`.a db transfer <name> <new-owner-id>` (bot owner only — un-freezes and reassigns)",
@@ -260,6 +265,12 @@ export async function execute(ctx, args = []) {
     return;
   }
 
+  // ---- the caller's Alatomy account DB ----
+  if (first === ACCOUNT_DB_NAME) {
+    await dispatchAccount(args.slice(1), ctx);
+    return;
+  }
+
   // ---- resolve against reachable general-user-db / general-server-db instances ----
   const owner = isOwner(ctx.userId);
   // Two different lookups on purpose: EXPLICIT name matching lets a bot
@@ -292,7 +303,10 @@ export async function execute(ctx, args = []) {
     return;
   }
 
-  const candidateNames = ownCandidates.map((d) => d.name);
+  // The caller's Alatomy account DB counts as one of their databases (when the account service is
+  // reachable; if it is down the other databases keep working).
+  const accountLink = await getLinkedAccountQuietly(ctx.userId);
+  const candidateNames = [...ownCandidates.map((d) => d.name), ...(accountLink ? [ACCOUNT_DB_NAME] : [])];
   if (candidateNames.length === 0) {
     await ctx.reply("You don't have access to any database here.");
     return;
@@ -304,7 +318,43 @@ export async function execute(ctx, args = []) {
 
   // Exactly one candidate and no name was given (or it just didn't match
   // anything) — auto-select it.
+  if (ownCandidates.length === 0) {
+    await runAccountVerb(accountLink, args, ctx);
+    return;
+  }
   await dispatchInstance(ownCandidates[0], args, ctx);
+}
+
+// `.a db alatomy ...`: looks the caller's Alatomy account up first, with a clear message for each way it can fail.
+async function dispatchAccount(rest, ctx) {
+  if (!accountsEnabled()) {
+    await ctx.reply(NOT_CONNECTED_HELP);
+    return;
+  }
+  let link;
+  try {
+    link = await getLinkedAccount(ctx.userId);
+  } catch (error) {
+    if (error instanceof AccountApiError) {
+      await ctx.reply(error.message);
+      return;
+    }
+    throw error;
+  }
+  if (!link) {
+    await ctx.reply(NOT_LINKED_HELP());
+    return;
+  }
+  await runAccountVerb(link, rest, ctx);
+}
+
+async function runAccountVerb(link, rest, ctx) {
+  try {
+    await runVerb(getDatabase("alatomy-account-db"), rest, ctx, accountInstance(link));
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) throw error;
+    await ctx.reply(error.message);
+  }
 }
 
 async function dispatchMain(rest, ctx) {

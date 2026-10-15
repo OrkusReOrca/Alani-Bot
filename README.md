@@ -111,6 +111,7 @@ you can trigger on a schedule).
 - **[info](src/features/info/README.md)** — `/info` (or `.a info`), a brief
   self-introduction plus the current list of commands and features.
 - **[db](src/features/db/README.md)** — `.a db ...`, structured data
+- **[alatomy-account](src/features/alatomy-account/README.md)** — `.a account`, `.a db alatomy ...`: the Alatomy account DB (reminders/events shared with the Alatomy website), delivered by DM.
   (reminders, calendar events) across a tiered permission system: a fixed
   owner-only Main database (**[orkus-info](src/features/orkus-info/README.md)**,
   synced to Google Calendar) plus Tier Personal/Tier Server, which let

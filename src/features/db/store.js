@@ -159,6 +159,7 @@ export function revokeTier(userId, tier, revokedBy, { channelId = null, guildId 
 const RESERVED_NAMES = new Set([
   "main",
   "orkus-info",
+  "alatomy", // the Alatomy account DB (features/alatomy-account)
   "grant",
   "revoke",
   "create",

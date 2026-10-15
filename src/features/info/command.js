@@ -41,6 +41,7 @@ const COMMANDS = [
     private: false,
   },
   { text: "**.a list db** — which database(s) you can see and use.", private: false },
+  { text: "**.a account** — shows the Alatomy account your Discord is linked to (reminders and events shared with the Alatomy website), or how to link one. Use it with `.a db alatomy ...`.", private: false },
   {
     text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips; **.a emo web** links the emotion web dashboard. Needs the AIallowed tag, one dedicated channel. See `.a info emo`.",
     private: true,
@@ -153,6 +154,10 @@ const DB_INFO = [
   "**Reminders can tag people**: add a comma-separated list of user IDs " +
     "and/or usernames after the text and they'll be tagged when it fires " +
     "— `... \"take out the trash\" alice,791886420435533864`.",
+  "",
+  "**Your Alatomy account DB**: if your Discord is linked to an Alatomy account (log in on the Alatomy website and link Discord), " +
+    "you also have a database called `alatomy` with the same commands — `.a db alatomy add reminder ...`. " +
+    "It is the same data you see on the website; reminders are delivered here by DM. `.a account` shows the link status.",
   "",
   "**If you've lost track of what you can access**: `.a list db`.",
   "",
