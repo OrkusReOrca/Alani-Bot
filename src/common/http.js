@@ -19,3 +19,8 @@ export async function readJsonBody(req) {
     throw new BadRequestError("Invalid JSON body");
   }
 }
+
+// Behind the host's HTTPS domain (e.g. https://bot.alatomy.com) the host's proxy adds
+// "X-Forwarded-Proto: https". A request without it came straight to the bare http://<host>:<port>
+// address, where secrets travel unencrypted; with BRIDGE_REQUIRE_HTTPS=1 the bridge refuses those.
+export const arrivedOverHttps = (req) => String(req.headers["x-forwarded-proto"] ?? "").split(",")[0].trim().toLowerCase() === "https";

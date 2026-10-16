@@ -28,6 +28,7 @@ import { fileURLToPath } from "url";
 import { installChangeLog } from "../cloud-backup/changeLog.js";
 import { ensureColumn } from "../../common/sqlite.js";
 import { emptyState } from "./queue.js";
+import { stoppedPlayback } from "./personalPlayback.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "..", "..", "data", "voice");
@@ -66,6 +67,15 @@ voiceDb.exec(`
     name           TEXT NOT NULL,
     plays          INTEGER NOT NULL DEFAULT 0,
     last_played_at TEXT NOT NULL
+  );
+
+  -- Where a personal queue is in its song, shared by the person's devices (personalPlayback.js).
+  CREATE TABLE IF NOT EXISTS personal_playback (
+    queue_id    TEXT PRIMARY KEY,
+    playing     INTEGER NOT NULL,
+    position_ms INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL,
+    rev         INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS guild_voice_presence (
@@ -121,6 +131,20 @@ export function listGuildsInCall() {
 // Personal queues are not included: they play in a browser, not through the bot.
 export function listGuildsWithQueue() {
   return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]' AND guild_id NOT LIKE 'account:%'`).all().map((row) => row.guild_id);
+}
+
+export function loadPlayback(queueId) {
+  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev FROM personal_playback WHERE queue_id = ?`).get(queueId);
+  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev } : stoppedPlayback();
+}
+
+export function savePlayback(queueId, pb) {
+  voiceDb
+    .prepare(
+      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev`
+    )
+    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev);
 }
 
 /** The state id of an Alatomy account's personal queue. */

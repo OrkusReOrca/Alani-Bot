@@ -186,6 +186,11 @@ service checks who is logged in and passes their linked Discord id and their Ala
   (from Discord or the web) or where the bot is in a call now.
 - **A personal queue** ("On account" in the web app): the same queue rules, stored under
   `account:<account id>` in `VoiceState.db`; it plays in the browser, not in Discord, so it is never rejoined.
+  Every device of the account plays it in step: where it is in the song, playing or paused, and a revision
+  number are kept in `personal_playback` (`personalPlayback.js`); devices check every couple of seconds and
+  follow, so pause, skip or seek on one happens on all. A song that ends is reported with the revision the
+  device saw, so when several devices finish it together the queue moves on once (looping one song plays
+  it again).
 - **Streaming** (`/web/music/stream/<file id>`): the converted Ogg Opus file, with byte ranges for seeking;
   a long file still converting streams without seeking for the first play.
 - Play counts and last-played times (`voice_play_history`) feed the web library's "recently played" sort.

@@ -15,6 +15,8 @@ export const config = {
   // rather than needing a second port opened.
   voiceApiSecret: readEnv("VOICE_API_SECRET"),
   voiceApiPort: Number(readEnv("VOICE_API_PORT") || process.env.SERVER_PORT) || 3000,
+  // 1 = the bridge server only answers requests that came through the host's HTTPS domain (see bridgeServer.js)
+  bridgeRequireHttps: readEnv("BRIDGE_REQUIRE_HTTPS") === "1",
   // Default DM target for voice-added reminders — see voiceApi.js.
   ownerZeroId: readEnv("DISCORD_OWNER_0"),
   // Google service account credentials (the whole downloaded JSON key,

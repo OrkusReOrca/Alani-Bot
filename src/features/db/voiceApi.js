@@ -31,12 +31,10 @@
 // bot-message-ignore behavior.
 //
 // Auth: a single shared secret (VOICE_API_SECRET), checked as a bearer
-// token. No TLS termination on bot-hosting.net's exposed port (no reverse
-// proxy in front, per their own docs) — so this secret travels in
-// cleartext over the public internet on every call. Acceptable for a
-// personal hobby bridge; if that's ever a real concern, put a domain +
-// TLS in front (bot-hosting.net's "Domains" feature) rather than trusting
-// this endpoint bare.
+// token. The bare http://<host>:<port> address has no TLS, so the bridge is
+// meant to be reached through the host's HTTPS domain (bot-hosting.net's
+// "Domains" feature, e.g. https://bot.alatomy.com); with
+// BRIDGE_REQUIRE_HTTPS=1 the plain address is refused (common/bridgeServer.js).
 //
 // The add/database-listing routes CAN now reach any database (added for
 // voice-Alani's "console add" manual-entry UI — a click-driven form, not

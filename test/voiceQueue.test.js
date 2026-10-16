@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { matchByName, normalizeName, cleanQuery } from "../src/features/voice-player/match.js";
 import { emptyState, currentEntry, enqueue, enqueueFront, insertNext, jumpTo, advance, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, isLooping, moveEntry, setSkip, previousIndex } from "../src/features/voice-player/queue.js";
 import { formatDuration, describeSettings, buildQueuePages, queuePageOf, describeQueueList, describeQueueForModel, QUEUE_PAGE_SIZE } from "../src/features/voice-player/format.js";
-import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState, voiceDb, personalQueueId, noteGuildUser, guildsUsedBy, recordPlay, playHistory } from "../src/features/voice-player/stateStore.js";
+import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState, voiceDb, personalQueueId, noteGuildUser, guildsUsedBy, recordPlay, playHistory, loadPlayback, savePlayback } from "../src/features/voice-player/stateStore.js";
 import { isPlayableFile } from "../src/features/voice-player/config.js";
 
 const track = (name) => ({ key: name, name });
@@ -430,7 +430,11 @@ test("personal queues live beside the servers' but are not rejoined; recent serv
   saveState(id, stateOf(["A"]));
   assert.ok(!listGuildsWithQueue().includes(id));
   assert.deepEqual(names(loadState(id)), ["A"]);
+  assert.deepEqual(loadPlayback(id), { playing: false, positionMs: 0, updatedAt: 0, rev: 0 });
+  savePlayback(id, { playing: true, positionMs: 1234, updatedAt: 99, rev: 3 });
+  assert.deepEqual(loadPlayback(id), { playing: true, positionMs: 1234, updatedAt: 99, rev: 3 });
   voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
+  voiceDb.prepare(`DELETE FROM personal_playback WHERE queue_id = ?`).run(id);
 
   const user = `u${Date.now()}`;
   noteGuildUser("g-web-test", user, new Date("2026-10-16T00:00:00Z"));

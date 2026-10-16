@@ -36,6 +36,8 @@ function world() {
   };
   const used = new Map();
   const plays = new Map();
+  const playbacks = new Map();
+  const time = { now: 1_000_000 };
   const audioDir = fs.mkdtempSync(path.join(os.tmpdir(), "webmusic-"));
   const cache = {
     pinned: {},
@@ -56,7 +58,10 @@ function world() {
     prepareVoice: async () => {},
     audioCache: () => cache,
     listPlayableFiles: async () => FILES,
+    clock: () => time.now,
     store: {
+      loadPlayback: (id) => playbacks.get(id) ?? { playing: false, positionMs: 0, updatedAt: 0, rev: 0 },
+      savePlayback: (id, pb) => playbacks.set(id, pb),
       loadState: store.loadState,
       saveState: store.saveState,
       personalQueueId: (id) => `account:${id}`,
@@ -66,7 +71,7 @@ function world() {
       recordPlay: (id) => plays.set(id, { plays: (plays.get(id)?.plays ?? 0) + 1, lastPlayedAt: "2026-10-16T00:00:00.000Z" }),
     },
   });
-  return { handle, session, store, voice, used, plays, cache };
+  return { handle, session, store, voice, used, plays, cache, time };
 }
 
 async function serve(handle) {
@@ -141,13 +146,13 @@ test("a personal queue: add, reorder, mark skip, next/previous, played counts, p
   const w = world();
   const api = await serve(w.handle);
   const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
-  assert.deepEqual((await api.get(`/personal/${ACCOUNT}`)).json, { kind: "personal", cursor: null, queue: [], loop: false, shuffle: false });
+  const empty = (await api.get(`/personal/${ACCOUNT}`)).json;
+  assert.deepEqual([empty.kind, empty.cursor, empty.queue, empty.playback.playing], ["personal", null, [], false]);
 
   await act({ action: "add", fileIds: ["f0", "f1", "f2"] });
   let player = (await act({ action: "loop", on: true })).json.player;
-  assert.deepEqual([player.cursor, player.queue.length, player.loop], [0, 3, true]);
+  assert.deepEqual([player.cursor, player.queue.length, player.loop, player.playback.playing], [0, 3, true, true]); // adding to an empty queue starts it
   assert.deepEqual(w.cache.pinned[`account:${ACCOUNT}`].length, 3);
-  await act({ action: "started" });
   assert.equal(w.plays.get("f0").plays, 1);
   await act({ action: "markSkip", index: 1, on: true });
   assert.equal((await act({ action: "next" })).json.player.cursor, 2); // B is marked skip
@@ -157,6 +162,42 @@ test("a personal queue: add, reorder, mark skip, next/previous, played counts, p
   assert.deepEqual((await act({ action: "removeAll" })).json.player.queue, []);
   assert.equal((await api.get("/personal/not-an-account")).status, 404);
   assert.deepEqual(w.store.loadState(GUILD), emptyState()); // a server's queue is untouched
+});
+
+test("a personal queue is in step on every device: play, pause, seek, and a song that ends moves on once", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
+  const look = async () => (await api.get(`/personal/${ACCOUNT}`)).json;
+
+  await act({ action: "add", fileIds: ["f0", "f1"] });
+  w.time.now += 5000;
+  let pb = (await look()).playback;
+  assert.deepEqual([pb.playing, pb.positionMs], [true, 5000]); // the position moves on with the clock
+
+  pb = (await act({ action: "pause", positionMs: 5200 })).json.player.playback;
+  w.time.now += 60_000;
+  assert.deepEqual([(await look()).playback.playing, (await look()).playback.positionMs], [false, 5200]); // paused for everyone
+  pb = (await act({ action: "seek", positionMs: 30_000 })).json.player.playback;
+  assert.equal(pb.positionMs, 30_000);
+  pb = (await act({ action: "play" })).json.player.playback;
+  assert.equal(pb.playing, true);
+
+  // both devices reach the end of the song and report it with the revision they saw: it moves on once
+  const seen = pb.rev;
+  assert.equal((await act({ action: "ended", rev: seen })).json.player.cursor, 0);
+  const second = (await act({ action: "ended", rev: seen })).json.player;
+  assert.deepEqual([second.queue.map((q) => q.fileId), second.playback.positionMs], [["f1"], 0]);
+
+  // one song on loop plays again from the start
+  await act({ action: "loop", on: true });
+  const again = (await look()).playback;
+  w.time.now += 30_000;
+  const looped = (await act({ action: "ended", rev: again.rev })).json.player;
+  assert.deepEqual([looped.queue.map((q) => q.fileId), looped.cursor, looped.playback.positionMs, looped.playback.playing], [["f1"], 0, 0, true]);
+  assert.ok(looped.playback.rev > again.rev); // devices see a new revision, so they start it again
+
+  assert.equal((await act({ action: "removeAll" })).json.player.playback.playing, false);
 });
 
 test("streaming: the whole file, or a byte range for seeking", async () => {

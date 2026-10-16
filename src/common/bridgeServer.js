@@ -11,7 +11,7 @@
 
 import http from "http";
 import { config } from "./config.js";
-import { sendJson, BadRequestError } from "./http.js";
+import { sendJson, BadRequestError, arrivedOverHttps } from "./http.js";
 import { registerVoiceRoutes } from "../features/db/voiceApi.js";
 import { registerUniTrackerPushRoute } from "../features/uni-application-updater/pushApi.js";
 import { registerEmotionRoutes } from "../features/emotion-detect/emotionApi.js";
@@ -45,6 +45,10 @@ export function startBridgeServer() {
   registerWebMusicRoutes(registerRoute);
 
   const server = http.createServer(async (req, res) => {
+    // BRIDGE_REQUIRE_HTTPS=1: only requests that came through the host's HTTPS domain (see http.js)
+    if (config.bridgeRequireHttps && !arrivedOverHttps(req)) {
+      return sendJson(res, 403, { error: "Use the https address of this bot." });
+    }
     const route = routes.find((r) => matches(r, req));
     if (!route) return sendJson(res, 404, { error: "Not found" });
     if (!route.secret || req.headers.authorization !== `Bearer ${route.secret}`) {

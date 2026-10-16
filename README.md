@@ -248,7 +248,17 @@ started as `startBridgeServer()` from `bot.js`'s `ClientReady` handler —
 since bot-hosting.net only exposes this deployment on a single port (see
 "Voice bridge" setup below for details on that port). Each route brings
 its own secret, checked independently, so a leaked secret for one route
-can't reach another's.
+can't reach another's. Callers: the voice assistant (`/voice/*`), the emotion service
+(`/emotion/*`), and Alani on the web (`/web/music/*`, `ALANI_WEB_API_SECRET`).
+
+### HTTPS for the bridge
+
+The bare `http://<host>:<port>` address has no TLS, so secrets would cross the internet unencrypted. Give
+the bot deployment a domain with HTTPS on the host (bot-hosting.net's custom domain feature, like the
+website's: e.g. `bot.alatomy.com`, a CNAME at the DNS provider), then point every caller at
+`https://bot.alatomy.com` (voice assistant `ALANI_BOT_API_URL`, emotion service `ALANI_BOT_URL`, Alani web
+`MUSIC_API_URL`). The host's proxy adds `X-Forwarded-Proto: https`; once every caller has moved, set
+`BRIDGE_REQUIRE_HTTPS=1` and requests to the plain address are refused (403).
 
 ## Voice bridge
 

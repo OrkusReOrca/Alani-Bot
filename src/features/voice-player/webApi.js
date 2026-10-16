@@ -7,8 +7,8 @@
 //   GET  /web/music/servers?discordUserId=       servers where that person can use the player
 //   GET  /web/music/server/:guild?discordUserId= the player of one server
 //   POST /web/music/server/:guild/action {discordUserId, action, ...}
-//   GET  /web/music/personal/:account           a person's own queue (plays in their browser)
-//   POST /web/music/personal/:account/action {action, ...}
+//   GET  /web/music/personal/:account           a person's own queue (plays in their browsers, in step)
+//   POST /web/music/personal/:account/action {action, ...}   queue changes, and play / pause / seek / ended
 //   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
 //
 // A server's player follows the same rules as `.avc` (rules.js): anyone in the server may look, changes
@@ -20,6 +20,7 @@ import { isOwner } from "../../common/auth.js";
 import { hasTag, TAGS } from "../tags/store.js";
 import { advance, clearQueue, currentEntry, enqueue, insertNext, jumpTo, moveEntry, previousIndex, removeAt, setLoop, setShuffle, setSkip } from "./queue.js";
 import { ensureInCallerChannel, entryFor, mustBeInBotsCall, mustBeSongMaster } from "./rules.js";
+import * as playbackApi from "./personalPlayback.js";
 
 const MAX_ADD = 40;
 const RECENT_GUILD_DAYS = 90;
@@ -62,11 +63,11 @@ async function readBody(req) {
 const index0 = (value, length) => (Number.isInteger(value) && value >= 0 && value < length ? value : null);
 
 /**
- * deps: { discord: () => Client, getSession(guildId), setTextChannel?, prepareVoice(), audioCache(),
- *         listPlayableFiles(), store: { loadState, saveState, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId } }
+ * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?,
+ *         store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId } }
  */
 export function createWebMusicApi(deps) {
-  const { store } = deps;
+  const { store, clock = Date.now } = deps;
   const memberCache = new Map(); // "guild|user" -> { until, member }
 
   // ---------------------------------------------------------------- Discord
@@ -132,8 +133,16 @@ export function createWebMusicApi(deps) {
   }
 
   function personalView(accountId) {
-    const state = store.loadState(store.personalQueueId(accountId));
-    return { kind: "personal", cursor: currentEntry(state) ? state.cursor : null, queue: queueView(state), loop: state.loop, shuffle: state.shuffle };
+    const id = store.personalQueueId(accountId);
+    const state = store.loadState(id);
+    return {
+      kind: "personal",
+      cursor: currentEntry(state) ? state.cursor : null,
+      queue: queueView(state),
+      loop: state.loop,
+      shuffle: state.shuffle,
+      playback: playbackApi.playbackView(store.loadPlayback(id), clock()),
+    };
   }
 
   // ---------------------------------------------------------------- the library
@@ -233,32 +242,46 @@ export function createWebMusicApi(deps) {
   }
 
   // ---------------------------------------------------------------- a personal queue
+  // The queue and where it is in the current song (personalPlayback.js) are shared by all the person's
+  // devices. Anything that changes the current song starts it from the beginning; "ended" carries the
+  // revision the device saw, so when two devices both finish the song it moves on only once.
   async function personalAction(accountId, body) {
     const id = store.personalQueueId(accountId);
     const state = store.loadState(id);
+    const now = clock();
+    let pb = store.loadPlayback(id);
     const length = state.queue.length;
     const on = body.on === true;
+    const before = currentEntry(state);
     let next = state;
+    let restart = false; // the same song starts again (looping one song, or jumping to the one playing)
 
     switch (body.action) {
       case "add": {
         const entries = (await filesById(body.fileIds)).map((file) => entryFor(file, accountId));
         if (body.where === "next") for (const entry of [...entries].reverse()) next = insertNext(next, entry);
         else for (const entry of entries) next = enqueue(next, entry);
+        if (!before) pb = playbackApi.play(pb, now, 0); // the queue was empty: start playing what was added
         break;
       }
       case "next":
+      case "ended":
+        if (body.action === "ended" && body.rev !== pb.rev) return null; // another device already moved on
         next = advance(state);
+        restart = true;
         break;
       case "previous": {
         const index = previousIndex(state);
         if (index !== null) next = { ...state, cursor: index };
+        restart = true;
         break;
       }
       case "jump": {
         const index = index0(body.index, length);
         if (index === null) return "No such track.";
         next = jumpTo(state, index);
+        pb = playbackApi.play(pb, now, 0);
+        restart = true;
         break;
       }
       case "remove": {
@@ -273,6 +296,7 @@ export function createWebMusicApi(deps) {
       case "markSkip":
         if (index0(body.index, length) === null) return "No such track.";
         next = setSkip(state, body.index, on);
+        if (on && body.index === state.cursor) (next = advance(next)), (restart = true); // skipping the one playing
         break;
       case "loop":
         next = setLoop(state, on);
@@ -283,16 +307,29 @@ export function createWebMusicApi(deps) {
       case "removeAll":
         next = clearQueue(state);
         break;
-      case "started": {
-        // the browser started playing a track: count it as played
-        const entry = currentEntry(state);
-        if (entry) store.recordPlay(entry.fileId, entry.name);
-        return null;
-      }
+      case "play":
+        if (!before) return null;
+        if (playbackApi.positionAt(pb, now) < 1000) store.recordPlay(before.fileId, before.name); // a start, not a resume
+        pb = playbackApi.play(pb, now, body.positionMs);
+        break;
+      case "pause":
+        pb = playbackApi.pause(pb, now, body.positionMs);
+        break;
+      case "seek":
+        pb = playbackApi.seek(pb, now, body.positionMs);
+        break;
       default:
         throw new ApiError(400, "Unknown action.");
     }
+
+    const after = currentEntry(next);
+    if (!after) pb = pb.playing || pb.positionMs ? playbackApi.stop(pb, now) : pb;
+    else if (restart || after.key !== before?.key) {
+      pb = playbackApi.restartTrack(pb, now);
+      if (pb.playing) store.recordPlay(after.fileId, after.name);
+    }
     store.saveState(id, next);
+    store.savePlayback(id, pb);
     try {
       deps.audioCache()?.setPinned(next.queue.map((entry) => entry.key), id); // keep its converted tracks
     } catch {
