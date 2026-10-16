@@ -10,7 +10,7 @@ import { config, limits } from "./config.js";
 import { createAudioCache } from "./audioCache.js";
 import { createDiscordOutput } from "./discordOutput.js";
 import { createGuildSession } from "./session.js";
-import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState } from "./stateStore.js";
+import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, noteGuildUser, recordPlay, savePresence, saveState } from "./stateStore.js";
 
 let cache = null;
 const sessions = new Map(); // guildId -> { session, textChannelId }
@@ -56,6 +56,7 @@ export function getSession(guildId) {
         sendViaBotChannel(botConfig.botToken, entry.textChannelId, text).catch((err) => console.error("[voice-player] announce failed:", err));
       },
       timing: limits,
+      onTrackStart: (entry) => recordPlay(entry.fileId, entry.name),
       presence: {
         connected: (channelId) => savePresence(guildId, { voiceChannelId: channelId }),
         // Closing the connections on shutdown must not look like leaving: the bot rejoins after the restart.
@@ -77,6 +78,15 @@ export function setTextChannel(guildId, channelId) {
   entry.textChannelId = channelId;
   savePresence(guildId, { textChannelId: channelId });
 }
+
+// Someone used the player in this server (from Discord or the web app).
+export const noteUser = (guildId, userId) => noteGuildUser(guildId, userId);
+
+// The audio cache (null until voice playback is prepared), for the web app's streaming.
+export const audioCache = () => cache;
+
+// The servers whose player is live in this process.
+export const activeSessions = () => [...sessions.entries()].map(([guildId, entry]) => ({ guildId, session: entry.session }));
 
 // Called just before the bot closes its Discord connection on purpose.
 export function markShuttingDown() {

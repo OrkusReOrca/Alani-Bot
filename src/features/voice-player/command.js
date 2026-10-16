@@ -28,15 +28,14 @@
 // and removeall need the SongMaster tag (bot owners always have it).
 
 import { isOwner } from "../../common/auth.js";
-import { hasTag, TAGS } from "../tags/store.js";
 import { describeSettings, buildQueuePages, queuePageOf, describeQueueList, describeQueueForModel } from "./format.js";
 import { currentEntry } from "./queue.js";
 import { findPlayableFile, listPlayableFiles } from "./library.js";
 import { buildListPages, buildFileListText, SORTS } from "./listPages.js";
 import { pagesAsText } from "../../common/pagination.js";
-import { cacheKeyFor } from "./audioCache.js";
 import { matchByName, cleanQuery, parseQuotedNames } from "./match.js";
-import { getSession, setTextChannel, prepareVoice } from "./manager.js";
+import { getSession, setTextChannel, prepareVoice, noteUser } from "./manager.js";
+import { channelMention, entryFor, mustBeInBotsCall, mustBeSongMaster, ensureInCallerChannel } from "./rules.js";
 
 export const data = {
   name: "avc",
@@ -73,47 +72,6 @@ const USAGE = [
 ].join("\n");
 
 const ON_OFF = { on: true, off: false };
-const channelMention = (id) => `<#${id}>`;
-
-function entryFor(file, userId) {
-  return { fileId: file.id, name: file.name, mimeType: file.mimeType, version: file.modifiedTime, key: cacheKeyFor(file), addedBy: userId };
-}
-
-// ---------- shared checks (each returns an error message, or null if fine) ----------
-
-function mustBeInCall(ctx) {
-  return ctx.voiceChannelId ? null : "Join a voice channel first.";
-}
-
-// Controlling playback needs the bot to be in a call AND the caller to be in it.
-function mustBeInBotsCall(ctx, session) {
-  if (!session.isConnected()) return "I'm not in a voice call — use `.avc join` first.";
-  if (ctx.voiceChannelId !== session.channelId()) return `You need to be in my voice channel (${channelMention(session.channelId())}) to do that.`;
-  return null;
-}
-
-function mustBeSongMaster(ctx, what) {
-  return hasTag(ctx.userId, TAGS.SongMaster) ? null : `${what} needs the SongMaster tag — a bot owner can grant it with \`.a tag add SongMaster <user>\`.`;
-}
-
-// Gets the bot into the caller's channel for play/force play. Returns an error message or null.
-async function ensureInCallerChannel(ctx, session) {
-  const notInCall = mustBeInCall(ctx);
-  if (notInCall) return notInCall;
-
-  if (session.isConnected() && session.channelId() !== ctx.voiceChannelId) {
-    if (session.humanCount() > 0) return `I'm already playing in ${channelMention(session.channelId())} — join that channel to add tracks.`;
-  }
-  if (!session.isConnected() || session.channelId() !== ctx.voiceChannelId) {
-    try {
-      await session.join(ctx.voiceChannelId);
-    } catch (err) {
-      return `Couldn't join your voice channel: ${err.message}`;
-    }
-  }
-  return null;
-}
-
 // ---------- subcommands ----------
 
 async function handleJoin(ctx, session) {
@@ -348,6 +306,7 @@ async function run(ctx, args, deps) {
 
   const session = deps.getSession(ctx.guildId);
   deps.setTextChannel(ctx.guildId, ctx.channelId);
+  deps.noteUser?.(ctx.guildId, ctx.userId); // the web app offers the servers someone used recently
 
   const [verb, rest] = resolveVerb(args);
   let reply;
@@ -409,4 +368,4 @@ export function createExecute(deps) {
   return (ctx, args = []) => run(ctx, args, deps);
 }
 
-export const execute = createExecute({ getSession, setTextChannel, prepareVoice, findPlayableFile, listPlayableFiles });
+export const execute = createExecute({ getSession, setTextChannel, prepareVoice, noteUser, findPlayableFile, listPlayableFiles });

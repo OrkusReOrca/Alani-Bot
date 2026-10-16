@@ -66,8 +66,10 @@ export function createAccountActions(client = accountClient) {
     return result.data.error ?? "Couldn't add that reminder.";
   }
 
+  // Only what is still to come: reminders ticked off on the web, or already delivered, stay in the web
+  // app's list for a while but are finished here.
   async function listReminders(instance) {
-    const reminders = await client.listReminders(accountIdOf(instance));
+    const reminders = (await client.listReminders(accountIdOf(instance))).filter((r) => !r.doneAt && !r.deliveredAt);
     return reminders.length === 0 ? "No reminders." : reminders.map(reminderLine).join("\n");
   }
 

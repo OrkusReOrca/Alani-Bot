@@ -12,14 +12,23 @@
 //   cache   { open(entry) -> { stream }, ensure(entry), durationOf(entry), setPinned(keys) }
 //   store   { loadState(guildId), saveState(guildId, state) }
 //   announce(text)   posts a message in the text channel the last command came from
+//   onTrackStart(entry)  called when a track starts (for "recently played")
 //   presence         { connected(channelId), disconnected() } — remembers which call the bot is in, so a restart can rejoin it
 
-import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent } from "./queue.js";
+import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, previousIndex, moveEntry, setSkip } from "./queue.js";
 
-export function createGuildSession({ guildId, store, getCache, output, announce, timing, presence = { connected() {}, disconnected() {} }, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout }) {
+export function createGuildSession({
+  guildId, store, getCache, output, announce, timing,
+  presence = { connected() {}, disconnected() {} }, onTrackStart = () => {},
+  random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout, now = Date.now,
+}) {
   let connected = false;
   let playing = false;
   let paused = false;
+  // where in the current track playback is: started at, paused since, and paused time so far
+  let startedAt = 0;
+  let pausedAt = null;
+  let pausedMs = 0;
   let token = 0; // identifies the current playback; callbacks from older ones are ignored
   let idleTimer = null;
   let aloneTimer = null;
@@ -35,7 +44,7 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
   function refreshCache(state) {
     try {
       const cache = getCache();
-      cache.setPinned(state.queue.map((entry) => entry.key));
+      cache.setPinned(state.queue.map((entry) => entry.key), guildId);
       for (const entry of state.queue) cache.ensure(entry);
     } catch {
       // The cache is unavailable (e.g. no ffmpeg on this host); playing will report it.
@@ -69,7 +78,9 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
 
   // Starts the current track (or goes idle if the queue has ended).
   function startCurrent() {
-    const entry = currentEntry(load());
+    let entry = currentEntry(load());
+    // the current track was marked "skip" (or a jump landed on one): move past it
+    if (entry?.skip) entry = currentEntry(save(advance(load(), random)));
     clearTimer(idleTimer);
     if (!entry || !connected) {
       if (connected) armIdleTimer();
@@ -89,6 +100,10 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     }
     playing = true;
     paused = false;
+    startedAt = now();
+    pausedAt = null;
+    pausedMs = 0;
+    onTrackStart(entry);
     // PlayCall (per server): off silences this message only; failures and leave notices always post.
     if (load().playCall) announce(`Now playing: **${entry.name}**`);
   }
@@ -189,8 +204,63 @@ export function createGuildSession({ guildId, store, getCache, output, announce,
     togglePause() {
       if (!playing) return null;
       paused = !paused;
+      if (paused) pausedAt = now();
+      else (pausedMs += now() - pausedAt), (pausedAt = null);
       paused ? output.pause() : output.resume();
       return paused ? "paused" : "resumed";
+    },
+
+    // How far into the current track playback is, in ms (null when nothing is playing).
+    positionMs: () => (playing ? Math.max(0, (pausedAt ?? now()) - startedAt - pausedMs) : null),
+
+    // Plays the current track again from its start. Returns the entry, or null.
+    restart() {
+      const current = currentEntry(load());
+      if (!current || !connected) return null;
+      stopPlayback();
+      startCurrent();
+      return current;
+    },
+
+    // Goes back one track (only possible while looping: without looping, played tracks are gone);
+    // otherwise restarts the current one. Returns the entry now playing, or null.
+    previous() {
+      const state = load();
+      const index = previousIndex(state);
+      if (index === null) return session.restart();
+      stopPlayback();
+      save({ ...state, cursor: index });
+      startCurrent();
+      return state.queue[index];
+    },
+
+    // Moves a track to another position (0-based); what is playing keeps playing.
+    move(from, to) {
+      const state = load();
+      if (![from, to].every((i) => Number.isInteger(i) && i >= 0 && i < state.queue.length)) return false;
+      save(moveEntry(state, from, to));
+      return true;
+    },
+
+    // Marks a track to be passed over (crossed out), or unmarks it. Marking the one playing skips it now.
+    markSkip(index, on) {
+      const state = load();
+      if (!state.queue[index]) return false;
+      const skippingCurrent = on && index === state.cursor && playing;
+      if (skippingCurrent) stopPlayback();
+      save(setSkip(state, index, on));
+      if (skippingCurrent) startCurrent();
+      return true;
+    },
+
+    // Adds several tracks: at the end, or right after the current track ("next"), in the given order.
+    addMany(entries, where = "end") {
+      let state = load();
+      if (where === "next") for (const entry of [...entries].reverse()) state = insertNext(state, entry);
+      else for (const entry of entries) state = enqueue(state, entry);
+      save(state);
+      if (connected && !playing) startCurrent();
+      return entries.length;
     },
 
     // Removes the track at `index` outright; removing the current one moves on.

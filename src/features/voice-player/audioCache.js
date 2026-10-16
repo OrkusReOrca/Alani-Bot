@@ -106,6 +106,7 @@ export function createAudioCache({ dir, maxBytes, bitrate, ffmpegPath, download,
   const jobs = new Map(); // key -> Job (pending, running, or done in this session)
   const pending = []; // Jobs waiting to run
   let running = null;
+  const pinnedBy = new Map(); // owner (a server, or a person's own queue) -> keys
   let pinned = new Set();
 
   // ---------- startup ----------
@@ -316,9 +317,18 @@ export function createAudioCache({ dir, maxBytes, bitrate, ffmpegPath, download,
       return index.get(entry.key)?.durationMs;
     },
 
-    // The keys of every track currently in some queue — these are never evicted.
-    setPinned(keys) {
-      pinned = new Set(keys);
+    // The keys of every track in `owner`'s queue — tracks in any queue are never evicted.
+    setPinned(keys, owner = "default") {
+      pinnedBy.set(owner, new Set(keys));
+      pinned = new Set([...pinnedBy.values()].flatMap((set) => [...set]));
+    },
+
+    // The finished file of a track ({ path, bytes }), or null while it is still converting.
+    finishedFile(entry) {
+      const item = index.get(entry.key);
+      if (!item) return null;
+      touch(entry.key);
+      return { path: audioPath(entry.key), bytes: item.bytes };
     },
 
     stats: () => ({ tracks: index.size, bytes: totalBytes(), pending: pending.length, converting: running?.entry.name ?? null }),

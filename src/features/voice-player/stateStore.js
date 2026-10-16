@@ -15,6 +15,11 @@
 // Callers always load -> change -> save and never hold state in memory, so a
 // backup restore (which swaps the database contents in place) can't leave a
 // stale copy behind. saveState only writes what actually changed.
+//
+// The same queue state also holds each Alatomy account's personal queue (the
+// web app's "On account" player), under the id "account:<account id>" instead
+// of a server id. Two small tables serve the web app: which servers a person
+// used the player in lately, and when each file was last played.
 
 import { DatabaseSync } from "node:sqlite";
 import fs from "fs";
@@ -49,6 +54,20 @@ voiceDb.exec(`
 
   -- Where the bot was when it last stopped: the call it is in (null = not in one) and the text channel
   -- its "Now playing" messages go to. Lets a restart rejoin the call and carry on.
+  CREATE TABLE IF NOT EXISTS voice_guild_users (
+    guild_id     TEXT NOT NULL,
+    user_id      TEXT NOT NULL,
+    last_used_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS voice_play_history (
+    file_id        TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    plays          INTEGER NOT NULL DEFAULT 0,
+    last_played_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS guild_voice_presence (
     guild_id         TEXT PRIMARY KEY,
     voice_channel_id TEXT,
@@ -99,8 +118,38 @@ export function listGuildsInCall() {
 }
 
 // Servers with something queued (their tracks must be kept and re-converted after a restart).
+// Personal queues are not included: they play in a browser, not through the bot.
 export function listGuildsWithQueue() {
-  return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]'`).all().map((row) => row.guild_id);
+  return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]' AND guild_id NOT LIKE 'account:%'`).all().map((row) => row.guild_id);
+}
+
+/** The state id of an Alatomy account's personal queue. */
+export const personalQueueId = (accountId) => `account:${accountId}`;
+
+// Someone used the player in a server (the web app lists those servers first).
+export function noteGuildUser(guildId, userId, at = new Date()) {
+  voiceDb
+    .prepare(`INSERT INTO voice_guild_users (guild_id, user_id, last_used_at) VALUES (?, ?, ?) ON CONFLICT (guild_id, user_id) DO UPDATE SET last_used_at = excluded.last_used_at`)
+    .run(guildId, userId, at.toISOString());
+}
+
+// guild id -> when this person last used the player there.
+export function guildsUsedBy(userId) {
+  return new Map(voiceDb.prepare(`SELECT guild_id, last_used_at FROM voice_guild_users WHERE user_id = ?`).all(userId).map((row) => [row.guild_id, row.last_used_at]));
+}
+
+export function recordPlay(fileId, name, at = new Date()) {
+  voiceDb
+    .prepare(
+      `INSERT INTO voice_play_history (file_id, name, plays, last_played_at) VALUES (?, ?, 1, ?)
+       ON CONFLICT (file_id) DO UPDATE SET name = excluded.name, plays = plays + 1, last_played_at = excluded.last_played_at`
+    )
+    .run(fileId, name, at.toISOString());
+}
+
+// file id -> { plays, lastPlayedAt }
+export function playHistory() {
+  return new Map(voiceDb.prepare(`SELECT file_id, plays, last_played_at FROM voice_play_history`).all().map((row) => [row.file_id, { plays: row.plays, lastPlayedAt: row.last_played_at }]));
 }
 
 export function saveState(guildId, state) {

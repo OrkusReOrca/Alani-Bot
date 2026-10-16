@@ -16,6 +16,7 @@ const { createAccountClient, AccountApiError } = await import("../src/features/a
 const { createAccountReminderScheduler } = await import("../src/features/alatomy-account/scheduler.js");
 const { accountClient } = await import("../src/features/alatomy-account/client.js");
 const { setClient } = await import("../src/common/discordClient.js");
+const { createExecute: createStatsExecute, formatStats } = await import("../src/features/alatomy-account/statsCommand.js");
 
 const STRANGER = "222222222222222222";
 const makeCtx = (userId = LINKED_DISCORD_ID, extra = {}) => {
@@ -225,7 +226,7 @@ test("a reminder is never sent twice, even when the service could not be told it
   const discord = fakeDiscord();
   const due = [{ id: 21, accountId: ACCOUNT_ID, text: "once", remindAt: "2026-10-16T12:00:00.000Z", channelId: null, mentions: [], discordUserId: LINKED_DISCORD_ID }];
   let doneCalls = 0;
-  const client = { isConfigured: () => true, dueReminders: async () => due, markDelivered: async () => { doneCalls += 1; throw new AccountApiError("down"); } };
+  const client = { isConfigured: () => true, dueTrackers: async () => [], dueReminders: async () => due, markDelivered: async () => { doneCalls += 1; throw new AccountApiError("down"); } };
   const scheduler = createAccountReminderScheduler({ client, discord: () => discord.client, log: quietLog });
   await scheduler.tick();
   await scheduler.tick();
@@ -237,6 +238,7 @@ test("a reminder that cannot be delivered is still cleared, and an unconfigured 
   const done = [];
   const client = {
     isConfigured: () => true,
+    dueTrackers: async () => [],
     dueReminders: async () => [{ id: 31, text: "x", remindAt: "2026-10-16T12:00:00.000Z", channelId: null, mentions: [], discordUserId: "1" }],
     markDelivered: async (id) => done.push(id),
   };
@@ -249,4 +251,59 @@ test("a reminder that cannot be delivered is still cleared, and an unconfigured 
   await createAccountReminderScheduler({ client: off, log: quietLog }).tick();
   assert.equal(asked, false);
   assert.equal(createAccountReminderScheduler({ client: off, log: quietLog }).start(), null);
+});
+
+test("tracker reminders: one DM per tracker and period, with the count for count trackers, then reported", async () => {
+  const discord = fakeDiscord();
+  service.state.notified = [];
+  service.state.due = [];
+  service.state.dueTrackers = [
+    { trackerId: 7, discordUserId: LINKED_DISCORD_ID, name: "Took pill B", kind: "count", period: "week", periodKey: "2026-W42", count: 1, target: 3 },
+    { trackerId: 8, discordUserId: LINKED_DISCORD_ID, name: "Empty trash", kind: "check", period: "day", periodKey: "2026-10-16", count: 0, target: 1 },
+  ];
+  const scheduler = createAccountReminderScheduler({ client: accountClient, discord: () => discord.client, log: quietLog });
+  await scheduler.tick();
+  assert.deepEqual(discord.sent.map((m) => m.text), [
+    "⏰ Have you? **Took pill B** (1/3 this week) — tick it off at https://alani.alatomy.com",
+    "⏰ Have you? **Empty trash** — tick it off at https://alani.alatomy.com",
+  ]);
+  assert.deepEqual(service.state.notified, ["7:2026-W42", "8:2026-10-16"]);
+  await scheduler.tick(); // the service still lists them (say it missed the report): not sent twice
+  assert.equal(discord.sent.length, 2);
+  service.state.dueTrackers = [];
+});
+
+test("reminders ticked off on the web or already delivered are not listed on Discord", async () => {
+  service.state.reminders = [
+    { n: 1, text: "pending", remindAt: "2026-10-20T02:00:00.000Z", channelId: null, mentions: [] },
+    { n: 2, text: "ticked", remindAt: "2026-10-20T03:00:00.000Z", channelId: null, mentions: [], doneAt: "2026-10-16T00:00:00.000Z" },
+    { n: 3, text: "sent", remindAt: "2026-10-14T03:00:00.000Z", channelId: null, mentions: [], deliveredAt: "2026-10-14T03:00:10.000Z" },
+  ];
+  const listed = await run("alatomy list reminders");
+  assert.match(listed, /pending/);
+  assert.doesNotMatch(listed, /ticked|sent/);
+  service.state.reminders = [];
+});
+
+test(".a stats: owners only, command box only, and a readable summary", async () => {
+  const stats = {
+    accounts: { registered: 52, newLast7Days: 4, newLast30Days: 20, withDiscord: 30, withGoogle: 35 },
+    active: { last24Hours: 9, last7Days: 25, last30Days: 41 },
+    visits: { website: { today: 120, last7Days: 900, last30Days: 3200, allTime: 15000 }, alani: { today: 40, last7Days: 300, last30Days: 1100, allTime: 1100 } },
+  };
+  service.state.stats = stats;
+  const execute = createStatsExecute({ commandBox: () => "1539866805114372167" });
+  const ask = async (userId, channelId) => {
+    const ctx = makeCtx(userId, { channelId });
+    await execute(ctx);
+    return ctx.text;
+  };
+  assert.equal(await ask(LINKED_DISCORD_ID, "1539866805114372167"), "Only the bot owners can see the stats.");
+  assert.equal(await ask("999999999999999999", "555555555555555555"), "Use `.a stats` in the command box channel.");
+  const text = await ask("999999999999999999", "1539866805114372167");
+  assert.equal(text, formatStats(stats));
+  assert.match(text, /\*\*Accounts:\*\* 52 registered \(\+4 in 7 days, \+20 in 30 days\)/);
+  assert.match(text, /\*\*Active accounts:\*\* 24 h 9 · 7 days 25 · 30 days 41/);
+  assert.match(text, /\*\*alatomy.com page views:\*\* today 120 · 7 days 900 · 30 days 3,200 · all time 15,000/);
+  assert.match(text, /\*\*Alani web page views:\*\* today 40/);
 });

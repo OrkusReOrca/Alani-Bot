@@ -55,7 +55,7 @@ export function buildQueuePages(state, { durationOf, playing, paused }) {
 
   if (queue.length === 0) return [{ title, description: `Nothing is queued.\n\n${settings}`, footer: "Page 1 / 1" }];
 
-  const line = (i, prefix) => `${prefix} ${i + 1}. ${truncateName(queue[i].name)} — ${formatDuration(lengths[i])}`;
+  const line = (i, prefix) => `${prefix} ${i + 1}. ${crossedIfSkipped(queue[i], truncateName(queue[i].name))} — ${formatDuration(lengths[i])}`;
   const ended = !currentEntry(state);
   const window = ended
     ? ["Nothing is playing — the queue has ended. Add a track to continue."]
@@ -67,7 +67,7 @@ export function buildQueuePages(state, { durationOf, playing, paused }) {
     const start = page * QUEUE_PAGE_SIZE;
     const all = queue.slice(start, start + QUEUE_PAGE_SIZE).map((entry, offset) => {
       const i = start + offset;
-      return i === cursor && !ended ? line(i, marker) : `${i + 1}. ${truncateName(entry.name)} — ${formatDuration(lengths[i])}`;
+      return i === cursor && !ended ? line(i, marker) : `${i + 1}. ${crossedIfSkipped(entry, truncateName(entry.name))} — ${formatDuration(lengths[i])}`;
     });
     return {
       title,
@@ -76,6 +76,9 @@ export function buildQueuePages(state, { durationOf, playing, paused }) {
     };
   });
 }
+
+// A track marked "skip" (from the web app) is shown crossed out.
+const crossedIfSkipped = (entry, text) => (entry.skip ? `~~${text}~~` : text);
 
 // ".avc queue list" / ".avc ql": the whole queue as one plain message, in the
 // order tracks were added, with ▶ on the current one. A long queue shows the
@@ -89,7 +92,7 @@ export function describeQueueList(state, { durationOf, playing, paused }) {
   const start = Math.max(0, Math.min(cursor - 5, queue.length - QUEUE_TEXT_LINES));
   const shown = queue.slice(start, start + QUEUE_TEXT_LINES).map((entry, offset) => {
     const i = start + offset;
-    return `${i === cursor ? marker : " "} ${i + 1}. ${entry.name} — ${formatDuration(lengths[i])}`;
+    return `${i === cursor ? marker : " "} ${i + 1}. ${crossedIfSkipped(entry, entry.name)} — ${formatDuration(lengths[i])}`;
   });
 
   const before = start;
@@ -107,5 +110,5 @@ export function describeQueueList(state, { durationOf, playing, paused }) {
 export function describeQueueForModel(state) {
   const { queue, cursor } = state;
   if (queue.length === 0) return "The queue is empty.";
-  return [`${plural(queue.length, "track")} in the queue (in the order they were added):`, ...queue.map((entry, i) => `${i + 1}. ${entry.name}${i === cursor ? "  <- current" : ""}`)].join("\n");
+  return [`${plural(queue.length, "track")} in the queue (in the order they were added):`, ...queue.map((entry, i) => `${i + 1}. ${entry.name}${entry.skip ? "  (marked skip)" : ""}${i === cursor ? "  <- current" : ""}`)].join("\n");
 }

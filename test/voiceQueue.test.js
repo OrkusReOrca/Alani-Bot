@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { matchByName, normalizeName, cleanQuery } from "../src/features/voice-player/match.js";
-import { emptyState, currentEntry, enqueue, enqueueFront, insertNext, jumpTo, advance, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, isLooping } from "../src/features/voice-player/queue.js";
+import { emptyState, currentEntry, enqueue, enqueueFront, insertNext, jumpTo, advance, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, isLooping, moveEntry, setSkip, previousIndex } from "../src/features/voice-player/queue.js";
 import { formatDuration, describeSettings, buildQueuePages, queuePageOf, describeQueueList, describeQueueForModel, QUEUE_PAGE_SIZE } from "../src/features/voice-player/format.js";
-import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState, voiceDb } from "../src/features/voice-player/stateStore.js";
+import { listGuildsInCall, listGuildsWithQueue, loadPresence, loadState, savePresence, saveState, voiceDb, personalQueueId, noteGuildUser, guildsUsedBy, recordPlay, playHistory } from "../src/features/voice-player/stateStore.js";
 import { isPlayableFile } from "../src/features/voice-player/config.js";
 
 const track = (name) => ({ key: name, name });
@@ -392,4 +392,53 @@ test("presence: the call and the text channel are remembered per server and list
 
   voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(guild);
   voiceDb.prepare(`DELETE FROM guild_voice_presence WHERE guild_id = ?`).run(guild);
+});
+
+// ---------- reorder, mark skip, previous (the web app) ----------
+test("moving a track keeps the cursor on the same track", () => {
+  const state = stateOf(["A", "B", "C", "D"], { cursor: 1 });
+  assert.deepEqual([names(moveEntry(state, 3, 0)), moveEntry(state, 3, 0).cursor], [["D", "A", "B", "C"], 2]);
+  assert.deepEqual([names(moveEntry(state, 1, 3)), moveEntry(state, 1, 3).cursor], [["A", "C", "D", "B"], 3]);
+  assert.deepEqual([names(moveEntry(state, 0, 2)), moveEntry(state, 0, 2).cursor], [["B", "C", "A", "D"], 0]);
+  assert.equal(moveEntry(state, 0, 9), state); // out of range: unchanged
+});
+
+test("tracks marked skip are passed over, in order, looping, shuffling, and going back", () => {
+  const marked = setSkip(setSkip(stateOf(["A", "B", "C", "D"]), 1, true), 2, true);
+  assert.deepEqual(marked.queue.map((t) => Boolean(t.skip)), [false, true, true, false]);
+  assert.deepEqual(names(advance(marked)), ["D"]); // without looping the skipped ones drop off with A
+  const looping = setLoop(marked, true);
+  assert.equal(advance(looping).cursor, 3);
+  assert.equal(advance({ ...looping, cursor: 3 }).cursor, 0);
+  assert.equal(advance(setShuffle(marked, true), () => 0.99).cursor, 3); // shuffle only picks playable ones
+  assert.equal(previousIndex({ ...looping, cursor: 0 }), 3);
+  assert.equal(previousIndex({ ...looping, cursor: 3 }), 0);
+  assert.equal(previousIndex(marked), null); // without looping there is nothing before
+  const allSkipped = setLoop(setSkip(setSkip(stateOf(["A", "B"]), 0, true), 1, true), true);
+  assert.equal(currentEntry(advance(allSkipped)), null); // nothing left to play: the queue has ended
+  assert.equal(setSkip(marked, 1, false).queue[1].skip, undefined);
+});
+
+test("skipped tracks show crossed out on Discord and are named for .aii", () => {
+  const state = setSkip(stateOf(["A", "B"]), 1, true);
+  assert.match(describeQueueList(state, { durationOf: () => 1000, playing: true, paused: false }), /~~B~~/);
+  assert.match(describeQueueForModel(state), /2\. B {2}\(marked skip\)/);
+});
+
+test("personal queues live beside the servers' but are not rejoined; recent servers and play counts", () => {
+  const id = personalQueueId(`t${Date.now()}`);
+  saveState(id, stateOf(["A"]));
+  assert.ok(!listGuildsWithQueue().includes(id));
+  assert.deepEqual(names(loadState(id)), ["A"]);
+  voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
+
+  const user = `u${Date.now()}`;
+  noteGuildUser("g-web-test", user, new Date("2026-10-16T00:00:00Z"));
+  assert.equal(guildsUsedBy(user).get("g-web-test"), "2026-10-16T00:00:00.000Z");
+  const file = `file-${Date.now()}`;
+  recordPlay(file, "Song.mp3");
+  recordPlay(file, "Song.mp3");
+  assert.equal(playHistory().get(file).plays, 2);
+  voiceDb.prepare(`DELETE FROM voice_guild_users WHERE user_id = ?`).run(user);
+  voiceDb.prepare(`DELETE FROM voice_play_history WHERE file_id = ?`).run(file);
 });

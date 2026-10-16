@@ -14,6 +14,9 @@
 // so the cursor is 0 whenever it moves on. cursor === queue.length means "the
 // queue has ended"; a track added then becomes the current one.
 //
+// A track can be marked "skip" (entry.skip = true): it stays in the list, crossed
+// out, and moving on passes over it.
+//
 // playCall ("Now playing" messages) and persistent (never auto-leave the call)
 // aren't about the queue itself: they're per-server switches kept here because
 // they're saved and shown alongside loop and shuffle.
@@ -51,20 +54,63 @@ export function jumpTo(state, index) {
   return isLooping(state) ? { ...state, cursor: index } : { ...state, queue: state.queue.slice(index), cursor: 0 };
 }
 
-// The current track is over (finished or skipped): move on.
-// `random` is () => number in [0, 1), injectable for tests. inOrder: take the
-// next track in list order even when shuffling (used when a specific track
-// was just placed next, i.e. force play).
+// The current track is over (finished or skipped): move on, passing over tracks
+// marked "skip". `random` is () => number in [0, 1), injectable for tests.
+// inOrder: take the next track in list order even when shuffling (used when a
+// specific track was just placed next, i.e. force play).
 export function advance(state, random = Math.random, { inOrder = false } = {}) {
   if (!currentEntry(state)) return state;
 
-  if (!isLooping(state)) return { ...state, queue: state.queue.slice(state.cursor + 1), cursor: 0 };
-
-  if (state.shuffle && !inOrder && state.queue.length > 1) {
-    const others = state.queue.map((_, i) => i).filter((i) => i !== state.cursor);
-    return { ...state, cursor: others[Math.floor(random() * others.length)] };
+  if (!isLooping(state)) {
+    let rest = state.queue.slice(state.cursor + 1);
+    while (rest[0]?.skip) rest = rest.slice(1);
+    return { ...state, queue: rest, cursor: 0 };
   }
-  return { ...state, cursor: (state.cursor + 1) % state.queue.length };
+
+  const playable = state.queue.map((entry, i) => (entry.skip ? -1 : i)).filter((i) => i >= 0);
+  if (playable.length === 0) return { ...state, cursor: state.queue.length }; // everything is marked skip: the queue has ended
+  if (state.shuffle && !inOrder && state.queue.length > 1) {
+    const others = playable.filter((i) => i !== state.cursor);
+    return { ...state, cursor: others.length ? others[Math.floor(random() * others.length)] : state.cursor };
+  }
+  for (let step = 1; step <= state.queue.length; step++) {
+    const index = (state.cursor + step) % state.queue.length;
+    if (!state.queue[index].skip) return { ...state, cursor: index };
+  }
+  return state;
+}
+
+// The track before the current one (looping only: without looping, played
+// tracks are gone), passing over tracks marked "skip". null if there is none.
+export function previousIndex(state) {
+  if (!isLooping(state) || state.queue.length < 2) return null;
+  for (let step = 1; step < state.queue.length; step++) {
+    const index = (state.cursor - step + state.queue.length) % state.queue.length;
+    if (!state.queue[index].skip) return index;
+  }
+  return null;
+}
+
+// Moves the track at `from` to `to` (both 0-based); the cursor stays on the same track.
+export function moveEntry(state, from, to) {
+  const n = state.queue.length;
+  if (![from, to].every((i) => Number.isInteger(i) && i >= 0 && i < n) || from === to) return state;
+  const queue = [...state.queue];
+  const [entry] = queue.splice(from, 1);
+  queue.splice(to, 0, entry);
+  let cursor = state.cursor;
+  if (cursor === from) cursor = to;
+  else if (from < cursor && to >= cursor) cursor -= 1;
+  else if (from > cursor && to <= cursor) cursor += 1;
+  return { ...state, queue, cursor };
+}
+
+// Marks (or unmarks) the track at `index` to be passed over.
+export function setSkip(state, index, on) {
+  if (!state.queue[index]) return state;
+  const { skip, ...rest } = state.queue[index];
+  const entry = on ? { ...rest, skip: true } : rest;
+  return { ...state, queue: state.queue.map((e, i) => (i === index ? entry : e)) };
 }
 
 // Removes the track at `index` outright. The cursor follows: tracks after the

@@ -8,4 +8,6 @@ export const config = {
   apiSecret: readEnv("ALATOMY_ACCOUNT_API_SECRET"),
   // Where people are sent to log in or manage their account.
   siteUrl: (readEnv("ALATOMY_SITE_URL") ?? "https://alatomy.com").replace(/\/+$/, ""),
+  // Alani on the web, mentioned in tracker reminders.
+  webAppUrl: (readEnv("ALANI_WEB_URL") ?? "https://alani.alatomy.com").replace(/\/+$/, ""),
 };

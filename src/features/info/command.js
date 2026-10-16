@@ -41,6 +41,7 @@ const COMMANDS = [
     private: false,
   },
   { text: "**.a list db** — which database(s) you can see and use.", private: false },
+  { text: "**.a stats** — Alatomy usage: accounts, active accounts, page views. Owners only, command box only.", private: true },
   { text: "**.a account** — shows the Alatomy account your Discord is linked to (reminders and events shared with the Alatomy website), or how to link one. Use it with `.a db alatomy ...`.", private: false },
   {
     text: "**.a emo <run1|runany|runall> m<modalities> <d|s>** — runs the emotion-detection pipeline on Google Drive clips; **.a emo web** links the emotion web dashboard. Needs the AIallowed tag, one dedicated channel. See `.a info emo`.",

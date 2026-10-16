@@ -66,9 +66,18 @@ export function createAccountClient({ apiUrl = config.apiUrl, apiSecret = config
 
     summary: async (id) => (await request("GET", db(id))).data.db ?? null,
 
-    // delivery of due reminders
+    // delivery of due reminders and tracker reminders
     dueReminders: async () => (await request("GET", "/reminders/due")).data.reminders ?? [],
     markDelivered: (reminderId) => request("POST", `/reminders/${encodeURIComponent(reminderId)}/done`, {}),
+    dueTrackers: async () => (await request("GET", "/trackers/due")).data.trackers ?? [],
+    markTrackerNotified: (trackerId, periodKey) => request("POST", `/trackers/${encodeURIComponent(trackerId)}/notified`, { periodKey }),
+
+    /** Usage numbers for `.a stats` (accounts, active accounts, page views). */
+    async stats() {
+      const { ok, data } = await request("GET", "/stats");
+      if (!ok) throw new AccountApiError(data.error ?? "Couldn't read the stats.");
+      return data;
+    },
   };
 }
 

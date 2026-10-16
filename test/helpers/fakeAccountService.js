@@ -17,12 +17,15 @@ export async function startFakeAccountService() {
     events: [],
     due: [],
     delivered: [],
+    dueTrackers: [],
+    notified: [],
+    stats: null,
     calls: [],
     failWith: null, // a status code to answer everything with
     linked: new Set([LINKED_DISCORD_ID]),
   };
 
-  const view = (r) => ({ displayNumber: r.n, text: r.text, remindAt: r.remindAt, channelId: r.channelId, mentions: r.mentions, delivery: "discord", createdVia: "discord" });
+  const view = (r) => ({ displayNumber: r.n, text: r.text, remindAt: r.remindAt, channelId: r.channelId, mentions: r.mentions, delivery: "discord", createdVia: "discord", doneAt: r.doneAt ?? null, deliveredAt: r.deliveredAt ?? null });
   const eventView = (e) => ({ displayNumber: e.n, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location, createdVia: "discord" });
   const next = (list) => list.reduce((m, x) => Math.max(m, x.n), 0) + 1;
 
@@ -47,6 +50,12 @@ export async function startFakeAccountService() {
           : { found: false });
       }
       if (parts[0] === "reminders" && parts[1] === "due") return send(200, { reminders: state.due });
+      if (parts[0] === "trackers" && parts[1] === "due") return send(200, { trackers: state.dueTrackers });
+      if (parts[0] === "trackers" && parts[2] === "notified") {
+        state.notified.push(`${parts[1]}:${body.periodKey}`);
+        return send(200, { ok: true });
+      }
+      if (parts[0] === "stats") return send(200, state.stats);
       if (parts[0] === "reminders" && parts[2] === "done") {
         state.delivered.push(parts[1]);
         return send(200, { ok: true });

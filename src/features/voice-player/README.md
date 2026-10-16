@@ -171,6 +171,25 @@ plays that natively, so playback costs almost no CPU.
   Drive straight into ffmpeg. Containers that need seeking (m4a, mp4, mov) are
   downloaded to a temp file first; a piped conversion that fails is retried that way.
 
+## Alani on the web (`webApi.js`)
+
+The web app (alani.alatomy.com, repo `Alatomy_Alani_web-app_services`) controls this player through the
+bridge server, under `/web/music/...`, with its own secret (`ALANI_WEB_API_SECRET`, unset = off). The web
+service checks who is logged in and passes their linked Discord id and their Alatomy account id.
+
+- **A server's player:** anyone in the server may look; changes follow the `.avc` rules (`rules.js`, shared
+  with the command): be in the bot's call; adding or joining also works from any voice channel when the bot
+  is free; SongMaster to clear the queue; bot owners for persistent. Extra controls from the web: previous
+  (going back needs loop/shuffle; otherwise it restarts the track), restart, move a track (drag to reorder),
+  and **mark skip**: the track stays in the queue, crossed out (also in `.avc queue`), and is passed over.
+- **Servers offered:** ones the person is a member of and either used the player in during the last 90 days
+  (from Discord or the web) or where the bot is in a call now.
+- **A personal queue** ("On account" in the web app): the same queue rules, stored under
+  `account:<account id>` in `VoiceState.db`; it plays in the browser, not in Discord, so it is never rejoined.
+- **Streaming** (`/web/music/stream/<file id>`): the converted Ogg Opus file, with byte ranges for seeking;
+  a long file still converting streams without seeking for the first play.
+- Play counts and last-played times (`voice_play_history`) feed the web library's "recently played" sort.
+
 ## Setup
 
 - The Drive folder must be shared with the bot's service account (it is, if it's
@@ -190,6 +209,8 @@ plays that natively, so playback costs almost no CPU.
 | `format.js` | queue / status text |
 | `audioCache.js` | convert-once Opus cache, play-while-converting, eviction |
 | `library.js` | listing the Drive folder |
-| `stateStore.js` | `VoiceState.db` |
+| `stateStore.js` | `VoiceState.db` (queues, presence, recent servers, play counts) |
+| `rules.js` | who may do what, shared by `.avc` and the web API |
+| `webApi.js`, `webRoutes.js` | the web app's music API on the bridge server |
 | `discordOutput.js`, `manager.js` | the real Discord voice connection and wiring |
 | `config.js` | folder path, cache size, timeouts |

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { makeSession, track, fakeCache, memoryStore, TIMING } from "./helpers/voiceFakes.js";
+import { makeSession, track, fakeCache, fakeOutput, memoryStore, TIMING } from "./helpers/voiceFakes.js";
+import { createGuildSession } from "../src/features/voice-player/session.js";
 
 test("add while connected starts the first track; later ones wait; a finished track is removed and the next starts", async () => {
   const t = makeSession();
@@ -471,4 +472,43 @@ test("warmUp pins and converts the saved queue (after a restart, when nothing wa
   assert.deepEqual(restarted.cache.pinned, ["key-A", "key-B"]);
   await restarted.session.join("vc1"); // rejoining resumes the current track
   assert.deepEqual(restarted.cache.opened, ["A"]);
+});
+
+test("previous, restart, move, mark skip and adding several (the web app's controls)", async () => {
+  const t = makeSession();
+  await t.session.join("vc1");
+  t.session.addMany([track("A"), track("B"), track("C")]);
+  assert.deepEqual(t.cache.opened, ["A"]);
+  t.session.addMany([track("X"), track("Y")], "next");
+  assert.deepEqual(t.names(), ["A", "X", "Y", "B", "C"]);
+
+  assert.equal(t.session.restart().name, "A");
+  assert.deepEqual(t.cache.opened, ["A", "A"]);
+  assert.equal(t.session.previous().name, "A"); // not looping: nothing before, so it restarts
+  t.session.setLoop(true);
+  t.session.skip();
+  assert.equal(t.session.previous().name, "A");
+
+  assert.equal(t.session.move(4, 1), true);
+  assert.deepEqual(t.names(), ["A", "C", "X", "Y", "B"]);
+  assert.equal(t.session.move(0, 9), false);
+  t.session.markSkip(0, true); // the one playing: skipped right away
+  assert.equal(t.cache.opened.at(-1), "C");
+  assert.equal(t.session.state().queue[0].skip, true);
+});
+
+test("the playback position counts time playing, not time paused", async () => {
+  let now = 1000;
+  const timed = createGuildSession({ guildId: "g2", store: memoryStore(), getCache: () => fakeCache(), output: fakeOutput(), announce: () => {}, timing: TIMING, now: () => now });
+  await timed.join("vc");
+  assert.equal(timed.positionMs(), null);
+  timed.add(track("A"));
+  now += 5000;
+  assert.equal(timed.positionMs(), 5000);
+  timed.togglePause();
+  now += 60000;
+  assert.equal(timed.positionMs(), 5000);
+  timed.togglePause();
+  now += 1000;
+  assert.equal(timed.positionMs(), 6000);
 });

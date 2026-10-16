@@ -15,12 +15,17 @@ import { sendJson, BadRequestError } from "./http.js";
 import { registerVoiceRoutes } from "../features/db/voiceApi.js";
 import { registerUniTrackerPushRoute } from "../features/uni-application-updater/pushApi.js";
 import { registerEmotionRoutes } from "../features/emotion-detect/emotionApi.js";
+import { registerWebMusicRoutes } from "../features/voice-player/webRoutes.js";
 
 const routes = [];
 
+// `path` is matched exactly, or as a prefix when it ends in "*" (e.g. "/web/music/*").
 export function registerRoute(method, path, secret, handler) {
   routes.push({ method, path, secret, handler });
 }
+
+const matches = (route, req) =>
+  route.method === req.method && (route.path.endsWith("*") ? req.url.startsWith(route.path.slice(0, -1)) : route.path === req.url);
 
 // Every current route sends small JSON (a handful of KB at most, now that
 // the emotion callback's first-frame image is shrunk before it's ever
@@ -37,9 +42,10 @@ export function startBridgeServer() {
   registerVoiceRoutes(registerRoute);
   registerUniTrackerPushRoute(registerRoute);
   registerEmotionRoutes(registerRoute);
+  registerWebMusicRoutes(registerRoute);
 
   const server = http.createServer(async (req, res) => {
-    const route = routes.find((r) => r.method === req.method && r.path === req.url);
+    const route = routes.find((r) => matches(r, req));
     if (!route) return sendJson(res, 404, { error: "Not found" });
     if (!route.secret || req.headers.authorization !== `Bearer ${route.secret}`) {
       return sendJson(res, 401, { error: "Unauthorized" });

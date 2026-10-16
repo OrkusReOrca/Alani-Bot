@@ -61,6 +61,7 @@ export function fakeCache(durations = {}) {
     setPinned(keys) {
       this.pinned = keys;
     },
+    finishedFile: () => null,
   };
 }
 
