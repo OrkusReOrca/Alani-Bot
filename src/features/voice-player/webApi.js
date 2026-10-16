@@ -63,7 +63,7 @@ async function readBody(req) {
 const index0 = (value, length) => (Number.isInteger(value) && value >= 0 && value < length ? value : null);
 
 /**
- * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?,
+ * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?, waitForConversionMs?,
  *         store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId } }
  */
 export function createWebMusicApi(deps) {
@@ -132,6 +132,44 @@ export function createWebMusicApi(deps) {
     };
   }
 
+  // A personal queue's current song that is not converted yet can't play in any browser: its clock stands
+  // still (personalPlayback.js) and starts when the song can play — converted, or streamed while it
+  // converts (a long one) — so the devices start it together from the beginning instead of chasing a
+  // position they can't reach yet (each jump would start their download again). Starts the conversion.
+  const waiting = new Map(); // track key -> the personal queues whose clock waits for it
+  const streamingEarly = new Set(); // track keys already streaming while they convert: their clocks run
+
+  const whenConverted = (job, fn) => {
+    const onChange = () => (job.status === "done" || job.status === "failed") && (job.off("change", onChange), fn());
+    job.on("change", onChange);
+  };
+
+  /** The song can play now: the clocks waiting for it start. */
+  function songReady(key) {
+    const ids = waiting.get(key);
+    waiting.delete(key);
+    for (const id of ids ?? []) {
+      if (currentEntry(store.loadState(id))?.key === key) store.savePlayback(id, playbackApi.hold(store.loadPlayback(id), clock()));
+    }
+  }
+
+  function preparing(id, state) {
+    const entry = currentEntry(state);
+    let job = null;
+    try {
+      job = entry ? deps.audioCache()?.ensure(entry, { urgent: true }) : null;
+    } catch {
+      return false; // no audio cache on this host: streaming will say so
+    }
+    if (!job || job.status === "done" || job.status === "failed" || streamingEarly.has(entry.key)) return false;
+    if (!waiting.has(entry.key)) {
+      waiting.set(entry.key, new Set());
+      whenConverted(job, () => songReady(entry.key));
+    }
+    waiting.get(entry.key).add(id);
+    return true;
+  }
+
   function personalView(accountId) {
     const id = store.personalQueueId(accountId);
     const state = store.loadState(id);
@@ -141,7 +179,7 @@ export function createWebMusicApi(deps) {
       queue: queueView(state),
       loop: state.loop,
       shuffle: state.shuffle,
-      playback: playbackApi.playbackView(store.loadPlayback(id), clock()),
+      playback: playbackApi.playbackView(store.loadPlayback(id), clock(), { preparing: preparing(id, state) }),
     };
   }
 
@@ -250,6 +288,7 @@ export function createWebMusicApi(deps) {
     const state = store.loadState(id);
     const now = clock();
     let pb = store.loadPlayback(id);
+    if (preparing(id, state)) pb = playbackApi.hold(pb, now); // its clock stood still until now
     const length = state.queue.length;
     const on = body.on === true;
     const before = currentEntry(state);
@@ -346,7 +385,7 @@ export function createWebMusicApi(deps) {
     const entry = entryFor(file, null);
     const job = cache.ensure(entry, { urgent: true });
     // short tracks are usually ready in a few seconds; a long one starts streaming while it converts
-    const giveUpAt = Date.now() + WAIT_FOR_CONVERSION_MS;
+    const giveUpAt = Date.now() + (deps.waitForConversionMs ?? WAIT_FOR_CONVERSION_MS);
     while ((job.status === "pending" || job.status === "running") && Date.now() < giveUpAt) {
       await Promise.race([job.waitForChange(), new Promise((resolve) => setTimeout(resolve, giveUpAt - Date.now()))]);
     }
@@ -355,6 +394,9 @@ export function createWebMusicApi(deps) {
     const finished = cache.finishedFile(entry);
     const headers = { "Content-Type": "audio/ogg", "Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff" };
     if (!finished) {
+      streamingEarly.add(entry.key);
+      whenConverted(job, () => streamingEarly.delete(entry.key));
+      songReady(entry.key);
       res.writeHead(200, headers); // still converting: no length, no seeking yet
       cache.open(entry).stream.pipe(res);
       return;

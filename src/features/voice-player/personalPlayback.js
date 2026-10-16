@@ -4,7 +4,8 @@
 // song at the same spot, and a pause or skip on one happens on the other.
 //
 // Pure functions over { playing, positionMs, updatedAt, rev } (updatedAt and now in ms). While playing,
-// the position moves on with the clock.
+// the position moves on with the clock — except while the current song is still being prepared (converted
+// for the browser): then no device can play it yet, so its clock stands still until it is ready.
 
 export const stoppedPlayback = () => ({ playing: false, positionMs: 0, updatedAt: 0, rev: 0 });
 
@@ -29,5 +30,14 @@ export const restartTrack = (pb, now, { playing = pb.playing } = {}) => change(p
 /** Nothing to play any more. */
 export const stop = (pb, now) => change(pb, now, { playing: false, positionMs: 0 });
 
-/** What the devices are told. */
-export const playbackView = (pb, now) => ({ playing: pb.playing, positionMs: positionAt(pb, now), rev: pb.rev, serverTime: now });
+/** The clock starts again from where it stood (the song was being prepared): no new revision. */
+export const hold = (pb, now) => ({ ...pb, updatedAt: now });
+
+/** What the devices are told. While the song is being prepared its clock stands still. */
+export const playbackView = (pb, now, { preparing = false } = {}) => ({
+  playing: pb.playing,
+  positionMs: preparing ? pb.positionMs : positionAt(pb, now),
+  rev: pb.rev,
+  preparing,
+  serverTime: now,
+});

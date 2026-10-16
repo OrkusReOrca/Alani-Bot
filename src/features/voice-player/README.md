@@ -190,7 +190,9 @@ service checks who is logged in and passes their linked Discord id and their Ala
   number are kept in `personal_playback` (`personalPlayback.js`); devices check every couple of seconds and
   follow, so pause, skip or seek on one happens on all. A song that ends is reported with the revision the
   device saw, so when several devices finish it together the queue moves on once (looping one song plays
-  it again).
+  it again). While the current song is still being converted no browser can play it, so its clock stands
+  still (`preparing: true` in the view) and starts when it is converted, or when it starts streaming while
+  it converts (a long one); otherwise the devices would chase a position they can't reach yet.
 - **Streaming** (`/web/music/stream/<file id>`): the converted Ogg Opus file, with byte ranges for seeking;
   a long file still converting streams without seeking for the first play.
 - Play counts and last-played times (`voice_play_history`) feed the web library's "recently played" sort.
