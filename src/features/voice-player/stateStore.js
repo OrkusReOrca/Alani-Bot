@@ -87,6 +87,7 @@ voiceDb.exec(`
 // Added after the table first shipped: servers that already have a row get these defaults.
 ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAULT 1");
 ensureColumn(voiceDb, "guild_voice_state", "persistent", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn(voiceDb, "personal_playback", "waiting", "INTEGER NOT NULL DEFAULT 0");
 installChangeLog(voiceDb);
 
 // The server's state, or an empty one if it has none yet (nothing is written
@@ -134,17 +135,17 @@ export function listGuildsWithQueue() {
 }
 
 export function loadPlayback(queueId) {
-  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev FROM personal_playback WHERE queue_id = ?`).get(queueId);
-  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev } : stoppedPlayback();
+  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev, waiting FROM personal_playback WHERE queue_id = ?`).get(queueId);
+  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev, waiting: Boolean(row.waiting) } : stoppedPlayback();
 }
 
 export function savePlayback(queueId, pb) {
   voiceDb
     .prepare(
-      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev`
+      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev, waiting) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev, waiting = excluded.waiting`
     )
-    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev);
+    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev, pb.waiting ? 1 : 0);
 }
 
 /** The state id of an Alatomy account's personal queue. */

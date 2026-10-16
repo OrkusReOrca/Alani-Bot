@@ -5,7 +5,6 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { EventEmitter } from "node:events";
-import { Readable } from "node:stream";
 
 process.env.DISCORD_OWNER_0 = "900000000000000001";
 const OWNER = "900000000000000001";
@@ -42,23 +41,14 @@ function world() {
   const audioDir = fs.mkdtempSync(path.join(os.tmpdir(), "webmusic-"));
   const cache = {
     pinned: {},
-    converting: new Map(), // file name -> its job, for songs still being converted
-    convert(name) {
-      const job = Object.assign(new EventEmitter(), { status: "running", waitForChange: () => new Promise((resolve) => job.once("change", resolve)) });
-      this.converting.set(name, job);
-      return () => (this.converting.delete(name), (job.status = "done"), job.emit("change"));
-    },
-    ensure(entry) {
-      const converting = this.converting.get(entry.name);
-      if (converting) return converting;
+    ensured: [], // [name, urgent] in the order conversions were asked for
+    ensure(entry, { urgent = false } = {}) {
+      this.ensured.push([entry.name, urgent]);
       const job = Object.assign(new EventEmitter(), { status: "done", waitForChange: () => new Promise(() => {}) });
       fs.writeFileSync(path.join(audioDir, entry.key), Buffer.from("0123456789"));
       return job;
     },
-    open: () => ({ stream: Readable.from([Buffer.from("01234")]) }),
-    finishedFile(entry) {
-      return this.converting.has(entry.name) ? null : { path: path.join(audioDir, entry.key), bytes: 10 };
-    },
+    finishedFile: (entry) => ({ path: path.join(audioDir, entry.key), bytes: 10 }),
     durationOf: (entry) => (entry.name === "A.mp3" ? 61_000 : undefined),
     setPinned(keys, owner) {
       this.pinned[owner] = keys;
@@ -71,7 +61,6 @@ function world() {
     audioCache: () => cache,
     listPlayableFiles: async () => FILES,
     clock: () => time.now,
-    waitForConversionMs: 50,
     store: {
       loadPlayback: (id) => playbacks.get(id) ?? { playing: false, positionMs: 0, updatedAt: 0, rev: 0 },
       savePlayback: (id, pb) => playbacks.set(id, pb),
@@ -183,10 +172,16 @@ test("a personal queue is in step on every device: play, pause, seek, and a song
   const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
   const look = async () => (await api.get(`/personal/${ACCOUNT}`)).json;
 
-  await act({ action: "add", fileIds: ["f0", "f1"] });
+  const added = (await act({ action: "add", fileIds: ["f0", "f1"] })).json.player.playback;
   w.time.now += 5000;
   let pb = (await look()).playback;
-  assert.deepEqual([pb.playing, pb.positionMs], [true, 5000]); // the position moves on with the clock
+  assert.deepEqual([pb.playing, pb.waiting, pb.positionMs], [true, true, 0]); // a new song waits for a device to start it
+  pb = (await act({ action: "started", rev: added.rev, positionMs: 300 })).json.player.playback;
+  assert.deepEqual([pb.waiting, pb.positionMs], [false, 300]);
+  assert.equal((await act({ action: "started", rev: added.rev, positionMs: 900 })).json.player.playback.rev, pb.rev); // a second device: nothing changes
+  w.time.now += 5000;
+  pb = (await look()).playback;
+  assert.deepEqual([pb.playing, pb.positionMs], [true, 5300]); // the position moves on with the clock
 
   pb = (await act({ action: "pause", positionMs: 5200 })).json.player.playback;
   w.time.now += 60_000;
@@ -213,33 +208,16 @@ test("a personal queue is in step on every device: play, pause, seek, and a song
   assert.equal((await act({ action: "removeAll" })).json.player.playback.playing, false);
 });
 
-test("a song still being converted: its clock stands still until it is ready, or until it streams early", async () => {
+test("a personal queue converts its songs ahead: the current one first, then in the order they play", async () => {
   const w = world();
   const api = await serve(w.handle);
   const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
-  const look = async () => (await api.get(`/personal/${ACCOUNT}`)).json.playback;
-  const finishB = w.cache.convert("B.mp3");
-  w.cache.convert("C.mp3"); // a long one: never finishes in this test
-
-  const started = (await act({ action: "add", fileIds: ["f0", "f1", "f2"] })).json.player.playback;
-  assert.equal(started.preparing, false); // A is ready
-  await act({ action: "ended", rev: started.rev }); // B now: still converting
-  w.time.now += 8000;
-  let pb = await look();
-  assert.deepEqual([pb.playing, pb.preparing, pb.positionMs], [true, true, 0]); // nobody can play it yet: it waits
-  finishB();
-  w.time.now += 3000;
-  pb = await look();
-  assert.deepEqual([pb.preparing, pb.positionMs], [false, 3000]); // runs from when it was ready
-
-  await act({ action: "ended", rev: pb.rev }); // C: still converting
-  w.time.now += 5000;
-  assert.deepEqual([(await look()).preparing, (await look()).positionMs], [true, 0]);
-  const early = await api.get("/stream/f2"); // gave up waiting: streams while it converts
-  assert.deepEqual([early.status, early.headers.get("accept-ranges"), early.text], [200, null, "01234"]);
-  w.time.now += 2000;
-  pb = await look();
-  assert.deepEqual([pb.preparing, pb.positionMs], [false, 2000]); // runs from when it started streaming
+  await act({ action: "add", fileIds: ["f0", "f1", "f2", "f3"] });
+  await act({ action: "loop", on: true });
+  await act({ action: "markSkip", index: 3, on: true });
+  w.cache.ensured.length = 0;
+  await act({ action: "jump", index: 2 });
+  assert.deepEqual(w.cache.ensured, [["C.mp3", true], ["A.mp3", false], ["B.mp3", false]]); // D is marked skip
 });
 
 test("streaming: the whole file, or a byte range for seeking", async () => {

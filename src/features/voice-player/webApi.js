@@ -8,7 +8,7 @@
 //   GET  /web/music/server/:guild?discordUserId= the player of one server
 //   POST /web/music/server/:guild/action {discordUserId, action, ...}
 //   GET  /web/music/personal/:account           a person's own queue (plays in their browsers, in step)
-//   POST /web/music/personal/:account/action {action, ...}   queue changes, and play / pause / seek / ended
+//   POST /web/music/personal/:account/action {action, ...}   queue changes, and play / pause / seek / started / ended
 //   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
 //
 // A server's player follows the same rules as `.avc` (rules.js): anyone in the server may look, changes
@@ -63,7 +63,7 @@ async function readBody(req) {
 const index0 = (value, length) => (Number.isInteger(value) && value >= 0 && value < length ? value : null);
 
 /**
- * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?, waitForConversionMs?,
+ * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?,
  *         store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId } }
  */
 export function createWebMusicApi(deps) {
@@ -132,44 +132,6 @@ export function createWebMusicApi(deps) {
     };
   }
 
-  // A personal queue's current song that is not converted yet can't play in any browser: its clock stands
-  // still (personalPlayback.js) and starts when the song can play — converted, or streamed while it
-  // converts (a long one) — so the devices start it together from the beginning instead of chasing a
-  // position they can't reach yet (each jump would start their download again). Starts the conversion.
-  const waiting = new Map(); // track key -> the personal queues whose clock waits for it
-  const streamingEarly = new Set(); // track keys already streaming while they convert: their clocks run
-
-  const whenConverted = (job, fn) => {
-    const onChange = () => (job.status === "done" || job.status === "failed") && (job.off("change", onChange), fn());
-    job.on("change", onChange);
-  };
-
-  /** The song can play now: the clocks waiting for it start. */
-  function songReady(key) {
-    const ids = waiting.get(key);
-    waiting.delete(key);
-    for (const id of ids ?? []) {
-      if (currentEntry(store.loadState(id))?.key === key) store.savePlayback(id, playbackApi.hold(store.loadPlayback(id), clock()));
-    }
-  }
-
-  function preparing(id, state) {
-    const entry = currentEntry(state);
-    let job = null;
-    try {
-      job = entry ? deps.audioCache()?.ensure(entry, { urgent: true }) : null;
-    } catch {
-      return false; // no audio cache on this host: streaming will say so
-    }
-    if (!job || job.status === "done" || job.status === "failed" || streamingEarly.has(entry.key)) return false;
-    if (!waiting.has(entry.key)) {
-      waiting.set(entry.key, new Set());
-      whenConverted(job, () => songReady(entry.key));
-    }
-    waiting.get(entry.key).add(id);
-    return true;
-  }
-
   function personalView(accountId) {
     const id = store.personalQueueId(accountId);
     const state = store.loadState(id);
@@ -179,7 +141,7 @@ export function createWebMusicApi(deps) {
       queue: queueView(state),
       loop: state.loop,
       shuffle: state.shuffle,
-      playback: playbackApi.playbackView(store.loadPlayback(id), clock(), { preparing: preparing(id, state) }),
+      playback: playbackApi.playbackView(store.loadPlayback(id), clock()),
     };
   }
 
@@ -280,15 +242,30 @@ export function createWebMusicApi(deps) {
   }
 
   // ---------------------------------------------------------------- a personal queue
+  // Like a server's queue (session.js), its songs are kept converted and converted ahead of time — the
+  // current one first, then the rest in the order they will play — so a new song is ready to stream
+  // the moment it starts instead of being converted then.
+  function convertAhead(id, state) {
+    try {
+      const cache = deps.audioCache();
+      if (!cache) return;
+      cache.setPinned(state.queue.map((entry) => entry.key), id); // keep its converted tracks
+      const upcoming = [...state.queue.slice(state.cursor), ...state.queue.slice(0, state.cursor)].filter((entry) => !entry.skip);
+      upcoming.forEach((entry, i) => cache.ensure(entry, { urgent: i === 0 }));
+    } catch {
+      // no audio cache on this host: streaming will say so
+    }
+  }
+
   // The queue and where it is in the current song (personalPlayback.js) are shared by all the person's
-  // devices. Anything that changes the current song starts it from the beginning; "ended" carries the
-  // revision the device saw, so when two devices both finish the song it moves on only once.
+  // devices. Anything that changes the current song starts it from the beginning, waiting there until the
+  // first device actually plays it ("started"); "ended" carries the revision the device saw, so when two
+  // devices both finish the song it moves on only once.
   async function personalAction(accountId, body) {
     const id = store.personalQueueId(accountId);
     const state = store.loadState(id);
     const now = clock();
     let pb = store.loadPlayback(id);
-    if (preparing(id, state)) pb = playbackApi.hold(pb, now); // its clock stood still until now
     const length = state.queue.length;
     const on = body.on === true;
     const before = currentEntry(state);
@@ -357,6 +334,10 @@ export function createWebMusicApi(deps) {
       case "seek":
         pb = playbackApi.seek(pb, now, body.positionMs);
         break;
+      case "started": // a device began playing the song that was waiting: its clock runs from now
+        pb = playbackApi.started(pb, now, body.rev, body.positionMs);
+        if (!pb) return null; // already started (by another device), or the song changed meanwhile
+        break;
       default:
         throw new ApiError(400, "Unknown action.");
     }
@@ -369,11 +350,7 @@ export function createWebMusicApi(deps) {
     }
     store.saveState(id, next);
     store.savePlayback(id, pb);
-    try {
-      deps.audioCache()?.setPinned(next.queue.map((entry) => entry.key), id); // keep its converted tracks
-    } catch {
-      // no audio cache on this host: streaming will say so
-    }
+    convertAhead(id, next);
     return null;
   }
 
@@ -385,7 +362,7 @@ export function createWebMusicApi(deps) {
     const entry = entryFor(file, null);
     const job = cache.ensure(entry, { urgent: true });
     // short tracks are usually ready in a few seconds; a long one starts streaming while it converts
-    const giveUpAt = Date.now() + (deps.waitForConversionMs ?? WAIT_FOR_CONVERSION_MS);
+    const giveUpAt = Date.now() + WAIT_FOR_CONVERSION_MS;
     while ((job.status === "pending" || job.status === "running") && Date.now() < giveUpAt) {
       await Promise.race([job.waitForChange(), new Promise((resolve) => setTimeout(resolve, giveUpAt - Date.now()))]);
     }
@@ -394,9 +371,6 @@ export function createWebMusicApi(deps) {
     const finished = cache.finishedFile(entry);
     const headers = { "Content-Type": "audio/ogg", "Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff" };
     if (!finished) {
-      streamingEarly.add(entry.key);
-      whenConverted(job, () => streamingEarly.delete(entry.key));
-      songReady(entry.key);
       res.writeHead(200, headers); // still converting: no length, no seeking yet
       cache.open(entry).stream.pipe(res);
       return;

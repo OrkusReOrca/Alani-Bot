@@ -430,9 +430,9 @@ test("personal queues live beside the servers' but are not rejoined; recent serv
   saveState(id, stateOf(["A"]));
   assert.ok(!listGuildsWithQueue().includes(id));
   assert.deepEqual(names(loadState(id)), ["A"]);
-  assert.deepEqual(loadPlayback(id), { playing: false, positionMs: 0, updatedAt: 0, rev: 0 });
-  savePlayback(id, { playing: true, positionMs: 1234, updatedAt: 99, rev: 3 });
-  assert.deepEqual(loadPlayback(id), { playing: true, positionMs: 1234, updatedAt: 99, rev: 3 });
+  assert.deepEqual(loadPlayback(id), { playing: false, positionMs: 0, updatedAt: 0, rev: 0, waiting: false });
+  savePlayback(id, { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true });
+  assert.deepEqual(loadPlayback(id), { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true });
   voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
   voiceDb.prepare(`DELETE FROM personal_playback WHERE queue_id = ?`).run(id);
 
