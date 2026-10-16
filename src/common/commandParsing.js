@@ -4,6 +4,7 @@
 //   .a <name> [args...]   the general form
 //   .avc [args...]        shorthand for the voice player (command "avc")
 //   .at  [args...]        shorthand for the trackers (command "at")
+//   .ad  [args...]        "Alani dev": the developer commands (command "ad", e.g. the blog)
 //
 // In a DM with the bot the leading ".a" can be dropped: "info", "db list",
 // "t bp list" (= ".at bp list") and "vc list" (= ".avc list") all work. The
@@ -21,7 +22,7 @@ export function parseCommandLine(content, { dm = false } = {}) {
   if (tokens.length === 0) return null;
 
   if (tokens[0] === ".a") return { name: tokens[1]?.toLowerCase(), args: tokens.slice(2) };
-  const dotted = { ".avc": "avc", ".at": "at" }[tokens[0].toLowerCase()];
+  const dotted = { ".avc": "avc", ".at": "at", ".ad": "ad" }[tokens[0].toLowerCase()];
   if (dotted) return { name: dotted, args: tokens.slice(1) };
 
   if (!dm) return null;

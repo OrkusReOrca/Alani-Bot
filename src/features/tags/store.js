@@ -9,6 +9,8 @@ export const TAG_DEFINITIONS = {
   AIallowed: "use `.aii` (the AI assistant) and `.a emo`",
   SongMaster: "use the privileged voice-player commands: `.avc force play` and `.avc removeall`",
   Tracker: "use the `.at` trackers (blood pressure, pills, activities)",
+  tier1dev: "post to the Alatomy blog straight away (`.ad blog create`, in the blog channel)",
+  tierPRdev: "send blog posts for an owner's approval (`.ad blog create`, in the blog channel)",
 };
 
 export const TAGS = Object.fromEntries(Object.keys(TAG_DEFINITIONS).map((name) => [name, name]));

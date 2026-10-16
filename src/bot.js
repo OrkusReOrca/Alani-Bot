@@ -171,6 +171,8 @@ client.on(Events.MessageCreate, async (message) => {
     channelId: message.channelId,
     guildId: message.guildId, // null in DMs
     voiceChannelId: message.member?.voice?.channelId ?? null, // the voice channel the caller is in, if any
+    content: message.content, // the whole message, line breaks included (args are split on whitespace)
+    attachments: [...message.attachments.values()].map((a) => ({ url: a.url, name: a.name, contentType: a.contentType, size: a.size })),
   };
 
   try {

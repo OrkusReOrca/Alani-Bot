@@ -15,14 +15,14 @@ export function createAccountClient({ apiUrl = config.apiUrl, apiSecret = config
   const base = apiUrl ? apiUrl.replace(/\/+$/, "") : null;
   const cache = new Map(); // discord user id -> { until, value }
 
-  async function request(method, path, body) {
+  async function request(method, path, body, { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
     let response;
     try {
       response = await fetchImpl(`${base}/internal/v1${path}`, {
         method,
         headers: { Authorization: `Bearer ${apiSecret}`, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
       throw new AccountApiError("The Alatomy account service isn't answering right now. Try again in a moment.");
@@ -71,6 +71,12 @@ export function createAccountClient({ apiUrl = config.apiUrl, apiSecret = config
     markDelivered: (reminderId) => request("POST", `/reminders/${encodeURIComponent(reminderId)}/done`, {}),
     dueTrackers: async () => (await request("GET", "/trackers/due")).data.trackers ?? [],
     markTrackerNotified: (trackerId, periodKey) => request("POST", `/trackers/${encodeURIComponent(trackerId)}/notified`, { periodKey }),
+
+    // the blog (on the website): new posts, posts waiting for approval, decisions, deleting
+    createBlogPost: (post) => request("POST", "/blog/posts", post, { timeoutMs: 120_000 }), // images take a while
+    pendingBlogPosts: async () => (await request("GET", "/blog/pending")).data.posts ?? [],
+    decideBlogPost: (decision) => request("POST", "/blog/decide", decision),
+    deleteBlogPost: (title) => request("DELETE", "/blog/posts", { title }),
 
     /** Usage numbers for `.a stats` (accounts, active accounts, page views). */
     async stats() {
