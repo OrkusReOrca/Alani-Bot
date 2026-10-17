@@ -1,4 +1,23 @@
 {
-  "newTracks": [],
+  "newTracks": [
+    {
+      "id": "sid_placeholder_939",
+      "title": "Hell's Greatest Dad",
+      "artist": "Hazbin Hotel",
+      "image": "https://cdn.fortnite-api.com/tracks/9239d5695ccdac96.jpg",
+      "price": 4000,
+      "inDate": "2026-10-17T00:00:00Z",
+      "outDate": "2026-10-26T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_940",
+      "title": "Happy Day in Hell",
+      "artist": "Hazbin Hotel",
+      "image": "https://cdn.fortnite-api.com/tracks/7a834ad5d8beca12.jpg",
+      "price": 4000,
+      "inDate": "2026-10-17T00:00:00Z",
+      "outDate": "2026-10-26T23:59:59.999Z"
+    }
+  ],
   "leftTracks": []
 }
