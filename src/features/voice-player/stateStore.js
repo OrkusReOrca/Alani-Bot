@@ -90,7 +90,7 @@ voiceDb.exec(`
   CREATE TABLE IF NOT EXISTS radio_members (
     station_id TEXT NOT NULL,
     account_id TEXT NOT NULL,
-    role       TEXT NOT NULL,   -- owner (later: listener)
+    role       TEXT NOT NULL,   -- owner | member (listens and controls) | invited (not yet)
     PRIMARY KEY (station_id, account_id)
   );
 
@@ -106,6 +106,9 @@ ensureColumn(voiceDb, "guild_voice_state", "persistent", "INTEGER NOT NULL DEFAU
 ensureColumn(voiceDb, "personal_playback", "waiting", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "play_id", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "action_rev", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn(voiceDb, "radio_stations", "name", "TEXT"); // shared stations (made in the web app) have a name
+ensureColumn(voiceDb, "radio_members", "invited_by", "TEXT");
+ensureColumn(voiceDb, "radio_members", "since", "TEXT");
 ensureColumn(voiceDb, "guild_voice_cursor", "up_next", "INTEGER"); // shuffle's next track, drawn ahead (queue.js)
 installChangeLog(voiceDb);
 
@@ -179,8 +182,50 @@ export function stationOf(accountId) {
   return id;
 }
 
-/** Whether this account may listen to (and control) that station. */
-export const isStationMember = (stationId, accountId) => Boolean(voiceDb.prepare(`SELECT 1 AS x FROM radio_members WHERE station_id = ? AND account_id = ?`).get(stationId, accountId));
+/** Whether this account may listen to (and control) that station (an invitation isn't enough). */
+export const isStationMember = (stationId, accountId) => Boolean(voiceDb.prepare(`SELECT 1 AS x FROM radio_members WHERE station_id = ? AND account_id = ? AND role IN ('owner', 'member')`).get(stationId, accountId));
+
+// ---- shared stations: made in the web app, with a name, an owner, members and invitations (stationAdmin.js)
+
+/** A new shared station ("station:<random>"), owned by `ownerId`. */
+export function createSharedStation(ownerId, name, id) {
+  const at = new Date().toISOString();
+  voiceDb.prepare(`INSERT INTO radio_stations (id, owner_account, created_at, name) VALUES (?, ?, ?, ?)`).run(id, ownerId, at, name);
+  voiceDb.prepare(`INSERT INTO radio_members (station_id, account_id, role, since) VALUES (?, ?, 'owner', ?)`).run(id, ownerId, at);
+  return id;
+}
+
+/** { id, name, owner, createdAt, members: [{ accountId, role, invitedBy, since }] } or null. */
+export function stationInfo(id) {
+  const row = voiceDb.prepare(`SELECT * FROM radio_stations WHERE id = ?`).get(id);
+  if (!row) return null;
+  const members = voiceDb.prepare(`SELECT account_id, role, invited_by, since FROM radio_members WHERE station_id = ? ORDER BY role = 'owner' DESC, since`).all(id);
+  return { id: row.id, name: row.name, owner: row.owner_account, createdAt: row.created_at, members: members.map((m) => ({ accountId: m.account_id, role: m.role, invitedBy: m.invited_by, since: m.since })) };
+}
+
+/** The shared stations an account owns, is in, or is invited to. */
+export const sharedStationsOf = (accountId) =>
+  voiceDb.prepare(`SELECT s.id FROM radio_members m JOIN radio_stations s ON s.id = m.station_id WHERE m.account_id = ? AND s.id LIKE 'station:%' ORDER BY s.created_at`).all(accountId).map((r) => r.id);
+
+export const ownedSharedStations = (accountId) => voiceDb.prepare(`SELECT id FROM radio_stations WHERE owner_account = ? AND id LIKE 'station:%'`).all(accountId).map((r) => r.id);
+
+export const renameStation = (id, name) => voiceDb.prepare(`UPDATE radio_stations SET name = ? WHERE id = ?`).run(name, id);
+
+export function setStationMember(id, accountId, role, invitedBy = null) {
+  voiceDb
+    .prepare(`INSERT INTO radio_members (station_id, account_id, role, invited_by, since) VALUES (?, ?, ?, ?, ?) ON CONFLICT (station_id, account_id) DO UPDATE SET role = excluded.role, since = excluded.since`)
+    .run(id, accountId, role, invitedBy, new Date().toISOString());
+}
+export const removeStationMember = (id, accountId) => voiceDb.prepare(`DELETE FROM radio_members WHERE station_id = ? AND account_id = ?`).run(id, accountId);
+
+/** A shared station and everything it played (its queue and clock). */
+export function deleteStation(id) {
+  voiceDb.prepare(`DELETE FROM radio_members WHERE station_id = ?`).run(id);
+  voiceDb.prepare(`DELETE FROM radio_stations WHERE id = ?`).run(id);
+  voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
+  voiceDb.prepare(`DELETE FROM guild_voice_cursor WHERE guild_id = ?`).run(id);
+  voiceDb.prepare(`DELETE FROM personal_playback WHERE queue_id = ?`).run(id);
+}
 
 // Someone used the player in a server (the web app lists those servers first).
 export function noteGuildUser(guildId, userId, at = new Date()) {

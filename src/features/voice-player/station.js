@@ -9,9 +9,9 @@
 // quiet). So a lone device is never cut off or left behind by the bot's clock.
 //
 // Stations are not tied to accounts: each has an owner and members (stateStore: radio_stations,
-// radio_members). For now every account has one station of its own, created on first use; its id is
-// "account:<account id>" (where the account's queue already lived). Listening together (friends joining a
-// station by a code) can be added on top of the members table.
+// radio_members). Every account has one station of its own, created on first use; its id is
+// "account:<account id>" (where the account's queue already lived). Shared stations ("station:<random>",
+// made in the web app, with a name and invited members) are managed by stationAdmin.js.
 //
 // The rules kept here:
 //   * catching up: whenever anything asks, the station first moves past every song that ended since, on
@@ -388,5 +388,16 @@ export function createStations(deps) {
     return null;
   }
 
-  return { stationFor, look, act, view, streamingWhileConverting };
+  /** Who may listen changed (someone left or was removed): waiting devices ask again. */
+  const poke = (id) => changed(id);
+
+  /** A station was deleted: stop its clock and let its songs go. */
+  function forget(id) {
+    clearTimeout(timers.get(id));
+    timers.delete(id);
+    cache()?.setPinned([], id);
+    changed(id);
+  }
+
+  return { stationFor, look, act, view, streamingWhileConverting, poke, forget };
 }

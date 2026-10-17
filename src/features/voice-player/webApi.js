@@ -12,6 +12,9 @@
 //                                                the answer waits until it is newer than version V
 //   POST /web/music/station/:account/action {action, actionId?, station?, ...}   its controls (and
 //                                                {action: "ended", playId, device} from a device)
+//   GET  /web/music/stations/:account            the shared stations it owns, is in or is invited to
+//   POST /web/music/stations/:account {op, ...}  make / rename / delete / invite / respond / leave / kick
+//                                                (stationAdmin.js; the web app checks invitees are friends)
 //   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
 // Every answer has a Server-Timing header (how long the bot took), to see where time goes.
 //
@@ -25,6 +28,7 @@ import { hasTag, TAGS } from "../tags/store.js";
 import { currentEntry, resolveIndex } from "./queue.js";
 import { ensureInCallerChannel, entryFor, mustBeInBotsCall, mustBeSongMaster } from "./rules.js";
 import { createStations } from "./station.js";
+import { createStationAdmin } from "./stationAdmin.js";
 
 const MAX_ADD = 500; // a whole playlist at once
 const WAIT_MS = 25_000; // how long a "tell me when it changes" request waits before answering "no change"
@@ -69,12 +73,15 @@ async function readBody(req) {
  * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?, random?, waitMs?,
  *         waitForConversionMs? (how long a stream waits for a song's conversion before streaming it early),
  *         store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay,
- *                  stationOf, isStationMember } }
+ *                  stationOf, isStationMember, and for shared stations: createSharedStation, stationInfo,
+ *                  sharedStationsOf, ownedSharedStations, renameStation, setStationMember, removeStationMember,
+ *                  deleteStation } }
  */
 export function createWebMusicApi(deps) {
   const { store, clock = Date.now, random = Math.random, waitMs = WAIT_MS } = deps;
   const memberCache = new Map(); // "guild|user" -> { until, member }
   const stations = createStations({ store, audioCache: deps.audioCache, filesById: (ids) => filesById(ids), entryFor, clock, random, waitMs, ApiError });
+  const stationAdmin = createStationAdmin({ store, stations, ApiError });
 
   // ---------------------------------------------------------------- Discord
   async function isMember(guild, userId) {
@@ -313,6 +320,10 @@ export function createWebMusicApi(deps) {
           const problem = await stations.act(station, id, body);
           return send(problem ? 409 : 200, { ...(problem ? { error: problem } : {}), player: stations.view(station) });
         }
+      }
+      if (what === "stations" && ACCOUNT_ID.test(String(id ?? "")) && !sub) {
+        if (req.method === "GET") return send(200, stationAdmin.list(id));
+        if (req.method === "POST") return send(200, { ...stationAdmin.act(id, body), ...stationAdmin.list(id) });
       }
       throw new ApiError(404, "No such route.");
     } catch (error) {

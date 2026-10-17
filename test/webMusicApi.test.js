@@ -38,6 +38,7 @@ function world() {
   const used = new Map();
   const plays = new Map();
   const playbacks = new Map();
+  const shared = new Map(); // shared stations
   const time = { now: 1_000_000 };
   const audioDir = fs.mkdtempSync(path.join(os.tmpdir(), "webmusic-"));
   const cache = {
@@ -85,7 +86,19 @@ function world() {
       loadState: store.loadState,
       saveState: store.saveState,
       stationOf: (account) => `account:${account}`,
-      isStationMember: (station, account) => station === `account:${account}`,
+      isStationMember: (station, account) => station === `account:${account}` || ["owner", "member"].includes(shared.get(station)?.members.get(account)?.role),
+      // shared stations, in memory (stateStore keeps them in radio_stations / radio_members)
+      createSharedStation: (owner, name, id) => (shared.set(id, { name, owner, createdAt: String(time.now), members: new Map([[owner, { role: "owner", invitedBy: null }]]) }), id),
+      stationInfo: (id) => {
+        const s = shared.get(id);
+        return s ? { id, name: s.name, owner: s.owner, createdAt: s.createdAt, members: [...s.members].map(([accountId, m]) => ({ accountId, ...m })) } : null;
+      },
+      sharedStationsOf: (account) => [...shared].filter(([, s]) => s.members.has(account)).map(([id]) => id),
+      ownedSharedStations: (account) => [...shared].filter(([, s]) => s.owner === account).map(([id]) => id),
+      renameStation: (id, name) => (shared.get(id).name = name),
+      setStationMember: (id, account, role, invitedBy) => shared.get(id).members.set(account, { role, invitedBy }),
+      removeStationMember: (id, account) => shared.get(id).members.delete(account),
+      deleteStation: (id) => shared.delete(id),
       guildsUsedBy: (user) => new Map([...used].filter(([key]) => key.endsWith(`|${user}`)).map(([key, at]) => [key.split("|")[0], at])),
       noteGuildUser: (g, u) => used.set(`${g}|${u}`, new Date().toISOString()),
       playHistory: () => plays,
@@ -261,6 +274,44 @@ test("one device listening leads: the station waits for its song end (30 s at mo
   w.time.now += 3_000;
   view = await look(`listening=1&device=${LAPTOP}`);
   assert.deepEqual([view.queue[view.cursor].fileId, view.playback.positionMs], ["f0", 1_000]);
+});
+
+test("shared stations: one each, invite, accept, everyone controls, the owner removes people and deletes it", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const ADA = "a".repeat(32);
+  const BOB = "b".repeat(32);
+  const CAT = "c".repeat(32);
+  const admin = (who, body) => api.post(`/stations/${who}`, body);
+  const made = (await admin(ADA, { op: "create", name: "  Road trip " })).json;
+  const id = made.station.id;
+  assert.deepEqual([made.station.name, made.station.yourRole, made.own, made.stations.length], ["Road trip", "owner", `account:${ADA}`, 1]);
+  assert.equal((await admin(ADA, { op: "create", name: "Another" })).status, 409); // one each
+
+  await admin(ADA, { op: "invite", station: id, accountIds: [BOB, CAT, "not-an-id"] });
+  assert.equal((await api.get(`/station/${BOB}?station=${encodeURIComponent(id)}`)).status, 404); // invited isn't in yet
+  const bobList = (await api.get(`/stations/${BOB}`)).json.stations;
+  assert.deepEqual(bobList.map((s) => [s.name, s.yourRole]), [["Road trip", "invited"]]);
+  assert.equal((await admin(BOB, { op: "respond", station: id, accept: true })).json.station.yourRole, "member");
+  await admin(CAT, { op: "respond", station: id, accept: false });
+  assert.deepEqual((await api.get(`/stations/${CAT}`)).json.stations, []);
+
+  // Bob controls it fully, like the owner
+  await api.post(`/station/${BOB}/action`, { station: id, action: "add", fileIds: ["f0", "f1"] });
+  const view = (await api.get(`/station/${ADA}?station=${encodeURIComponent(id)}`)).json;
+  assert.deepEqual([view.station, view.queue.length, view.playback.playing], [id, 2, true]);
+  assert.equal((await api.get(`/stations/${ADA}`)).json.stations[0].song, "A.mp3");
+
+  assert.equal((await admin(BOB, { op: "rename", station: id, name: "Mine" })).status, 403);
+  assert.equal((await admin(BOB, { op: "kick", station: id, accountId: ADA })).status, 403);
+  assert.equal((await admin(ADA, { op: "rename", station: id, name: "Night drive" })).json.station.name, "Night drive");
+  await admin(ADA, { op: "kick", station: id, accountId: BOB });
+  assert.equal((await api.get(`/station/${BOB}?station=${encodeURIComponent(id)}`)).status, 404); // removed
+  assert.equal((await admin(ADA, { op: "leave", station: id })).status, 409); // the owner deletes instead
+  assert.equal((await admin(ADA, { op: "delete", station: id })).json.deleted, id);
+  assert.deepEqual((await api.get(`/stations/${ADA}`)).json.stations, []);
+  assert.equal((await admin(ADA, { op: "create", name: "" })).status, 400);
+  assert.equal((await admin(ADA, { op: "create", name: "Again" })).status, 200);
 });
 
 test("nobody listening: after 40 s without a listening device the station pauses where it was", async () => {

@@ -195,9 +195,13 @@ service checks who is logged in and passes their linked Discord id and their Ala
   clock made by itself don't make them jump). A song that isn't converted yet waits at 0 (`waiting`) until it is (or until it starts
   streaming while it converts); `playId` counts song starts (a looped song is a new play). With no device
   listening for 40 s (`?listening=1` requests), it pauses where it was then.
-  - Stations are not tied to accounts: `radio_stations` (owner) and `radio_members` (who may listen and
-    control). Every account has one of its own for now (id `account:<account id>`, where its queue already
-    lived, made on first use); listening together (friends joining by a code) can be built on the members.
+  - Stations are not tied to accounts: `radio_stations` (owner, name) and `radio_members` (role owner | member |
+    invited). Every account has one of its own (id `account:<account id>`, where its queue already lived, made on
+    first use). **Shared stations** (`station:<random>`, `stationAdmin.js`): made in the web app, one owned per
+    account, with a name; the owner invites (the web app checks they are friends), renames, removes people and
+    deletes it; members listen and control fully; an invitation isn't membership until accepted.
+    `GET /web/music/stations/<account>` lists the ones it owns, is in or is invited to;
+    `POST /web/music/stations/<account> {op: create | rename | delete | invite | respond | leave | kick, ...}`.
   - `GET /web/music/station/<account>?after=<version>&listening=1&device=<id>[&station=<id>]` waits until the station
     changes (or 25 s). Versions count changes since the process started (with its start time).
   - Controls carry an `actionId` (a resent one is applied once; the last 50 per station are remembered) and
