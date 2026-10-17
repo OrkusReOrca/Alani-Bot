@@ -184,23 +184,24 @@ service checks who is logged in and passes their linked Discord id and their Ala
   and **mark skip**: the track stays in the queue, crossed out (also in `.avc queue`), and is passed over.
 - **Servers offered:** ones the person is a member of and either used the player in during the last 90 days
   (from Discord or the web) or where the bot is in a call now.
-- **A personal queue** ("On account" in the web app): the same queue rules, stored under
-  `account:<account id>` in `VoiceState.db`; it plays in the browser, not in Discord, so it is never rejoined.
-  Every device of the account plays it in step: where it is in the song, playing or paused, and a revision
-  number are kept in `personal_playback` (`personalPlayback.js`); every device keeps one request open
-  (`GET /web/music/personal/<account>?after=<version>`) that is answered the moment anything changes (or
-  after 25 s with no change), and follows it, so pause, skip or seek on one happens on all at once. Versions
-  count changes since the process started (with its start time, so versions from before a restart look old).
-  The devices act first and send their controls in the background: each carries an `actionId` (a resent one
-  is not applied twice, the last 50 per queue are remembered) and index-based controls carry the song's
-  `fileId` (if the queue moved meanwhile, the nearest index with that song is used, or nothing happens).
-  `replace` swaps the whole queue (a playlist); up to 500 songs per `add`/`replace`. A song that ends is reported with the revision the
-  device saw, so when several devices finish it together the queue moves on once (looping one song plays
-  it again). A song that becomes the current one waits at 0 (`waiting: true`) until the first device
-  actually plays it and says so (`started`, with the revision it saw); the clock runs from then. Otherwise
-  the devices would chase a clock that ran while the song was still being converted, sent and loaded.
-  Like a server's queue, its songs are kept converted and converted ahead (the current one first, then the
-  rest in playing order), so a new song is usually ready the moment it starts.
+- **Radio stations** ("On account" in the web app, `station.js`, `stationClock.js`): a queue (the same queue
+  rules) with a clock the bot runs, like a radio. Songs follow each other on the bot's own clock: whenever
+  anything asks, the station first moves past every song that ended since (`catchUp`), and a timer wakes it
+  at the end of the current song so waiting devices hear about the next one at once. Devices only tune in:
+  they never report song ends or starts, so they can't race each other. Controls from any device change it
+  for everyone. A song that isn't converted yet waits at 0 (`waiting`) until it is (or until it starts
+  streaming while it converts); `playId` counts song starts (a looped song is a new play). With no device
+  listening for 40 s (`?listening=1` requests), it pauses where it was then.
+  - Stations are not tied to accounts: `radio_stations` (owner) and `radio_members` (who may listen and
+    control). Every account has one of its own for now (id `account:<account id>`, where its queue already
+    lived, made on first use); listening together (friends joining by a code) can be built on the members.
+  - `GET /web/music/station/<account>?after=<version>&listening=1[&station=<id>]` waits until the station
+    changes (or 25 s). Versions count changes since the process started (with its start time).
+  - Controls carry an `actionId` (a resent one is applied once; the last 50 per station are remembered) and
+    index controls carry the song's `fileId` (the nearest index with that song is used if the queue moved).
+    `replace` swaps the whole queue (a playlist); up to 500 songs per `add`/`replace`.
+  - Its songs are kept converted and converted ahead (current, next, then playing order). Stored in
+    `VoiceState.db` (the playback in the table `personal_playback`, its first name).
 - **Shuffle draws ahead** (`queue.js`): with shuffle on, the next track is drawn when the current one starts
   and kept in the state (`upNext`, saved in `guild_voice_cursor.up_next`); "next" plays exactly that one.
   Views say what plays next (`nextIndex`), so devices (and the conversion order) get it ready early. This

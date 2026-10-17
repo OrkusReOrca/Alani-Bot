@@ -16,10 +16,12 @@
 // backup restore (which swaps the database contents in place) can't leave a
 // stale copy behind. saveState only writes what actually changed.
 //
-// The same queue state also holds each Alatomy account's personal queue (the
-// web app's "On account" player), under the id "account:<account id>" instead
-// of a server id. Two small tables serve the web app: which servers a person
-// used the player in lately, and when each file was last played.
+// The same queue state also holds the radio stations of the web app's "On
+// account" player (station.js), under the station's id instead of a server id
+// (an account's own station: "account:<account id>"). radio_stations and
+// radio_members say who owns and who may listen to a station. Two small tables
+// serve the web app: which servers a person used the player in lately, and when
+// each file was last played.
 
 import { DatabaseSync } from "node:sqlite";
 import fs from "fs";
@@ -28,7 +30,7 @@ import { fileURLToPath } from "url";
 import { installChangeLog } from "../cloud-backup/changeLog.js";
 import { ensureColumn } from "../../common/sqlite.js";
 import { emptyState } from "./queue.js";
-import { stoppedPlayback } from "./personalPlayback.js";
+import { stoppedPlayback } from "./stationClock.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "..", "..", "data", "voice");
@@ -69,13 +71,27 @@ voiceDb.exec(`
     last_played_at TEXT NOT NULL
   );
 
-  -- Where a personal queue is in its song, shared by the person's devices (personalPlayback.js).
+  -- Where a radio station is in its song (stationClock.js). (The table kept its first name: stations
+  -- started out as "personal queues".)
   CREATE TABLE IF NOT EXISTS personal_playback (
     queue_id    TEXT PRIMARY KEY,
     playing     INTEGER NOT NULL,
     position_ms INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL,
     rev         INTEGER NOT NULL
+  );
+
+  -- Radio stations (station.js): who owns one, and who may listen to it and control it.
+  CREATE TABLE IF NOT EXISTS radio_stations (
+    id            TEXT PRIMARY KEY,
+    owner_account TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS radio_members (
+    station_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    role       TEXT NOT NULL,   -- owner (later: listener)
+    PRIMARY KEY (station_id, account_id)
   );
 
   CREATE TABLE IF NOT EXISTS guild_voice_presence (
@@ -88,6 +104,7 @@ voiceDb.exec(`
 ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAULT 1");
 ensureColumn(voiceDb, "guild_voice_state", "persistent", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "waiting", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn(voiceDb, "personal_playback", "play_id", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "guild_voice_cursor", "up_next", "INTEGER"); // shuffle's next track, drawn ahead (queue.js)
 installChangeLog(voiceDb);
 
@@ -132,27 +149,37 @@ export function listGuildsInCall() {
 }
 
 // Servers with something queued (their tracks must be kept and re-converted after a restart).
-// Personal queues are not included: they play in a browser, not through the bot.
+// Radio stations are not included: they play in browsers, not through the bot's voice.
 export function listGuildsWithQueue() {
-  return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]' AND guild_id NOT LIKE 'account:%'`).all().map((row) => row.guild_id);
+  return voiceDb.prepare(`SELECT guild_id FROM guild_voice_state WHERE queue_json <> '[]' AND guild_id NOT LIKE 'account:%' AND guild_id NOT LIKE 'station:%'`).all().map((row) => row.guild_id);
 }
 
 export function loadPlayback(queueId) {
-  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev, waiting FROM personal_playback WHERE queue_id = ?`).get(queueId);
-  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev, waiting: Boolean(row.waiting) } : stoppedPlayback();
+  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev, waiting, play_id FROM personal_playback WHERE queue_id = ?`).get(queueId);
+  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev, waiting: Boolean(row.waiting), playId: row.play_id } : stoppedPlayback();
 }
 
 export function savePlayback(queueId, pb) {
   voiceDb
     .prepare(
-      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev, waiting) VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev, waiting = excluded.waiting`
+      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev, waiting, play_id) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev, waiting = excluded.waiting, play_id = excluded.play_id`
     )
-    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev, pb.waiting ? 1 : 0);
+    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev, pb.waiting ? 1 : 0, pb.playId ?? 0);
 }
 
-/** The state id of an Alatomy account's personal queue. */
-export const personalQueueId = (accountId) => `account:${accountId}`;
+/** An account's own radio station (made the first time it is asked for). */
+export function stationOf(accountId) {
+  const id = `account:${accountId}`;
+  if (!voiceDb.prepare(`SELECT 1 AS x FROM radio_stations WHERE id = ?`).get(id)) {
+    voiceDb.prepare(`INSERT INTO radio_stations (id, owner_account, created_at) VALUES (?, ?, ?)`).run(id, accountId, new Date().toISOString());
+    voiceDb.prepare(`INSERT OR IGNORE INTO radio_members (station_id, account_id, role) VALUES (?, ?, 'owner')`).run(id, accountId);
+  }
+  return id;
+}
+
+/** Whether this account may listen to (and control) that station. */
+export const isStationMember = (stationId, accountId) => Boolean(voiceDb.prepare(`SELECT 1 AS x FROM radio_members WHERE station_id = ? AND account_id = ?`).get(stationId, accountId));
 
 // Someone used the player in a server (the web app lists those servers first).
 export function noteGuildUser(guildId, userId, at = new Date()) {

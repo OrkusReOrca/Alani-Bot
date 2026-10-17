@@ -6,7 +6,7 @@ import { getClient } from "../../common/discordClient.js";
 import { createWebMusicApi } from "./webApi.js";
 import { audioCache, getSession, prepareVoice } from "./manager.js";
 import { listPlayableFiles } from "./library.js";
-import { guildsUsedBy, loadPlayback, loadState, noteGuildUser, personalQueueId, playHistory, recordPlay, saveState, savePlayback } from "./stateStore.js";
+import { guildsUsedBy, isStationMember, loadPlayback, loadState, noteGuildUser, playHistory, recordPlay, saveState, savePlayback, stationOf } from "./stateStore.js";
 
 export function registerWebMusicRoutes(registerRoute) {
   const secret = readEnv("ALANI_WEB_API_SECRET");
@@ -17,7 +17,7 @@ export function registerWebMusicRoutes(registerRoute) {
     prepareVoice,
     audioCache,
     listPlayableFiles,
-    store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId },
+    store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, stationOf, isStationMember },
   });
   registerRoute("GET", "/web/music/*", secret, handle);
   registerRoute("POST", "/web/music/*", secret, handle);
