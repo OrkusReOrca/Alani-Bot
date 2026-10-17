@@ -1,13 +1,16 @@
-// Where a radio station (station.js) is in its song: { playing, positionMs, updatedAt, rev, waiting, playId }.
+// Where a radio station (station.js) is in its song: { playing, positionMs, updatedAt, rev, waiting, playId,
+// actionRev }.
 // The bot runs this clock: while playing, the position moves on with time; when a song ends, the station
 // moves to the next one by itself (at the moment the song ended).
 //   waiting  the current song isn't converted yet: it stands at its start until it is
 //   playId   counts song starts (a song started again, e.g. looping one song, is a new play), so devices
 //            know when to start a song from the beginning
 //   rev      goes up with every change
+//   actionRev the rev of the last change somebody made (a control); changes the clock made by itself (a song
+//            ended, a song became ready) leave it, so devices know when to line up closely
 // Pure functions; updatedAt and `now` / `at` in ms.
 
-export const stoppedPlayback = () => ({ playing: false, positionMs: 0, updatedAt: 0, rev: 0, waiting: false, playId: 0 });
+export const stoppedPlayback = () => ({ playing: false, positionMs: 0, updatedAt: 0, rev: 0, waiting: false, playId: 0, actionRev: 0 });
 
 /** The position right now. */
 export const positionAt = (pb, now) => (pb.playing && !pb.waiting ? pb.positionMs + Math.max(0, now - pb.updatedAt) : pb.positionMs);
@@ -34,4 +37,7 @@ export const ready = (pb, now) => (pb.waiting ? change(pb, now, { waiting: false
 export const stop = (pb, at) => change(pb, at, { playing: false, positionMs: 0, waiting: false });
 
 /** What the devices are told. */
-export const playbackView = (pb, now) => ({ playing: pb.playing, positionMs: positionAt(pb, now), rev: pb.rev, playId: pb.playId, waiting: pb.waiting, serverTime: now });
+export const playbackView = (pb, now) => ({ playing: pb.playing, positionMs: positionAt(pb, now), rev: pb.rev, actionRev: pb.actionRev ?? 0, playId: pb.playId, waiting: pb.waiting, serverTime: now });
+
+/** A control changed it (devices line up closely with it). */
+export const byAction = (pb) => ({ ...pb, actionRev: pb.rev });

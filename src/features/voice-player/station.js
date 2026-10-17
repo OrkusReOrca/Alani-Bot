@@ -1,8 +1,12 @@
 // Radio stations: "On account" music in the web app. A station is a queue with a clock that the BOT runs,
 // like a radio: songs follow each other on the bot's own clock, devices tune in and play along loosely
-// (they line up when something happens — a new song, a seek, a pause — or when they drift more than 20 s),
-// and a control from any device changes the station for everyone. No device ever reports that a song
-// ended or started: only the bot decides, so devices can't race each other.
+// (they line up closely after a control; otherwise a device that is behind finishes its song at its own
+// pace), and a control from any device changes the station for everyone. With several devices listening,
+// only the bot decides when a song ends, so devices can't race each other.
+//
+// One device listening alone leads: the station waits for it. Its song end ("ended") moves the station on,
+// and the clock gives it LEAD_GRACE_MS past the song's end before moving on by itself (a device that went
+// quiet). So a lone device is never cut off or left behind by the bot's clock.
 //
 // Stations are not tied to accounts: each has an owner and members (stateStore: radio_stations,
 // radio_members). For now every account has one station of its own, created on first use; its id is
@@ -16,6 +20,7 @@
 //   * a song that isn't converted yet: the clock waits at its start until it is (or until it starts
 //     streaming while it converts);
 //   * nobody listening (no device tuned in for ABSENT_MS): it pauses where it was then;
+//   * one device listening (by its id, seen within PRESENT_MS): it leads (above);
 //   * devices ask "anything newer than version V?" and the answer waits until a change (or waitMs);
 //   * a control sent again (no answer reached the device) is applied once (actionId), and index controls
 //     name their song (fileId) so a queue that moved meanwhile is no problem.
@@ -25,6 +30,10 @@ import { advance, clearQueue, currentEntry, enqueue, insertNext, jumpTo, moveEnt
 import * as clockApi from "./stationClock.js";
 
 export const ABSENT_MS = 40_000; // no device tuned in for this long: the station pauses
+export const LEAD_GRACE_MS = 30_000; // a lone device's song end may come this late before the clock moves on
+const PRESENT_MS = 5_000; // a listening device counts as there this long after its last request
+const DEVICE = /^[A-Za-z0-9_-]{8,64}$/;
+const UNNAMED = ""; // a listening device that didn't say which it is (it never leads)
 const RECENT_ACTIONS = 50; // per station: action ids already applied
 const MAX_CATCH_UP = 500; // songs moved past in one catch-up (a safety limit)
 const MAX_TIMER_MS = 2 ** 31 - 1;
@@ -84,12 +93,26 @@ export function createStations(deps) {
   }
 
   // ---------------------------------------------------------------- who is listening
-  const presence = new Map(); // station id -> { open: waiting requests of listening devices, lastSeen }
-  function seen(id) {
-    const p = presence.get(id) ?? { open: 0, lastSeen: 0 };
-    p.lastSeen = clock();
+  // station id -> { open: waiting requests of listening devices, lastSeen, devices: device -> { open, lastSeen } }
+  const presence = new Map();
+  function seen(id, device) {
+    const p = presence.get(id) ?? { open: 0, lastSeen: 0, devices: new Map() };
+    const d = p.devices.get(device) ?? { open: 0, lastSeen: 0 };
+    p.lastSeen = d.lastSeen = clock();
+    p.devices.set(device, d);
     presence.set(id, p);
-    return p;
+    return [p, d];
+  }
+  /** The device listening alone (it leads), or null (nobody, several, or one without an id). */
+  function leaderOf(id, now = clock()) {
+    const p = presence.get(id);
+    if (!p) return null;
+    const here = [];
+    for (const [device, d] of p.devices) {
+      if (d.open > 0 || now - d.lastSeen < PRESENT_MS) here.push(device);
+      else if (now - d.lastSeen > ABSENT_MS) p.devices.delete(device); // long gone
+    }
+    return here.length === 1 && here[0] !== UNNAMED ? here[0] : null;
   }
   /** null while somebody listens; otherwise when the station became unattended. */
   function unattendedSince(id, now) {
@@ -131,7 +154,8 @@ export function createStations(deps) {
     if (pb.waiting) return waitFor(id, entry);
     const length = durationOf(entry);
     if (!length) return;
-    const ms = pb.updatedAt + length - pb.positionMs - clock();
+    const grace = leaderOf(id) ? LEAD_GRACE_MS : 0; // a lone device says when the song ended
+    const ms = pb.updatedAt + length - pb.positionMs + grace - clock();
     const timer = setTimeout(() => settle(id), Math.min(MAX_TIMER_MS, Math.max(0, ms) + 50));
     timer.unref?.();
     timers.set(id, timer);
@@ -178,7 +202,7 @@ export function createStations(deps) {
   function settle(id) {
     const now = clock();
     const unattended = unattendedSince(id, now);
-    const until = unattended ?? now;
+    const until = unattended ?? (leaderOf(id, now) ? now - LEAD_GRACE_MS : now);
     let { state, pb, started, changed: moved } = catchUp(store.loadState(id), store.loadPlayback(id), { until, durationOf, isReady, random });
     for (const entry of started) store.recordPlay(entry.fileId, entry.name);
     if (unattended !== null && pb.playing) (pb = clockApi.pause(pb, until)), (moved = true);
@@ -215,21 +239,22 @@ export function createStations(deps) {
 
   /**
    * The station's state; with `after`, waits until it is newer than that version (or waitMs).
-   * listening: the asking device plays it (counts as somebody listening).
+   * listening: the asking device plays it (counts as somebody listening); device: which one it is.
    */
-  async function look(id, { after, listening, res }) {
-    if (listening) seen(id);
+  async function look(id, { after, listening, device, res }) {
+    const who = DEVICE.test(device ?? "") ? device : UNNAMED;
+    if (listening) seen(id, who);
     settle(id);
     if (after && after === versionOf(id)) {
-      const p = listening ? seen(id) : null;
-      if (p) p.open++;
+      const [p, d] = listening ? seen(id, who) : [];
+      if (p) p.open++, d.open++;
       await new Promise((resolve) => {
         const done = () => (clearTimeout(timer), changes.off(id, done), res.off("close", done), resolve());
         const timer = setTimeout(done, waitMs);
         changes.on(id, done);
         res.on("close", done); // the device went away
       });
-      if (p) (p.open--, seen(id));
+      if (p) (p.open--, d.open--, seen(id, who));
     }
     return view(id);
   }
@@ -251,6 +276,7 @@ export function createStations(deps) {
   }
 
   async function apply(id, ownerId, body) {
+    if (body.action === "ended") return ended(id, body);
     const { state, pb: settled } = settle(id);
     const now = clock();
     let pb = settled;
@@ -339,8 +365,26 @@ export function createStations(deps) {
       pb = clockApi.restartTrack(pb, now, { ready: isReady(after) });
       if (pb.playing) store.recordPlay(after.fileId, after.name);
     }
+    if (pb.rev !== settled.rev) pb = clockApi.byAction(pb); // devices line up with it closely
     save(id, next, pb);
     arm(id, next, pb);
+    return null;
+  }
+
+  /**
+   * A device finished song number `playId`. Only the lead device's (listening alone) counts: the station
+   * moves on now, as its clock would have. Anything else is ignored (the clock decides).
+   */
+  function ended(id, body) {
+    const { state, pb } = settle(id);
+    const now = clock();
+    if (leaderOf(id, now) !== body.device || body.playId !== pb.playId || !pb.playing || pb.waiting) return null;
+    const next = withUpNext(advance(state, random), random);
+    const entry = currentEntry(next);
+    const after = entry ? clockApi.restartTrack(pb, now, { ready: isReady(entry) }) : clockApi.stop(pb, now);
+    if (entry) store.recordPlay(entry.fileId, entry.name);
+    save(id, next, after);
+    arm(id, next, after);
     return null;
   }
 

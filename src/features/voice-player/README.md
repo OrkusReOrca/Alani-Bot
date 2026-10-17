@@ -187,15 +187,18 @@ service checks who is logged in and passes their linked Discord id and their Ala
 - **Radio stations** ("On account" in the web app, `station.js`, `stationClock.js`): a queue (the same queue
   rules) with a clock the bot runs, like a radio. Songs follow each other on the bot's own clock: whenever
   anything asks, the station first moves past every song that ended since (`catchUp`), and a timer wakes it
-  at the end of the current song so waiting devices hear about the next one at once. Devices only tune in:
-  they never report song ends or starts, so they can't race each other. Controls from any device change it
-  for everyone. A song that isn't converted yet waits at 0 (`waiting`) until it is (or until it starts
+  at the end of the current song so waiting devices hear about the next one at once. With several devices
+  listening, they only tune in: song ends come from the bot's clock, so they can't race each other. One
+  device listening alone (by its `device` id) leads: its `ended` moves the station on, and the clock waits up
+  to 30 s past the song's end for it (`LEAD_GRACE_MS`), so a lone device is never cut off. Controls from any
+  device change it for everyone and set `actionRev` (devices line up closely after a control; changes the
+  clock made by itself don't make them jump). A song that isn't converted yet waits at 0 (`waiting`) until it is (or until it starts
   streaming while it converts); `playId` counts song starts (a looped song is a new play). With no device
   listening for 40 s (`?listening=1` requests), it pauses where it was then.
   - Stations are not tied to accounts: `radio_stations` (owner) and `radio_members` (who may listen and
     control). Every account has one of its own for now (id `account:<account id>`, where its queue already
     lived, made on first use); listening together (friends joining by a code) can be built on the members.
-  - `GET /web/music/station/<account>?after=<version>&listening=1[&station=<id>]` waits until the station
+  - `GET /web/music/station/<account>?after=<version>&listening=1&device=<id>[&station=<id>]` waits until the station
     changes (or 25 s). Versions count changes since the process started (with its start time).
   - Controls carry an `actionId` (a resent one is applied once; the last 50 per station are remembered) and
     index controls carry the song's `fileId` (the nearest index with that song is used if the queue moved).

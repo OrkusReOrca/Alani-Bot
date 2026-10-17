@@ -186,7 +186,8 @@ test("a station: add, reorder, mark skip, next/previous, played counts, pinned i
   assert.equal((await act({ action: "previous" })).json.player.cursor, 0);
   assert.deepEqual((await act({ action: "move", from: 0, to: 2 })).json.player.queue.map((q) => q.name), ["B.mp3", "C.mp3", "A.mp3"]);
   assert.equal((await act({ action: "remove", index: 7 })).status, 409);
-  assert.equal((await act({ action: "ended" })).status, 400); // devices don't report song ends: the station knows
+  const before = (await look()).playback.playId;
+  assert.equal((await act({ action: "ended", playId: before })).json.player.playback.playId, before); // not from the lead device: ignored
   assert.deepEqual((await act({ action: "removeAll" })).json.player.queue, []);
   assert.equal((await api.get("/station/not-an-account")).status, 404);
   assert.equal((await api.get(`/station/${ACCOUNT}?station=account:${"b".repeat(32)}`)).status, 404); // someone else's station
@@ -224,6 +225,42 @@ test("the station runs its own clock: songs follow each other on time, pause / s
   pb = (await act({ action: "play" })).json.player.playback;
   w.time.now += 5_000;
   assert.deepEqual([(await look()).playback.playing, (await look()).playback.positionMs], [true, 15_000]);
+});
+
+test("one device listening leads: the station waits for its song end (30 s at most); with two, the clock decides", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const { act, look } = station(api);
+  const PHONE = "phone-device-1";
+  const LAPTOP = "laptop-device-1";
+  Object.assign(w.cache.lengths, { "B.mp3": 30_000 });
+  await act({ action: "add", fileIds: ["f0", "f1"] });
+  const start = await look(`listening=1&device=${PHONE}`);
+  assert.equal(start.playback.actionRev, start.playback.rev); // adding was a control
+
+  w.time.now += 61_000 + 10_000; // A ended on the clock 10 s ago, but the phone is still playing it
+  let view = await look(`listening=1&device=${PHONE}`);
+  assert.deepEqual([view.cursor, view.playback.playId], [0, 1]);
+  await act({ action: "ended", playId: 1, device: LAPTOP }); // not the lead device
+  assert.equal((await act({ action: "ended", playId: 1, device: PHONE })).json.player.playback.positionMs, 0); // B starts now
+  view = await look(`listening=1&device=${PHONE}`);
+  assert.deepEqual([view.queue[view.cursor].fileId, view.playback.playId, view.playback.actionRev], ["f1", 2, start.playback.actionRev]); // the clock's own change
+  assert.equal((await act({ action: "ended", playId: 1, device: PHONE })).json.player.playback.playId, 2); // late repeat: ignored
+
+  w.time.now += 30_000 + 29_000; // the phone keeps listening but never says B ended
+  assert.equal((await look(`listening=1&device=${PHONE}`)).playback.playId, 2);
+  w.time.now += 2_000; // 31 s after B's end the clock moves on by itself
+  view = await look(`listening=1&device=${PHONE}`);
+  assert.deepEqual([view.cursor, view.playback.playing], [null, false]);
+
+  // two devices: the clock decides at once
+  await act({ action: "add", fileIds: ["f1", "f0"] });
+  w.time.now += 28_000;
+  await look(`listening=1&device=${PHONE}`);
+  await look(`listening=1&device=${LAPTOP}`);
+  w.time.now += 3_000;
+  view = await look(`listening=1&device=${LAPTOP}`);
+  assert.deepEqual([view.queue[view.cursor].fileId, view.playback.positionMs], ["f0", 1_000]);
 });
 
 test("nobody listening: after 40 s without a listening device the station pauses where it was", async () => {

@@ -433,9 +433,9 @@ test("radio stations live beside the servers' queues but are not rejoined; membe
   saveState(id, stateOf(["A"]));
   assert.ok(!listGuildsWithQueue().includes(id));
   assert.deepEqual(names(loadState(id)), ["A"]);
-  assert.deepEqual(loadPlayback(id), { playing: false, positionMs: 0, updatedAt: 0, rev: 0, waiting: false, playId: 0 });
-  savePlayback(id, { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true, playId: 7 });
-  assert.deepEqual(loadPlayback(id), { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true, playId: 7 });
+  assert.deepEqual(loadPlayback(id), { playing: false, positionMs: 0, updatedAt: 0, rev: 0, waiting: false, playId: 0, actionRev: 0 });
+  savePlayback(id, { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true, playId: 7, actionRev: 2 });
+  assert.deepEqual(loadPlayback(id), { playing: true, positionMs: 1234, updatedAt: 99, rev: 3, waiting: true, playId: 7, actionRev: 2 });
   voiceDb.prepare(`DELETE FROM guild_voice_state WHERE guild_id = ?`).run(id);
   voiceDb.prepare(`DELETE FROM personal_playback WHERE queue_id = ?`).run(id);
   voiceDb.prepare(`DELETE FROM radio_members WHERE station_id = ?`).run(id);

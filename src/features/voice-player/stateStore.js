@@ -105,6 +105,7 @@ ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAUL
 ensureColumn(voiceDb, "guild_voice_state", "persistent", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "waiting", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "play_id", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn(voiceDb, "personal_playback", "action_rev", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "guild_voice_cursor", "up_next", "INTEGER"); // shuffle's next track, drawn ahead (queue.js)
 installChangeLog(voiceDb);
 
@@ -155,17 +156,17 @@ export function listGuildsWithQueue() {
 }
 
 export function loadPlayback(queueId) {
-  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev, waiting, play_id FROM personal_playback WHERE queue_id = ?`).get(queueId);
-  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev, waiting: Boolean(row.waiting), playId: row.play_id } : stoppedPlayback();
+  const row = voiceDb.prepare(`SELECT playing, position_ms, updated_at, rev, waiting, play_id, action_rev FROM personal_playback WHERE queue_id = ?`).get(queueId);
+  return row ? { playing: Boolean(row.playing), positionMs: row.position_ms, updatedAt: row.updated_at, rev: row.rev, waiting: Boolean(row.waiting), playId: row.play_id, actionRev: row.action_rev } : stoppedPlayback();
 }
 
 export function savePlayback(queueId, pb) {
   voiceDb
     .prepare(
-      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev, waiting, play_id) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev, waiting = excluded.waiting, play_id = excluded.play_id`
+      `INSERT INTO personal_playback (queue_id, playing, position_ms, updated_at, rev, waiting, play_id, action_rev) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (queue_id) DO UPDATE SET playing = excluded.playing, position_ms = excluded.position_ms, updated_at = excluded.updated_at, rev = excluded.rev, waiting = excluded.waiting, play_id = excluded.play_id, action_rev = excluded.action_rev`
     )
-    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev, pb.waiting ? 1 : 0, pb.playId ?? 0);
+    .run(queueId, pb.playing ? 1 : 0, pb.positionMs, pb.updatedAt, pb.rev, pb.waiting ? 1 : 0, pb.playId ?? 0, pb.actionRev ?? 0);
 }
 
 /** An account's own radio station (made the first time it is asked for). */

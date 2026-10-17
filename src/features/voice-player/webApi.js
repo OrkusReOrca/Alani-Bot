@@ -7,10 +7,11 @@
 //   GET  /web/music/servers?discordUserId=       servers where that person can use the player
 //   GET  /web/music/server/:guild?discordUserId= the player of one server
 //   POST /web/music/server/:guild/action {discordUserId, action, ...}
-//   GET  /web/music/station/:account[?after=V&listening=1&station=S]   the radio station this account
-//                                                listens to ("On account", station.js); with ?after, the
-//                                                answer waits until it is newer than version V
-//   POST /web/music/station/:account/action {action, actionId?, station?, ...}   its controls
+//   GET  /web/music/station/:account[?after=V&listening=1&device=D&station=S]   the radio station this
+//                                                account listens to ("On account", station.js); with ?after,
+//                                                the answer waits until it is newer than version V
+//   POST /web/music/station/:account/action {action, actionId?, station?, ...}   its controls (and
+//                                                {action: "ended", playId, device} from a device)
 //   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
 // Every answer has a Server-Timing header (how long the bot took), to see where time goes.
 //
@@ -305,7 +306,7 @@ export function createWebMusicApi(deps) {
       if (what === "station" && ACCOUNT_ID.test(String(id ?? ""))) {
         const station = stations.stationFor(id, req.method === "GET" ? url.searchParams.get("station") : body.station);
         if (req.method === "GET" && !sub) {
-          const answer = await stations.look(station, { after: url.searchParams.get("after"), listening: url.searchParams.get("listening") === "1", res });
+          const answer = await stations.look(station, { after: url.searchParams.get("after"), listening: url.searchParams.get("listening") === "1", device: url.searchParams.get("device"), res });
           return res.destroyed ? undefined : send(200, answer);
         }
         if (req.method === "POST" && sub === "action") {
