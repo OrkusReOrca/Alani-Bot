@@ -446,3 +446,24 @@ test("personal queues live beside the servers' but are not rejoined; recent serv
   voiceDb.prepare(`DELETE FROM voice_guild_users WHERE user_id = ?`).run(user);
   voiceDb.prepare(`DELETE FROM voice_play_history WHERE file_id = ?`).run(file);
 });
+
+test("shuffle's next song is drawn ahead, follows moves and removals, and is drawn again when it goes", async () => {
+  const { withUpNext, nextIndex, advance, moveEntry, removeAt, setSkip, insertNext, resolveIndex } = await import("../src/features/voice-player/queue.js");
+  const base = { ...stateOf(["A", "B", "C", "D"]), loop: true, shuffle: true };
+  let s = withUpNext(base, () => 0.99); // the last of the others
+  assert.equal(s.upNext, 3);
+  assert.equal(nextIndex(s), 3);
+  s = moveEntry(s, 3, 1); // D moves to 1: still the one drawn
+  assert.equal(s.upNext, 1);
+  s = insertNext(s, { name: "E", key: "E" }); // inserted at 1, D shifts to 2
+  assert.equal(s.upNext, 2);
+  assert.equal(advance(s, () => 0).cursor, 2); // next plays the drawn song, not a new random one
+  s = removeAt(s, 2);
+  assert.equal(s.upNext, null);
+  assert.equal(withUpNext(s, () => 0).upNext, 1); // drawn again
+  assert.equal(withUpNext(setSkip(withUpNext(s, () => 0), 1, true), () => 0).upNext, 2); // a skipped song is not kept
+  assert.equal(withUpNext({ ...s, shuffle: false }).upNext, null);
+  assert.equal(nextIndex({ ...stateOf(["A", "B"]), cursor: 1 }), null); // no loop: the queue ends after B
+  assert.equal(nextIndex({ ...stateOf(["A", "B"]), cursor: 1, loop: true }), 0);
+  assert.equal(resolveIndex(stateOf(["A", "B"]), 0, undefined), 0);
+});

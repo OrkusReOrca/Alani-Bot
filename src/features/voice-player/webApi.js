@@ -7,22 +7,28 @@
 //   GET  /web/music/servers?discordUserId=       servers where that person can use the player
 //   GET  /web/music/server/:guild?discordUserId= the player of one server
 //   POST /web/music/server/:guild/action {discordUserId, action, ...}
-//   GET  /web/music/personal/:account           a person's own queue (plays in their browsers, in step)
-//   POST /web/music/personal/:account/action {action, ...}   queue changes, and play / pause / seek / started / ended
+//   GET  /web/music/personal/:account[?after=V]  a person's own queue (plays in their browsers, in step);
+//                                                with ?after, the answer waits until it is newer than version V
+//   POST /web/music/personal/:account/action {action, actionId?, ...}   queue changes, and play / pause /
+//                                                seek / started / ended / replace
+// Every answer has a Server-Timing header (how long the bot took), to see where time goes.
 //   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
 //
 // A server's player follows the same rules as `.avc` (rules.js): anyone in the server may look, changes
 // need you in the bot's voice call (or, to add and join, in any voice channel when the bot is free),
 // SongMaster for clearing the queue, bot owners for persistent.
 
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import { isOwner } from "../../common/auth.js";
 import { hasTag, TAGS } from "../tags/store.js";
-import { advance, clearQueue, currentEntry, enqueue, insertNext, jumpTo, moveEntry, previousIndex, removeAt, setLoop, setShuffle, setSkip } from "./queue.js";
+import { advance, clearQueue, currentEntry, enqueue, insertNext, jumpTo, moveEntry, nextIndex, previousIndex, removeAt, resolveIndex, setLoop, setShuffle, setSkip, withUpNext } from "./queue.js";
 import { ensureInCallerChannel, entryFor, mustBeInBotsCall, mustBeSongMaster } from "./rules.js";
 import * as playbackApi from "./personalPlayback.js";
 
-const MAX_ADD = 40;
+const MAX_ADD = 500; // a whole playlist at once
+const WAIT_MS = 25_000; // how long a "tell me when it changes" request waits before answering "no change"
+const RECENT_ACTIONS = 50; // per personal queue: action ids already applied (a resent action is not applied twice)
 const RECENT_GUILD_DAYS = 90;
 const MEMBER_CACHE_MS = 5 * 60 * 1000;
 const SNOWFLAKE = /^\d{15,20}$/;
@@ -36,9 +42,9 @@ class ApiError extends Error {
   }
 }
 
-function sendJson(res, status, body) {
+function sendJson(res, status, body, headers = {}) {
   const data = Buffer.from(JSON.stringify(body));
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-store" });
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-store", ...headers });
   res.end(data);
 }
 
@@ -60,14 +66,12 @@ async function readBody(req) {
   throw new ApiError(400, "That request body is not valid JSON.");
 }
 
-const index0 = (value, length) => (Number.isInteger(value) && value >= 0 && value < length ? value : null);
-
 /**
- * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?,
+ * deps: { discord: () => Client, getSession(guildId), prepareVoice(), audioCache(), listPlayableFiles(), clock?, random?, waitMs?,
  *         store: { loadState, saveState, loadPlayback, savePlayback, guildsUsedBy, noteGuildUser, playHistory, recordPlay, personalQueueId } }
  */
 export function createWebMusicApi(deps) {
-  const { store, clock = Date.now } = deps;
+  const { store, clock = Date.now, random = Math.random, waitMs = WAIT_MS } = deps;
   const memberCache = new Map(); // "guild|user" -> { until, member }
 
   // ---------------------------------------------------------------- Discord
@@ -137,12 +141,50 @@ export function createWebMusicApi(deps) {
     const state = store.loadState(id);
     return {
       kind: "personal",
+      version: versionOf(id),
       cursor: currentEntry(state) ? state.cursor : null,
+      nextIndex: nextIndex(state), // what plays next (drawn ahead with shuffle), so devices can load it early
       queue: queueView(state),
       loop: state.loop,
       shuffle: state.shuffle,
       playback: playbackApi.playbackView(store.loadPlayback(id), clock()),
     };
+  }
+
+  // ---------------------------------------------------------------- personal queues: waiting for a change
+  // Instead of asking every couple of seconds, a device asks "anything newer than version V?" and the
+  // answer waits until a change happens (every change wakes the waiting requests at once) or waitMs
+  // passes. Versions count changes since this process started; the start time in them makes every
+  // version from before a restart look old, so devices simply catch up.
+  const boot = Date.now().toString(36);
+  const versions = new Map(); // queue id -> changes so far
+  const changes = new EventEmitter().setMaxListeners(0);
+  const versionOf = (id) => `${boot}.${versions.get(id) ?? 0}`;
+  function changed(id) {
+    versions.set(id, (versions.get(id) ?? 0) + 1);
+    changes.emit(id);
+  }
+  function waitForChange(id, after, res) {
+    if (versionOf(id) !== after) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => (clearTimeout(timer), changes.off(id, done), res.off("close", done), resolve());
+      const timer = setTimeout(done, waitMs);
+      changes.on(id, done);
+      res.on("close", done); // the device went away
+    });
+  }
+
+  // Devices resend an action they got no answer for; one already applied is not applied again.
+  const recentActions = new Map(); // queue id -> Map(action id -> its problem or null)
+  function alreadyDone(id, actionId) {
+    return typeof actionId === "string" && recentActions.get(id)?.has(actionId);
+  }
+  function remember(id, actionId, problem) {
+    if (typeof actionId !== "string" || actionId.length > 64) return;
+    const done = recentActions.get(id) ?? new Map();
+    done.set(actionId, problem);
+    if (done.size > RECENT_ACTIONS) done.delete(done.keys().next().value);
+    recentActions.set(id, done);
   }
 
   // ---------------------------------------------------------------- the library
@@ -188,7 +230,6 @@ export function createWebMusicApi(deps) {
   async function serverAction(guild, userId, body) {
     const session = deps.getSession(guild.id);
     const ctx = { userId, voiceChannelId: userVoiceChannel(guild, userId) };
-    const length = session.state().queue.length;
     const inCall = () => mustBeInBotsCall(ctx, session);
     const on = body.on === true;
     store.noteGuildUser(guild.id, userId);
@@ -207,17 +248,21 @@ export function createWebMusicApi(deps) {
       case "restart":
         return inCall() ?? (session.restart() ? null : "Nothing is playing.");
       case "jump": {
-        const index = index0(body.index, length);
+        const index = resolveIndex(session.state(), body.index, body.fileId);
         return index === null ? "No such track." : inCall() ?? void session.skipTo(index + 1);
       }
       case "remove": {
-        const index = index0(body.index, length);
+        const index = resolveIndex(session.state(), body.index, body.fileId);
         return index === null ? "No such track." : inCall() ?? void session.remove(index);
       }
-      case "move":
-        return inCall() ?? (session.move(body.from, body.to) ? null : "No such track.");
-      case "markSkip":
-        return inCall() ?? (session.markSkip(body.index, on) ? null : "No such track.");
+      case "move": {
+        const from = resolveIndex(session.state(), body.from, body.fileId);
+        return inCall() ?? (from !== null && session.move(from, body.to) ? null : "No such track.");
+      }
+      case "markSkip": {
+        const index = resolveIndex(session.state(), body.index, body.fileId);
+        return inCall() ?? (index !== null && session.markSkip(index, on) ? null : "No such track.");
+      }
       case "loop":
         return inCall() ?? void session.setLoop(on);
       case "shuffle":
@@ -228,11 +273,17 @@ export function createWebMusicApi(deps) {
         return !isOwner(userId) ? "Only a bot owner can change Persistent." : inCall() ?? void session.setPersistent(on);
       case "removeAll":
         return mustBeSongMaster(ctx, "Removing every track") ?? void session.removeAll();
-      case "add": {
+      case "add":
+      case "replace": {
         const files = await filesById(body.fileIds);
+        if (body.action === "replace") {
+          const notAllowed = mustBeSongMaster(ctx, "Replacing the queue");
+          if (notAllowed) return notAllowed;
+        }
         await deps.prepareVoice();
         const problem = await ensureInCallerChannel(ctx, session);
         if (problem) return problem;
+        if (body.action === "replace") session.removeAll();
         session.addMany(files.map((file) => entryFor(file, userId)), body.where === "next" ? "next" : "end");
         return null;
       }
@@ -250,7 +301,9 @@ export function createWebMusicApi(deps) {
       const cache = deps.audioCache();
       if (!cache) return;
       cache.setPinned(state.queue.map((entry) => entry.key), id); // keep its converted tracks
-      const upcoming = [...state.queue.slice(state.cursor), ...state.queue.slice(0, state.cursor)].filter((entry) => !entry.skip);
+      const upNext = state.queue[nextIndex(state)];
+      const upcoming = [...state.queue.slice(state.cursor), ...state.queue.slice(0, state.cursor)].filter((entry) => !entry.skip && entry !== upNext);
+      if (upNext) upcoming.splice(1, 0, upNext); // right after the current one (shuffle's draw included)
       upcoming.forEach((entry, i) => cache.ensure(entry, { urgent: i === 0 }));
     } catch {
       // no audio cache on this host: streaming will say so
@@ -263,27 +316,37 @@ export function createWebMusicApi(deps) {
   // devices both finish the song it moves on only once.
   async function personalAction(accountId, body) {
     const id = store.personalQueueId(accountId);
+    if (alreadyDone(id, body.actionId)) return recentActions.get(id).get(body.actionId);
+    const problem = await applyPersonal(id, accountId, body);
+    remember(id, body.actionId, problem);
+    return problem;
+  }
+
+  async function applyPersonal(id, accountId, body) {
     const state = store.loadState(id);
     const now = clock();
     let pb = store.loadPlayback(id);
-    const length = state.queue.length;
     const on = body.on === true;
     const before = currentEntry(state);
+    const meant = (index) => resolveIndex(state, index, body.fileId); // the song the device meant, if the queue moved
     let next = state;
     let restart = false; // the same song starts again (looping one song, or jumping to the one playing)
 
     switch (body.action) {
-      case "add": {
+      case "add":
+      case "replace": {
         const entries = (await filesById(body.fileIds)).map((file) => entryFor(file, accountId));
+        if (body.action === "replace") next = clearQueue(next);
         if (body.where === "next") for (const entry of [...entries].reverse()) next = insertNext(next, entry);
         else for (const entry of entries) next = enqueue(next, entry);
-        if (!before) pb = playbackApi.play(pb, now, 0); // the queue was empty: start playing what was added
+        if (!before || body.action === "replace") pb = playbackApi.play(pb, now, 0); // start playing what was added
+        restart = body.action === "replace";
         break;
       }
       case "next":
       case "ended":
         if (body.action === "ended" && body.rev !== pb.rev) return null; // another device already moved on
-        next = advance(state);
+        next = advance(state, random);
         restart = true;
         break;
       case "previous": {
@@ -293,7 +356,7 @@ export function createWebMusicApi(deps) {
         break;
       }
       case "jump": {
-        const index = index0(body.index, length);
+        const index = meant(body.index);
         if (index === null) return "No such track.";
         next = jumpTo(state, index);
         pb = playbackApi.play(pb, now, 0);
@@ -301,19 +364,24 @@ export function createWebMusicApi(deps) {
         break;
       }
       case "remove": {
-        const index = index0(body.index, length);
+        const index = meant(body.index);
         if (index === null) return "No such track.";
         next = removeAt(state, index);
         break;
       }
-      case "move":
-        next = moveEntry(state, body.from, body.to);
+      case "move": {
+        const from = meant(body.from);
+        if (from === null) return "No such track.";
+        next = moveEntry(state, from, body.to);
         break;
-      case "markSkip":
-        if (index0(body.index, length) === null) return "No such track.";
-        next = setSkip(state, body.index, on);
-        if (on && body.index === state.cursor) (next = advance(next)), (restart = true); // skipping the one playing
+      }
+      case "markSkip": {
+        const index = meant(body.index);
+        if (index === null) return "No such track.";
+        next = setSkip(state, index, on);
+        if (on && index === state.cursor) (next = advance(next, random)), (restart = true); // skipping the one playing
         break;
+      }
       case "loop":
         next = setLoop(state, on);
         break;
@@ -342,6 +410,7 @@ export function createWebMusicApi(deps) {
         throw new ApiError(400, "Unknown action.");
     }
 
+    next = withUpNext(next, random); // shuffle's next song, drawn ahead
     const after = currentEntry(next);
     if (!after) pb = pb.playing || pb.positionMs ? playbackApi.stop(pb, now) : pb;
     else if (restart || after.key !== before?.key) {
@@ -351,6 +420,7 @@ export function createWebMusicApi(deps) {
     store.saveState(id, next);
     store.savePlayback(id, pb);
     convertAhead(id, next);
+    changed(id);
     return null;
   }
 
@@ -393,34 +463,41 @@ export function createWebMusicApi(deps) {
   // ---------------------------------------------------------------- routing
   return async function handle(req, res) {
     const url = new URL(req.url, "http://localhost");
+    const started = performance.now();
+    const send = (status, body) => sendJson(res, status, body, { "Server-Timing": `bot;desc="Alani bot";dur=${(performance.now() - started).toFixed(1)}` });
     const parts = url.pathname.replace(/^\/web\/music\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
     try {
       const body = req.method === "POST" ? await readBody(req) : {};
       const userId = req.method === "GET" ? url.searchParams.get("discordUserId") : body.discordUserId;
       const [what, id, sub] = parts;
 
-      if (req.method === "GET" && what === "library" && !id) return sendJson(res, 200, { files: await library() });
-      if (req.method === "GET" && what === "servers" && !id) return sendJson(res, 200, { servers: await servers(userId) });
+      if (req.method === "GET" && what === "library" && !id) return send(200, { files: await library() });
+      if (req.method === "GET" && what === "servers" && !id) return send(200, { servers: await servers(userId) });
       if (req.method === "GET" && what === "stream" && id && !sub) return await stream(req, res, id);
 
       if (what === "server" && id) {
         const guild = await guildFor(id, userId);
-        if (req.method === "GET" && !sub) return sendJson(res, 200, serverView(guild, userId));
+        if (req.method === "GET" && !sub) return send(200, serverView(guild, userId));
         if (req.method === "POST" && sub === "action") {
           const problem = await serverAction(guild, userId, body);
-          return sendJson(res, problem ? 409 : 200, { ...(problem ? { error: readable(guild, problem) } : {}), player: serverView(guild, userId) });
+          return send(problem ? 409 : 200, { ...(problem ? { error: readable(guild, problem) } : {}), player: serverView(guild, userId) });
         }
       }
       if (what === "personal" && ACCOUNT_ID.test(String(id ?? ""))) {
-        if (req.method === "GET" && !sub) return sendJson(res, 200, personalView(id));
+        if (req.method === "GET" && !sub) {
+          const after = url.searchParams.get("after");
+          if (after) await waitForChange(store.personalQueueId(id), after, res);
+          if (res.destroyed) return;
+          return send(200, personalView(id));
+        }
         if (req.method === "POST" && sub === "action") {
           const problem = await personalAction(id, body);
-          return sendJson(res, problem ? 409 : 200, { ...(problem ? { error: problem } : {}), player: personalView(id) });
+          return send(problem ? 409 : 200, { ...(problem ? { error: problem } : {}), player: personalView(id) });
         }
       }
       throw new ApiError(404, "No such route.");
     } catch (error) {
-      if (error instanceof ApiError) return sendJson(res, error.status, { error: error.message });
+      if (error instanceof ApiError) return send(error.status, { error: error.message });
       console.error(`[voice-player] web API error on ${req.method} ${url.pathname}:`, error);
       if (!res.headersSent) sendJson(res, 500, { error: "The music player had a problem." });
     }

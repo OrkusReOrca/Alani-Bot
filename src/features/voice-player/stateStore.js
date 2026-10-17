@@ -88,6 +88,7 @@ voiceDb.exec(`
 ensureColumn(voiceDb, "guild_voice_state", "play_call", "INTEGER NOT NULL DEFAULT 1");
 ensureColumn(voiceDb, "guild_voice_state", "persistent", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(voiceDb, "personal_playback", "waiting", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn(voiceDb, "guild_voice_cursor", "up_next", "INTEGER"); // shuffle's next track, drawn ahead (queue.js)
 installChangeLog(voiceDb);
 
 // The server's state, or an empty one if it has none yet (nothing is written
@@ -96,10 +97,12 @@ export function loadState(guildId) {
   const row = voiceDb.prepare(`SELECT queue_json, loop, shuffle, play_call, persistent FROM guild_voice_state WHERE guild_id = ?`).get(guildId);
   if (!row) return emptyState();
   const queue = JSON.parse(row.queue_json);
-  const cursor = voiceDb.prepare(`SELECT current_index FROM guild_voice_cursor WHERE guild_id = ?`).get(guildId)?.current_index ?? 0;
+  const position = voiceDb.prepare(`SELECT current_index, up_next FROM guild_voice_cursor WHERE guild_id = ?`).get(guildId);
+  const cursor = position?.current_index ?? 0;
   return {
     queue,
     cursor: Math.min(cursor, queue.length), // never past "ended", even if the two tables disagree
+    upNext: position?.up_next ?? null,
     loop: Boolean(row.loop),
     shuffle: Boolean(row.shuffle),
     playCall: Boolean(row.play_call),
@@ -193,10 +196,11 @@ export function saveState(guildId, state) {
       .run(guildId, queueJson, ...flags, new Date().toISOString());
   }
 
-  const storedCursor = voiceDb.prepare(`SELECT current_index FROM guild_voice_cursor WHERE guild_id = ?`).get(guildId)?.current_index ?? 0;
-  if (state.cursor !== storedCursor) {
+  const position = voiceDb.prepare(`SELECT current_index, up_next FROM guild_voice_cursor WHERE guild_id = ?`).get(guildId);
+  const upNext = Number.isInteger(state.upNext) ? state.upNext : null;
+  if (state.cursor !== (position?.current_index ?? 0) || upNext !== (position?.up_next ?? null)) {
     voiceDb
-      .prepare(`INSERT INTO guild_voice_cursor (guild_id, current_index) VALUES (?, ?) ON CONFLICT (guild_id) DO UPDATE SET current_index = excluded.current_index`)
-      .run(guildId, state.cursor);
+      .prepare(`INSERT INTO guild_voice_cursor (guild_id, current_index, up_next) VALUES (?, ?, ?) ON CONFLICT (guild_id) DO UPDATE SET current_index = excluded.current_index, up_next = excluded.up_next`)
+      .run(guildId, state.cursor, upNext);
   }
 }

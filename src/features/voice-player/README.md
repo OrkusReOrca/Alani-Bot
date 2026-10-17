@@ -187,16 +187,28 @@ service checks who is logged in and passes their linked Discord id and their Ala
 - **A personal queue** ("On account" in the web app): the same queue rules, stored under
   `account:<account id>` in `VoiceState.db`; it plays in the browser, not in Discord, so it is never rejoined.
   Every device of the account plays it in step: where it is in the song, playing or paused, and a revision
-  number are kept in `personal_playback` (`personalPlayback.js`); devices check every couple of seconds and
-  follow, so pause, skip or seek on one happens on all. A song that ends is reported with the revision the
+  number are kept in `personal_playback` (`personalPlayback.js`); every device keeps one request open
+  (`GET /web/music/personal/<account>?after=<version>`) that is answered the moment anything changes (or
+  after 25 s with no change), and follows it, so pause, skip or seek on one happens on all at once. Versions
+  count changes since the process started (with its start time, so versions from before a restart look old).
+  The devices act first and send their controls in the background: each carries an `actionId` (a resent one
+  is not applied twice, the last 50 per queue are remembered) and index-based controls carry the song's
+  `fileId` (if the queue moved meanwhile, the nearest index with that song is used, or nothing happens).
+  `replace` swaps the whole queue (a playlist); up to 500 songs per `add`/`replace`. A song that ends is reported with the revision the
   device saw, so when several devices finish it together the queue moves on once (looping one song plays
   it again). A song that becomes the current one waits at 0 (`waiting: true`) until the first device
   actually plays it and says so (`started`, with the revision it saw); the clock runs from then. Otherwise
   the devices would chase a clock that ran while the song was still being converted, sent and loaded.
   Like a server's queue, its songs are kept converted and converted ahead (the current one first, then the
   rest in playing order), so a new song is usually ready the moment it starts.
+- **Shuffle draws ahead** (`queue.js`): with shuffle on, the next track is drawn when the current one starts
+  and kept in the state (`upNext`, saved in `guild_voice_cursor.up_next`); "next" plays exactly that one.
+  Views say what plays next (`nextIndex`), so devices (and the conversion order) get it ready early. This
+  applies to servers' queues too.
 - **Streaming** (`/web/music/stream/<file id>`): the converted Ogg Opus file, with byte ranges for seeking;
   a long file still converting streams without seeking for the first play.
+- Every answer carries `Server-Timing: bot;dur=...` (how long the bot took), shown in the browser's network
+  panel next to the web service's own time.
 - Play counts and last-played times (`voice_play_history`) feed the web library's "recently played" sort.
 
 ## Setup

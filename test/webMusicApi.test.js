@@ -61,6 +61,8 @@ function world() {
     audioCache: () => cache,
     listPlayableFiles: async () => FILES,
     clock: () => time.now,
+    random: () => 0, // shuffle always draws the first song it may
+    waitMs: 300,
     store: {
       loadPlayback: (id) => playbacks.get(id) ?? { playing: false, positionMs: 0, updatedAt: 0, rev: 0 },
       savePlayback: (id, pb) => playbacks.set(id, pb),
@@ -218,6 +220,60 @@ test("a personal queue converts its songs ahead: the current one first, then in 
   w.cache.ensured.length = 0;
   await act({ action: "jump", index: 2 });
   assert.deepEqual(w.cache.ensured, [["C.mp3", true], ["A.mp3", false], ["B.mp3", false]]); // D is marked skip
+});
+
+test("waiting for a change: the answer comes the moment another device changes something, or after the wait", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
+  await act({ action: "add", fileIds: ["f0", "f1"] });
+  const first = await api.get(`/personal/${ACCOUNT}`);
+  assert.match(first.headers.get("server-timing"), /^bot;desc="Alani bot";dur=\d+(\.\d+)?$/);
+  const { version } = first.json;
+
+  const waiting = api.get(`/personal/${ACCOUNT}?after=${version}`);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await act({ action: "pause", positionMs: 1000 });
+  const woken = (await waiting).json;
+  assert.notEqual(woken.version, version);
+  assert.equal(woken.playback.playing, false);
+
+  const started = Date.now();
+  const quiet = (await api.get(`/personal/${ACCOUNT}?after=${woken.version}`)).json;
+  assert.ok(Date.now() - started >= 250); // nothing changed: it answers after the wait
+  assert.equal(quiet.version, woken.version);
+  assert.equal((await api.get(`/personal/${ACCOUNT}?after=old.0`)).json.version, woken.version); // an old version: at once
+});
+
+test("a resent action is applied once; an index is checked against the song the device meant; replace", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
+  await act({ action: "add", fileIds: ["f0", "f1", "f2"] });
+  await act({ action: "loop", on: true });
+  assert.equal((await act({ action: "next", actionId: "a1" })).json.player.cursor, 1);
+  assert.equal((await act({ action: "next", actionId: "a1" })).json.player.cursor, 1); // the same action again: not twice
+
+  await act({ action: "move", from: 2, to: 0, fileId: "f2" }); // C A B, B (current) at 2
+  const removed = (await act({ action: "remove", index: 2, fileId: "f0" })).json.player; // index 2 is B now; A is at 1
+  assert.deepEqual(removed.queue.map((q) => q.fileId), ["f2", "f1"]);
+  assert.equal((await act({ action: "remove", index: 0, fileId: "f9" })).status, 409); // gone: nothing happens
+
+  const replaced = (await act({ action: "replace", fileIds: ["f3", "f0"] })).json.player;
+  assert.deepEqual([replaced.queue.map((q) => q.fileId), replaced.cursor, replaced.playback.playing, replaced.playback.waiting], [["f3", "f0"], 0, true, true]);
+});
+
+test("shuffle draws the next song ahead: the view says which, and next plays exactly that one", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const act = (body) => api.post(`/personal/${ACCOUNT}/action`, body);
+  await act({ action: "add", fileIds: ["f0", "f1", "f2", "f3"] });
+  assert.equal((await act({ action: "loop", on: true })).json.player.nextIndex, 1); // in order
+  const shuffled = (await act({ action: "shuffle", on: true })).json.player;
+  assert.equal(shuffled.nextIndex, 1); // drawn (random() = 0: the first other song)
+  const moved = (await act({ action: "next" })).json.player;
+  assert.equal(moved.cursor, 1);
+  assert.equal(moved.nextIndex, 0); // the next one is drawn at once
 });
 
 test("streaming: the whole file, or a byte range for seeking", async () => {

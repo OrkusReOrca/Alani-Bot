@@ -15,7 +15,7 @@
 //   onTrackStart(entry)  called when a track starts (for "recently played")
 //   presence         { connected(channelId), disconnected() } — remembers which call the bot is in, so a restart can rejoin it
 
-import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, previousIndex, moveEntry, setSkip } from "./queue.js";
+import { advance, jumpTo, currentEntry, enqueue, enqueueFront, insertNext, removeAt, clearQueue, setLoop, setShuffle, setPlayCall, setPersistent, previousIndex, moveEntry, setSkip, withUpNext } from "./queue.js";
 
 export function createGuildSession({
   guildId, store, getCache, output, announce, timing,
@@ -34,7 +34,8 @@ export function createGuildSession({
   let aloneTimer = null;
 
   const load = () => store.loadState(guildId);
-  const save = (state) => {
+  const save = (changed) => {
+    const state = withUpNext(changed, random); // shuffle's next track, drawn ahead
     store.saveState(guildId, state);
     refreshCache(state);
     return state;
