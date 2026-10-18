@@ -197,8 +197,8 @@ service checks who is logged in and passes their linked Discord id and their Ala
   listening for 40 s (`?listening=1` requests), it pauses where it was then.
   - Stations are not tied to accounts: `radio_stations` (owner, name) and `radio_members` (role owner | member |
     invited). Every account has one of its own (id `account:<account id>`, where its queue already lived, made on
-    first use). **Shared stations** (`station:<random>`, `stationAdmin.js`): made in the web app, one owned per
-    account, with a name; the owner invites (the web app checks they are friends), renames, removes people and
+    first use). **Shared stations** (`station:<random>`, `stationAdmin.js`): made in the web app, as many owned per
+    account as its plan has (the web app sends `maxOwned` with `create`; 1 when not sent), with a name; the owner invites (the web app checks they are friends), renames, removes people and
     deletes it; members listen and control fully; an invitation isn't membership until accepted.
     `GET /web/music/stations/<account>` lists the ones it owns, is in or is invited to;
     `POST /web/music/stations/<account> {op: create | rename | delete | invite | respond | leave | kick, ...}`.

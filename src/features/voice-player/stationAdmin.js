@@ -2,16 +2,17 @@
 // station has a name, an owner and members; it plays like any station (station.js): everyone in it hears it
 // in step and controls it fully. The owner names it, invites people (the web app only lets you invite
 // friends: it checks with the account service before asking here), removes people, and deletes it.
-// An invited person isn't in it until they accept. Each account owns at most MAX_OWNED shared stations.
+// An invited person isn't in it until they accept. How many shared stations an account may own depends on
+// its plan: the web app sends it with "create" (maxOwned, 1 to MAX_OWNED_LIMIT; 1 when not sent).
 //
 //   list(accountId)            { own, stations: [{ id, name, owner, yourRole, members, playing, song }] }
-//   act(accountId, body)       body.op: create {name} | rename {station, name} | delete {station}
+//   act(accountId, body)       body.op: create {name, maxOwned} | rename {station, name} | delete {station}
 //                              | invite {station, accountIds} | respond {station, accept} | leave {station}
 //                              | kick {station, accountId}
 
 import crypto from "node:crypto";
 
-export const MAX_OWNED = 1;
+export const MAX_OWNED_LIMIT = 10;
 export const MAX_PEOPLE = 20; // in a station, invitations included
 const NAME_MAX = 40;
 const ACCOUNT_ID = /^[0-9a-f]{32}$/;
@@ -56,7 +57,8 @@ export function createStationAdmin({ store, stations, ApiError }) {
 
   function act(accountId, body) {
     if (body.op === "create") {
-      if (store.ownedSharedStations(accountId).length >= MAX_OWNED) throw new ApiError(409, "You already have a radio station. Delete it to make a new one.");
+      const allowed = Math.min(Math.max(Math.trunc(Number(body.maxOwned)) || 1, 1), MAX_OWNED_LIMIT);
+      if (store.ownedSharedStations(accountId).length >= allowed) throw new ApiError(409, `Your plan has ${allowed} radio station${allowed === 1 ? "" : "s"} of your own, and ${allowed === 1 ? "it is" : "they are"} made. Delete one to make another.`);
       const id = store.createSharedStation(accountId, cleanName(body.name), `station:${crypto.randomBytes(8).toString("hex")}`);
       return { station: viewOf(id, accountId) };
     }

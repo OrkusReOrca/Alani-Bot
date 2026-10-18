@@ -286,7 +286,9 @@ test("shared stations: one each, invite, accept, everyone controls, the owner re
   const made = (await admin(ADA, { op: "create", name: "  Road trip " })).json;
   const id = made.station.id;
   assert.deepEqual([made.station.name, made.station.yourRole, made.own, made.stations.length], ["Road trip", "owner", `account:${ADA}`, 1]);
-  assert.equal((await admin(ADA, { op: "create", name: "Another" })).status, 409); // one each
+  assert.equal((await admin(ADA, { op: "create", name: "Another" })).status, 409); // one, unless the plan says more
+  const second = (await admin(ADA, { op: "create", name: "Another", maxOwned: 2 })).json.station.id;
+  await admin(ADA, { op: "delete", station: second });
 
   await admin(ADA, { op: "invite", station: id, accountIds: [BOB, CAT, "not-an-id"] });
   assert.equal((await api.get(`/station/${BOB}?station=${encodeURIComponent(id)}`)).status, 404); // invited isn't in yet
