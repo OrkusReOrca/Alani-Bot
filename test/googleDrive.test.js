@@ -40,6 +40,15 @@ test("a missing folder fails with a message that says what to check", async () =
   await assert.rejects(drive.resolveFolderPath(["Nope"]), /"Nope" not found.*shared with the bot's service account/);
 });
 
+test("several shared folders with the same name: the one that holds the rest of the path is used", async () => {
+  fakeGoogle([
+    () => json({ files: [{ id: "uploads-alani", name: "Alani" }, { id: "music-alani", name: "Alani" }] }),
+    () => json({ files: [] }), // the uploads folder has no "Files to play discord VC"
+    () => json({ files: [{ id: "vc-id", name: "Files to play discord VC" }] }),
+  ]);
+  assert.equal(await drive.resolveFolderPath(["Alani", "Files to play discord VC"]), "vc-id");
+});
+
 test("names with quotes are escaped in the query", async () => {
   const calls = fakeGoogle([() => json({ files: [{ id: "x", name: "It's" }] })]);
   await drive.resolveFolderPath(["It's"]);

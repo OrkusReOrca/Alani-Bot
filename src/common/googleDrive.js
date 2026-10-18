@@ -38,16 +38,23 @@ async function listAll(query, fields) {
 // Resolves a folder path like ["Alani", "Files to play discord VC"] to the last
 // folder's id. The first name is looked up among folders SHARED with the
 // service account (it has no "My Drive" of its own); each later one inside the
-// previous. Never creates anything.
+// previous. Several folders may share a name (e.g. the Live User Handler's own "Alani" folder, shared with
+// the bot so it can play uploads): each is tried until the whole path is found. Never creates anything.
 export async function resolveFolderPath(segments) {
-  let parentId = null;
-  for (const name of segments) {
-    const scope = parentId ? `'${escapeQueryValue(parentId)}' in parents` : "sharedWithMe = true";
-    const matches = await listAll(`mimeType = '${FOLDER_MIME}' and name = '${escapeQueryValue(name)}' and trashed = false and ${scope}`, "id, name");
-    if (matches.length === 0) throw new Error(`Drive folder "${name}" not found (path: ${segments.join("/")}) — check it exists and is shared with the bot's service account`);
-    parentId = matches[0].id;
+  const found = await resolveFrom(segments, 0, null);
+  if (!found) throw new Error(`Drive folder path "${segments.join("/")}" not found — check it exists and is shared with the bot's service account`);
+  return found;
+}
+
+async function resolveFrom(segments, index, parentId) {
+  if (index === segments.length) return parentId;
+  const scope = parentId ? `'${escapeQueryValue(parentId)}' in parents` : "sharedWithMe = true";
+  const matches = await listAll(`mimeType = '${FOLDER_MIME}' and name = '${escapeQueryValue(segments[index])}' and trashed = false and ${scope}`, "id, name");
+  for (const match of matches) {
+    const found = await resolveFrom(segments, index + 1, match.id);
+    if (found) return found;
   }
-  return parentId;
+  return null;
 }
 
 // Files (not folders) directly inside a folder: [{ id, name, mimeType, size, modifiedTime }].
