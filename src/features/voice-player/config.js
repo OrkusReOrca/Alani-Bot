@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const config = {
   // Drive folder (path from the folders shared with the service account) holding
   // the files that can be played. Sub-folders aren't searched.
-  folderPath: (readEnv("VC_DRIVE_FOLDER_PATH") || "Alani/Files to play discord VC").split("/").filter(Boolean),
+  folderPath: (readEnv("VC_DRIVE_FOLDER_PATH") || "Alani/Dev public pool").split("/").filter(Boolean),
   cacheDir: path.join(__dirname, "..", "..", "..", "data", "vc-cache"),
 };
 

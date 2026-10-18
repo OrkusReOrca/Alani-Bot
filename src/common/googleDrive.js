@@ -35,7 +35,7 @@ async function listAll(query, fields) {
   return items;
 }
 
-// Resolves a folder path like ["Alani", "Files to play discord VC"] to the last
+// Resolves a folder path like ["Alani", "Dev public pool"] to the last
 // folder's id. The first name is looked up among folders SHARED with the
 // service account (it has no "My Drive" of its own); each later one inside the
 // previous. Several folders may share a name (e.g. the Live User Handler's own "Alani" folder, shared with

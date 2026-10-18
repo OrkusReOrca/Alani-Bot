@@ -1,7 +1,7 @@
 # Voice player (`.avc`)
 
 Alani joins your voice call and plays audio files from a Google Drive folder
-(`Alani/Files to play discord VC`; change it with `VC_DRIVE_FOLDER_PATH`). Audio
+(`Alani/Dev public pool`; change it with `VC_DRIVE_FOLDER_PATH`). Audio
 only — a bot can't share video, so a video file plays just its sound.
 
 ```
