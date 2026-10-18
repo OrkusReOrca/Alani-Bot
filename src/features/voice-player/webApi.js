@@ -15,7 +15,10 @@
 //   GET  /web/music/stations/:account            the shared stations it owns, is in or is invited to
 //   POST /web/music/stations/:account {op, ...}  make / rename / delete / invite / respond / leave / kick
 //                                                (stationAdmin.js; the web app checks invitees are friends)
-//   GET  /web/music/stream/:fileId              the audio (Ogg Opus) of one file, for playing in a browser
+//   GET  /web/music/stream/:fileId[?account=A]   the audio (Ogg Opus) of one file, for playing in a browser: a
+//                                                library file, a personal song the web app vouches for
+//                                                (X-Alani-File: its name), or one in a station A listens to
+//   (add / replace may carry files: [{id, name}] — personal songs the web app checked the person may use)
 // Every answer has a Server-Timing header (how long the bot took), to see where time goes.
 //
 // A server's player follows the same rules as `.avc` (rules.js): anyone in the server may look, changes
@@ -80,7 +83,7 @@ async function readBody(req) {
 export function createWebMusicApi(deps) {
   const { store, clock = Date.now, random = Math.random, waitMs = WAIT_MS } = deps;
   const memberCache = new Map(); // "guild|user" -> { until, member }
-  const stations = createStations({ store, audioCache: deps.audioCache, filesById: (ids) => filesById(ids), entryFor, clock, random, waitMs, ApiError });
+  const stations = createStations({ store, audioCache: deps.audioCache, filesById: (ids, personal) => filesById(ids, personal), entryFor, clock, random, waitMs, ApiError });
   const stationAdmin = createStationAdmin({ store, stations, ApiError });
 
   // ---------------------------------------------------------------- Discord
@@ -146,9 +149,17 @@ export function createWebMusicApi(deps) {
   }
 
   // ---------------------------------------------------------------- the library
-  async function filesById(ids) {
+  // Personal songs (uploaded in the web app; on Drive, readable by this bot) aren't in the library: the web app,
+  // which checked the person may play them, sends them along ({ id, name }).
+  const personalFile = (f) => ({ id: f.id, name: `${String(f.name).slice(0, 200)}.opus`, mimeType: "audio/ogg", modifiedTime: "personal", personal: true });
+  const PERSONAL_ID = /^[A-Za-z0-9_-]{10,200}$/;
+
+  async function filesById(ids, personal = []) {
     if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_ADD) throw new ApiError(400, `Choose 1 to ${MAX_ADD} songs.`);
     const files = new Map((await deps.listPlayableFiles()).map((file) => [file.id, file]));
+    for (const f of Array.isArray(personal) ? personal.slice(0, MAX_ADD) : []) {
+      if (PERSONAL_ID.test(String(f?.id ?? "")) && typeof f.name === "string" && f.name.trim() && !files.has(f.id)) files.set(f.id, personalFile(f));
+    }
     const found = ids.map((id) => files.get(String(id))).filter(Boolean);
     if (found.length === 0) throw new ApiError(404, "None of those songs exist any more.");
     return found;
@@ -233,7 +244,7 @@ export function createWebMusicApi(deps) {
         return mustBeSongMaster(ctx, "Removing every track") ?? void session.removeAll();
       case "add":
       case "replace": {
-        const files = await filesById(body.fileIds);
+        const files = await filesById(body.fileIds, body.files);
         if (body.action === "replace") {
           const notAllowed = mustBeSongMaster(ctx, "Replacing the queue");
           if (notAllowed) return notAllowed;
@@ -251,8 +262,29 @@ export function createWebMusicApi(deps) {
   }
 
   // ---------------------------------------------------------------- streaming
-  async function stream(req, res, fileId) {
-    const [file] = await filesById([fileId]);
+  /**
+   * The file to stream: a library file; a personal song the web app vouches for (header X-Alani-File: its
+   * name); or a personal song in a station this account listens to (?account=), e.g. a friend's song in a
+   * shared station.
+   */
+  async function streamable(req, url, fileId) {
+    const library = (await deps.listPlayableFiles()).find((file) => file.id === fileId);
+    if (library) return library;
+    const vouched = req.headers["x-alani-file"];
+    if (vouched) return personalFile({ id: fileId, name: decodeURIComponent(String(vouched)) });
+    const account = url.searchParams.get("account");
+    if (ACCOUNT_ID.test(String(account ?? ""))) {
+      const ids = [store.stationOf(account), ...(store.sharedStationsOf?.(account) ?? []).filter((id) => store.isStationMember(id, account))];
+      for (const id of ids) {
+        const entry = store.loadState(id).queue.find((e) => e.fileId === fileId);
+        if (entry) return { id: fileId, name: entry.name, mimeType: entry.mimeType, modifiedTime: entry.version };
+      }
+    }
+    throw new ApiError(404, "That song isn't available.");
+  }
+
+  async function stream(req, res, fileId, url) {
+    const file = await streamable(req, url, fileId);
     await deps.prepareVoice();
     const cache = deps.audioCache();
     const entry = entryFor(file, null);
@@ -300,7 +332,7 @@ export function createWebMusicApi(deps) {
 
       if (req.method === "GET" && what === "library" && !id) return send(200, { files: await library() });
       if (req.method === "GET" && what === "servers" && !id) return send(200, { servers: await servers(userId) });
-      if (req.method === "GET" && what === "stream" && id && !sub) return await stream(req, res, id);
+      if (req.method === "GET" && what === "stream" && id && !sub) return await stream(req, res, id, url);
 
       if (what === "server" && id) {
         const guild = await guildFor(id, userId);

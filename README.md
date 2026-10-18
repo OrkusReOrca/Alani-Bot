@@ -252,6 +252,13 @@ its own secret, checked independently, so a leaked secret for one route
 can't reach another's. Callers: the voice assistant (`/voice/*`), the emotion service
 (`/emotion/*`), and Alani on the web (`/web/music/*`, `ALANI_WEB_API_SECRET`).
 
+Songs people upload in Alani on the web live in their own Google Drive folders (the Alani Live User
+Handler stores them, as Opus; the Alani folder is shared read-only with this bot's service account), and
+their Drive file id is their song id. The bot plays them only when the web app vouches for them: as
+`files: [{id, name}]` with a queue add / replace, or the `X-Alani-File` header when streaming one; a friend
+in a shared radio station can also play one that is in that station's queue
+(`src/features/voice-player/webApi.js`).
+
 ### HTTPS for the bridge
 
 The bare `http://<host>:<port>` address has no TLS, so secrets would cross the internet unencrypted. Give

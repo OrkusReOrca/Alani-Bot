@@ -289,7 +289,7 @@ export function createStations(deps) {
     switch (body.action) {
       case "add":
       case "replace": {
-        const entries = (await deps.filesById(body.fileIds)).map((file) => deps.entryFor(file, ownerId));
+        const entries = (await deps.filesById(body.fileIds, body.files)).map((file) => deps.entryFor(file, ownerId));
         if (body.action === "replace") next = clearQueue(next);
         if (body.where === "next") for (const entry of [...entries].reverse()) next = insertNext(next, entry);
         else for (const entry of entries) next = enqueue(next, entry);

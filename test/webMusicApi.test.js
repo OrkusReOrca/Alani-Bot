@@ -424,6 +424,29 @@ test("shuffle draws the next song ahead: the view says which, and next plays exa
   assert.equal(moved.nextIndex, 0); // the next one is drawn at once
 });
 
+test("personal songs: added with what the web app vouches for; streamed when vouched for, or to someone whose station has it", async () => {
+  const w = world();
+  const api = await serve(w.handle);
+  const ADA = "a".repeat(32);
+  const BOB = "b".repeat(32);
+  const MINE = "drive-personal-0001";
+  assert.equal((await api.post(`/station/${ADA}/action`, { action: "add", fileIds: [MINE] })).status, 404); // not in the library, not vouched for
+  const added = (await api.post(`/station/${ADA}/action`, { action: "add", fileIds: [MINE, "f1"], files: [{ id: MINE, name: "Miku-Monitoring" }] })).json.player;
+  assert.deepEqual(added.queue.map((q) => q.name), ["Miku-Monitoring.opus", "B.mp3"]);
+  assert.equal((await api.get(`/stream/${MINE}`)).status, 404); // nobody vouches, no station given
+  assert.equal((await api.get(`/stream/${MINE}`, { "X-Alani-File": "Miku-Monitoring" })).status, 200);
+  assert.equal((await api.get(`/stream/${MINE}?account=${ADA}`)).text, "0123456789"); // in Ada's own station
+  assert.equal((await api.get(`/stream/${MINE}?account=${BOB}`)).status, 404); // not Bob's
+
+  // in a shared station Bob is in, Bob may play it too
+  const station = (await api.post(`/stations/${ADA}`, { op: "create", name: "Road trip" })).json.station.id;
+  await api.post(`/station/${ADA}/action`, { station, action: "add", fileIds: [MINE], files: [{ id: MINE, name: "Miku-Monitoring" }] });
+  await api.post(`/stations/${ADA}`, { op: "invite", station, accountIds: [BOB] });
+  assert.equal((await api.get(`/stream/${MINE}?account=${BOB}`)).status, 404); // only invited
+  await api.post(`/stations/${BOB}`, { op: "respond", station, accept: true });
+  assert.equal((await api.get(`/stream/${MINE}?account=${BOB}`)).status, 200);
+});
+
 test("streaming: the whole file, or a byte range for seeking", async () => {
   const w = world();
   const api = await serve(w.handle);
