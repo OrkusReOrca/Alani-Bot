@@ -257,7 +257,11 @@ Handler stores them, as Opus; the Alani folder is shared read-only with this bot
 their Drive file id is their song id. The bot plays them only when the web app vouches for them: as
 `files: [{id, name}]` with a queue add / replace, or the `X-Alani-File` header when streaming one; a friend
 in a shared radio station can also play one that is in that station's queue
-(`src/features/voice-player/webApi.js`).
+(`src/features/voice-player/webApi.js`). A song Alatomy froze isn't vouched for any more (the web app won't stream it or add it to a queue).
+
+The Alatomy account reminder scheduler (`src/features/alatomy-account/scheduler.js`) also DMs **notices** to an
+account (e.g. "your uploaded song was removed"), once each. Accounts that switched Discord messages off in Alani's
+settings get no DMs at all (the account service doesn't list them).
 
 ### HTTPS for the bridge
 

@@ -222,11 +222,23 @@ test("the scheduler delivers due reminders by DM or in their channel, tags peopl
   assert.deepEqual(service.state.delivered, ["11", "12"]);
 });
 
+test("notices (e.g. a song removed) are DMed once and reported sent", async () => {
+  const discord = fakeDiscord();
+  service.state.due = [];
+  service.state.notices = [{ id: 5, kind: "song_removed", text: 'Your uploaded song "Demo Tune" was removed by Alatomy.', discordUserId: LINKED_DISCORD_ID }];
+  const scheduler = createAccountReminderScheduler({ client: accountClient, discord: () => discord.client, log: quietLog });
+  await scheduler.tick();
+  await scheduler.tick();
+  assert.deepEqual(discord.sent, [{ to: `dm:${LINKED_DISCORD_ID}`, text: '📣 Your uploaded song "Demo Tune" was removed by Alatomy.' }]);
+  assert.deepEqual(service.state.noticesSent, ["5"]);
+  service.state.notices = [];
+});
+
 test("a reminder is never sent twice, even when the service could not be told it was done", async () => {
   const discord = fakeDiscord();
   const due = [{ id: 21, accountId: ACCOUNT_ID, text: "once", remindAt: "2026-10-16T12:00:00.000Z", channelId: null, mentions: [], discordUserId: LINKED_DISCORD_ID }];
   let doneCalls = 0;
-  const client = { isConfigured: () => true, dueTrackers: async () => [], dueReminders: async () => due, markDelivered: async () => { doneCalls += 1; throw new AccountApiError("down"); } };
+  const client = { isConfigured: () => true, discordNotices: async () => [], dueTrackers: async () => [], dueReminders: async () => due, markDelivered: async () => { doneCalls += 1; throw new AccountApiError("down"); } };
   const scheduler = createAccountReminderScheduler({ client, discord: () => discord.client, log: quietLog });
   await scheduler.tick();
   await scheduler.tick();
@@ -238,6 +250,7 @@ test("a reminder that cannot be delivered is still cleared, and an unconfigured 
   const done = [];
   const client = {
     isConfigured: () => true,
+    discordNotices: async () => [],
     dueTrackers: async () => [],
     dueReminders: async () => [{ id: 31, text: "x", remindAt: "2026-10-16T12:00:00.000Z", channelId: null, mentions: [], discordUserId: "1" }],
     markDelivered: async (id) => done.push(id),

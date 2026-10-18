@@ -3,7 +3,9 @@
 // login can be delivered to), sends each as a DM to the person (or into the channel they picked),
 // and tells the service it was delivered so it is never sent again. Same message format as the other
 // databases. Tracker reminders ("Have you ...?") work the same way: one DM per tracker and period,
-// and none once the tracker is done for that period.
+// and none once the tracker is done for that period. Notices for an account (e.g. "your song was removed")
+// are DMed the same way, once each. Accounts that switched Discord DMs off (Alani's settings) aren't
+// listed by the service at all.
 
 import { getClient } from "../../common/discordClient.js";
 import { formatMentions } from "../../common/mentions.js";
@@ -38,9 +40,31 @@ export function createAccountReminderScheduler({ client = accountClient, discord
     await user.send(`⏰ Have you? **${tracker.name}**${progress} — tick it off at ${accountConfig.webAppUrl}`);
   }
 
+  async function deliverNotice(notice) {
+    const user = await discord().users.fetch(notice.discordUserId);
+    await user.send(`📣 ${notice.text}`);
+  }
+
   async function tick() {
     if (!client.isConfigured()) return;
     for (const [id, at] of recentlySent) if (clock() - at > REMEMBER_MS) recentlySent.delete(id);
+
+    for (const notice of await client.discordNotices()) {
+      const key = `notice:${notice.id}`;
+      if (!recentlySent.has(key)) {
+        try {
+          await deliverNotice(notice);
+        } catch (error) {
+          log.error(`[alatomy-account] failed to send notice ${notice.id}:`, error.message); // not retried
+        }
+        recentlySent.set(key, clock());
+      }
+      try {
+        await client.markNoticeSent(notice.id);
+      } catch (error) {
+        log.error(`[alatomy-account] could not mark notice ${notice.id} as sent:`, error.message);
+      }
+    }
 
     const trackers = await client.dueTrackers();
     for (const tracker of trackers) {

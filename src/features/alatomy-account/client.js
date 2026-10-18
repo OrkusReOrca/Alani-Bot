@@ -71,6 +71,9 @@ export function createAccountClient({ apiUrl = config.apiUrl, apiSecret = config
     markDelivered: (reminderId) => request("POST", `/reminders/${encodeURIComponent(reminderId)}/done`, {}),
     dueTrackers: async () => (await request("GET", "/trackers/due")).data.trackers ?? [],
     markTrackerNotified: (trackerId, periodKey) => request("POST", `/trackers/${encodeURIComponent(trackerId)}/notified`, { periodKey }),
+    // notices for an account (e.g. "your song was removed"), sent as DMs (accounts that allow Discord DMs)
+    discordNotices: async () => (await request("GET", "/notices/discord")).data.notices ?? [],
+    markNoticeSent: (noticeId) => request("POST", `/notices/${encodeURIComponent(noticeId)}/sent`, {}),
 
     // the blog (on the website): new posts, posts waiting for approval, decisions, deleting
     createBlogPost: (post) => request("POST", "/blog/posts", post, { timeoutMs: 120_000 }), // images take a while

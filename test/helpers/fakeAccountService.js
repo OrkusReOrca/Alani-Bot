@@ -19,6 +19,8 @@ export async function startFakeAccountService() {
     delivered: [],
     dueTrackers: [],
     notified: [],
+    notices: [], // waiting to be DMed
+    noticesSent: [],
     stats: null,
     calls: [],
     failWith: null, // a status code to answer everything with
@@ -53,6 +55,11 @@ export async function startFakeAccountService() {
       if (parts[0] === "trackers" && parts[1] === "due") return send(200, { trackers: state.dueTrackers });
       if (parts[0] === "trackers" && parts[2] === "notified") {
         state.notified.push(`${parts[1]}:${body.periodKey}`);
+        return send(200, { ok: true });
+      }
+      if (parts[0] === "notices" && parts[1] === "discord") return send(200, { notices: state.notices.filter((n) => !state.noticesSent.includes(String(n.id))) });
+      if (parts[0] === "notices" && parts[2] === "sent") {
+        state.noticesSent.push(parts[1]);
         return send(200, { ok: true });
       }
       if (parts[0] === "stats") return send(200, state.stats);
