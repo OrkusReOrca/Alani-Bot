@@ -1,4 +1,42 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_712",
+      "title": "The Power Of Love",
+      "artist": "Huey Lewis & The News",
+      "image": "https://cdn.fortnite-api.com/tracks/32c90afd6a72defd.jpg",
+      "price": 500,
+      "inDate": "2026-10-21T00:00:00Z",
+      "outDate": "2026-10-24T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_75",
+      "title": "Africa",
+      "artist": "Toto",
+      "image": "https://cdn.fortnite-api.com/tracks/e0380fd0733eea9d.jpg",
+      "price": 500,
+      "inDate": "2026-10-21T00:00:00Z",
+      "outDate": "2026-10-24T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_261",
+      "title": "The Final Countdown",
+      "artist": "Europe",
+      "image": "https://cdn.fortnite-api.com/tracks/c13194793c0c8e2f.jpg",
+      "price": 500,
+      "inDate": "2026-10-21T00:00:00Z",
+      "outDate": "2026-10-24T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_893",
+      "title": "What's Up?",
+      "artist": "4 Non Blondes",
+      "image": "https://cdn.fortnite-api.com/tracks/cba038578e9ed020.jpg",
+      "price": 500,
+      "inDate": "2026-10-11T00:00:00Z",
+      "outDate": "2026-10-20T23:59:59.999Z"
+    }
+  ]
 }
