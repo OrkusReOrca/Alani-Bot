@@ -1,4 +1,59 @@
 {
-  "newTracks": [],
+  "newTracks": [
+    {
+      "id": "sid_placeholder_20",
+      "title": "(Don't Fear) The Reaper",
+      "artist": "Blue Öyster Cult",
+      "image": "https://cdn.fortnite-api.com/tracks/dc258a22d726f53e.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_207",
+      "title": "Dragula",
+      "artist": "Rob Zombie",
+      "image": "https://cdn.fortnite-api.com/tracks/194946c091d2ebcb.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_381",
+      "title": "bury a friend",
+      "artist": "Billie Eilish",
+      "image": "https://cdn.fortnite-api.com/tracks/392d9e991a22262c.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_338",
+      "title": "I'm Not Okay (I Promise)",
+      "artist": "My Chemical Romance",
+      "image": "https://cdn.fortnite-api.com/tracks/12008c21e2644151.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_230",
+      "title": "Enter Sandman",
+      "artist": "Metallica",
+      "image": "https://cdn.fortnite-api.com/tracks/e908febe800797a9.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_732",
+      "title": "Mary on a Cross",
+      "artist": "Ghost",
+      "image": "https://cdn.fortnite-api.com/tracks/180fc2449fde9e36.jpg",
+      "price": 2200,
+      "inDate": "2026-10-29T00:00:00Z",
+      "outDate": "2026-10-31T23:59:59.999Z"
+    }
+  ],
   "leftTracks": []
 }
