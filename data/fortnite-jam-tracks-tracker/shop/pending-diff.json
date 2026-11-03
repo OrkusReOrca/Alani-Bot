@@ -1,23 +1,4 @@
 {
   "newTracks": [],
-  "leftTracks": [
-    {
-      "id": "sid_placeholder_943",
-      "title": "Banana Boat (Day-O)",
-      "artist": "Harry Belafonte",
-      "image": "https://cdn.fortnite-api.com/tracks/46cb74ee8e12c7d1.jpg",
-      "price": 500,
-      "inDate": "2026-10-24T00:00:00Z",
-      "outDate": "2026-11-02T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_944",
-      "title": "Jump in the Line",
-      "artist": "Harry Belafonte",
-      "image": "https://cdn.fortnite-api.com/tracks/b23634c6cbfd1fa4.jpg",
-      "price": 500,
-      "inDate": "2026-10-24T00:00:00Z",
-      "outDate": "2026-11-02T23:59:59.999Z"
-    }
-  ]
+  "leftTracks": []
 }
