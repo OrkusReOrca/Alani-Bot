@@ -1,4 +1,249 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_679",
+      "title": "In My Room",
+      "artist": "Julia Wolf",
+      "image": "https://cdn.fortnite-api.com/tracks/7d4c27be9bd889c7.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_947",
+      "title": "GRIM FREESTYLE",
+      "artist": "A$AP Rocky",
+      "image": "https://cdn.fortnite-api.com/tracks/1b8dd9d74bf19843.jpg",
+      "price": 1100,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-12-06T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_948",
+      "title": "RIOT (Rowdy Pipe’n)",
+      "artist": "A$AP Rocky",
+      "image": "https://cdn.fortnite-api.com/tracks/cca24060815e192d.jpg",
+      "price": 1100,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-12-06T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_950",
+      "title": "Lord Pretty Flacko Jodye 2 (LPFJ2)",
+      "artist": "A$AP Rocky",
+      "image": "https://cdn.fortnite-api.com/tracks/1c14826faaa820e1.jpg",
+      "price": 1100,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-12-06T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_162",
+      "title": "Scenario",
+      "artist": "A Tribe Called Quest ft. Leaders Of The New School",
+      "image": "https://cdn.fortnite-api.com/tracks/8196b3b2a32cf3e6.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_580",
+      "title": "Stay Alta",
+      "artist": "Estelle ft. Channel Tres",
+      "image": "https://cdn.fortnite-api.com/tracks/74a7df1cbdecdc83.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_262",
+      "title": "Gimme The Light",
+      "artist": "Sean Paul",
+      "image": "https://cdn.fortnite-api.com/tracks/08133301746cd134.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_934",
+      "title": "Boston",
+      "artist": "STELLA LEFTY",
+      "image": "https://cdn.fortnite-api.com/tracks/09ea7e48ae57affe.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_06",
+      "title": "The Hills",
+      "artist": "The Weeknd",
+      "image": "https://cdn.fortnite-api.com/tracks/1db9ecb6ed66e683.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_31",
+      "title": "Feel Good Inc",
+      "artist": "Gorillaz",
+      "image": "https://cdn.fortnite-api.com/tracks/394d7211243e301c.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_726",
+      "title": "Illegal",
+      "artist": "PinkPantheress",
+      "image": "https://cdn.fortnite-api.com/tracks/35b82af93da18fec.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_743",
+      "title": "BAILE INoLVIDABLE",
+      "artist": "Bad Bunny",
+      "image": "https://cdn.fortnite-api.com/tracks/cdb9388593199a00.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_878",
+      "title": "Can You Feel My Heart",
+      "artist": "Bring Me The Horizon",
+      "image": "https://cdn.fortnite-api.com/tracks/72c0f35af2f03f7b.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_805",
+      "title": "Dracula",
+      "artist": "Tame Impala",
+      "image": "https://cdn.fortnite-api.com/tracks/7f7bf57e2f35a55b.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_688",
+      "title": "OIIA OIIA (Spinning Cat)",
+      "artist": "W&W",
+      "image": "https://cdn.fortnite-api.com/tracks/86b1f6f8fba1ea34.jpg",
+      "price": 500,
+      "inDate": "2026-11-06T00:00:00Z",
+      "outDate": "2026-11-12T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_167",
+      "title": "Everlong",
+      "artist": "Foo Fighters",
+      "image": "https://cdn.fortnite-api.com/tracks/d5675af68c30fd90.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_34",
+      "title": "Mi Gente",
+      "artist": "J Balvin & Willy William",
+      "image": "https://cdn.fortnite-api.com/tracks/6f90537ce93d25dd.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_826",
+      "title": "I Run",
+      "artist": "HAVEN., Kaitlin Aragon",
+      "image": "https://cdn.fortnite-api.com/tracks/089ceca8e29f18a8.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_794",
+      "title": "Folded",
+      "artist": "Kehlani",
+      "image": "https://cdn.fortnite-api.com/tracks/d116e94dd9d239f0.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_792",
+      "title": "Rottweiler",
+      "artist": "EsDeeKid",
+      "image": "https://cdn.fortnite-api.com/tracks/dbb7019ee8200194.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_847",
+      "title": "Fabienk",
+      "artist": "Angine de Poitrine",
+      "image": "https://cdn.fortnite-api.com/tracks/2b753d72b3229b39.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_777",
+      "title": "Today is Gonna be a Great Day ",
+      "artist": "Bowling For Soup",
+      "image": "https://cdn.fortnite-api.com/tracks/68e34b52f7f16b6e.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_663",
+      "title": "I Feel It Coming",
+      "artist": "The Weeknd ft. Daft Punk",
+      "image": "https://cdn.fortnite-api.com/tracks/1a02d78d6f1b3db4.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_720",
+      "title": "Kill Bill",
+      "artist": "SZA",
+      "image": "https://cdn.fortnite-api.com/tracks/bf15db19e2b045ee.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_08",
+      "title": "good 4 u",
+      "artist": "Olivia Rodrigo",
+      "image": "https://cdn.fortnite-api.com/tracks/9674ac61a37e9f52.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_55",
+      "title": "Lucid Dreams",
+      "artist": "Juice WRLD",
+      "image": "https://cdn.fortnite-api.com/tracks/800a642356f1957b.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_161",
+      "title": "Mood",
+      "artist": "24kGoldn ft. iann dior",
+      "image": "https://cdn.fortnite-api.com/tracks/cf09829e48343b0d.jpg",
+      "price": 500,
+      "inDate": "2026-10-30T00:00:00Z",
+      "outDate": "2026-11-05T23:59:59.999Z"
+    }
+  ]
 }
