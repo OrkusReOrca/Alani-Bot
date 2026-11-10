@@ -71,6 +71,15 @@
     "inDate": "2026-11-01T00:00:00Z",
     "outDate": "2026-11-30T23:59:59.999Z"
   },
+  "sid_placeholder_87": {
+    "id": "sid_placeholder_87",
+    "title": "emo girl",
+    "artist": "mgk ft. WILLOW",
+    "image": "https://cdn.fortnite-api.com/tracks/e6308fa22abf40f4.jpg",
+    "price": 500,
+    "inDate": "2026-11-10T00:00:00Z",
+    "outDate": "2026-11-11T23:59:59.999Z"
+  },
   "sid_placeholder_629": {
     "id": "sid_placeholder_629",
     "title": "Cheguei",
@@ -465,7 +474,7 @@
     "image": "https://cdn.fortnite-api.com/tracks/ad6fa2ab41e8a472.jpg",
     "price": 500,
     "inDate": "2026-11-01T00:00:00Z",
-    "outDate": "2026-12-10T23:59:59.999Z"
+    "outDate": "2026-11-30T23:59:59.999Z"
   },
   "sid_placeholder_65": {
     "id": "sid_placeholder_65",
