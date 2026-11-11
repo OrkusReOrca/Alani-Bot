@@ -1,32 +1,4 @@
 {
-  "newTracks": [
-    {
-      "id": "sid_placeholder_190",
-      "title": "Ella Baila Sola",
-      "artist": "Eslabon Armado, Peso Pluma",
-      "image": "https://cdn.fortnite-api.com/tracks/c427d60e31a4f1a4.jpg",
-      "price": 500,
-      "inDate": "2026-11-11T00:00:00Z",
-      "outDate": "2026-11-15T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_558",
-      "title": "Gasolina",
-      "artist": "Daddy Yankee",
-      "image": "https://cdn.fortnite-api.com/tracks/40918c34f62fe6f9.jpg",
-      "price": 500,
-      "inDate": "2026-11-11T00:00:00Z",
-      "outDate": "2026-11-15T23:59:59.999Z"
-    },
-    {
-      "id": "sid_placeholder_505",
-      "title": "Livin' La Vida Loca",
-      "artist": "Ricky Martin",
-      "image": "https://cdn.fortnite-api.com/tracks/e4d4e2f508e32295.jpg",
-      "price": 500,
-      "inDate": "2026-11-11T00:00:00Z",
-      "outDate": "2026-11-15T23:59:59.999Z"
-    }
-  ],
+  "newTracks": [],
   "leftTracks": []
 }
