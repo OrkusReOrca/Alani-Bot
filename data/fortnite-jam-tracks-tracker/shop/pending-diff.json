@@ -1,4 +1,78 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_663",
+      "title": "I Feel It Coming",
+      "artist": "The Weeknd ft. Daft Punk",
+      "image": "https://cdn.fortnite-api.com/tracks/1a02d78d6f1b3db4.jpg",
+      "price": 500,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-27T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_930",
+      "title": "Life Will Change",
+      "artist": "Lyn, ATLUS Sound Team, ATLUS GAME MUSIC",
+      "image": "https://cdn.fortnite-api.com/tracks/5d8e262c1f111f3d.jpg",
+      "price": 3800,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-29T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_664",
+      "title": "Starboy",
+      "artist": "The Weeknd ft. Daft Punk",
+      "image": "https://cdn.fortnite-api.com/tracks/633eda9e0ad1e2ee.jpg",
+      "price": 800,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-27T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_780",
+      "title": "Diet Pepsi",
+      "artist": "Addison Rae",
+      "image": "https://cdn.fortnite-api.com/tracks/65fb56d561152bf8.jpg",
+      "price": 3600,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-28T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_851",
+      "title": "Fame is a Gun",
+      "artist": "Addison Rae",
+      "image": "https://cdn.fortnite-api.com/tracks/38061ca5e4a4cf76.jpg",
+      "price": 3600,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-28T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_31",
+      "title": "Feel Good Inc",
+      "artist": "Gorillaz",
+      "image": "https://cdn.fortnite-api.com/tracks/394d7211243e301c.jpg",
+      "price": 500,
+      "inDate": "2026-11-22T00:00:00Z",
+      "outDate": "2026-11-24T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_636",
+      "title": "DARE",
+      "artist": "Gorillaz ft. Shaun Ryder & Roses Gabor",
+      "image": "https://cdn.fortnite-api.com/tracks/7072547ef4eb8d43.jpg",
+      "price": 2600,
+      "inDate": "2026-11-22T00:00:00Z",
+      "outDate": "2026-11-24T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_637",
+      "title": "Clint Eastwood",
+      "artist": "Gorillaz",
+      "image": "https://cdn.fortnite-api.com/tracks/02bc7552a8629236.jpg",
+      "price": 500,
+      "inDate": "2026-11-22T00:00:00Z",
+      "outDate": "2026-11-24T23:59:59.999Z"
+    }
+  ]
 }
