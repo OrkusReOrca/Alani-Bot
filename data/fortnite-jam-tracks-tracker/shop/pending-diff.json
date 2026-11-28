@@ -1,4 +1,42 @@
 {
-  "newTracks": [],
-  "leftTracks": []
+  "newTracks": [
+    {
+      "id": "sid_placeholder_208",
+      "title": "Hail To The King",
+      "artist": "Avenged Sevenfold",
+      "image": "https://cdn.fortnite-api.com/tracks/9eae77e1113bbeb0.jpg",
+      "price": 2300,
+      "inDate": "2026-11-28T00:00:00Z",
+      "outDate": "2026-11-29T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_665",
+      "title": "Get Lucky",
+      "artist": "Daft Punk ft. Pharrell Williams and Nile Rodgers",
+      "image": "https://cdn.fortnite-api.com/tracks/b20aba41b71ef0ec.jpg",
+      "price": 500,
+      "inDate": "2026-11-28T00:00:00Z",
+      "outDate": "2026-12-01T23:59:59.999Z"
+    }
+  ],
+  "leftTracks": [
+    {
+      "id": "sid_placeholder_663",
+      "title": "I Feel It Coming",
+      "artist": "The Weeknd ft. Daft Punk",
+      "image": "https://cdn.fortnite-api.com/tracks/1a02d78d6f1b3db4.jpg",
+      "price": 500,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-27T23:59:59.999Z"
+    },
+    {
+      "id": "sid_placeholder_664",
+      "title": "Starboy",
+      "artist": "The Weeknd ft. Daft Punk",
+      "image": "https://cdn.fortnite-api.com/tracks/633eda9e0ad1e2ee.jpg",
+      "price": 800,
+      "inDate": "2026-11-25T00:00:00Z",
+      "outDate": "2026-11-27T23:59:59.999Z"
+    }
+  ]
 }
